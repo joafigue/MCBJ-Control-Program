@@ -327,7 +327,7 @@ class SR830(Instrument):
         self.direct_output()
         logging.debug(__name__ + ' : setting time constant on instrument to %s'%(timeconstant))
         self._visainstrument.write('OFLT %s' % timeconstant)
-            
+
     def do_get_tau(self):
         '''
         Get the time constant of the LockIn
@@ -434,7 +434,7 @@ class SR830(Instrument):
         Set output voltage, rounded to nearest mV.
         '''
         self.set_aux(channel, value)
-    
+
     def do_get_out(self, channel):
         '''
         Read output voltage.

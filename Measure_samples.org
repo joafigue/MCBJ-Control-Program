@@ -16,7 +16,7 @@
 This file is a try to document and enhance the program in python to measure the samples through the mechanism of of break-junction in gold samples for the study of molecular properties.
 The reason for this is that the current program, while functional is underdocumented and the full how-to is preserved through *oral tradition* which is regrettable for an investigation lab, and since the author of this document has a bit of experience in software development and documentation, this file was born.
 
-** Break Junction 
+** Break Junction
 The experiment is to measure the break junction
 
 
@@ -30,7 +30,7 @@ Since the experiment is based on a single gold "nano-wire"  which is broken thro
 The Faulhaber motor is used to perform relatively large movements on the sample and is used to break the sample initially
 
 **** Piezo actuator
-Once the junction is broken, the motor is turned off and the piezo-device is used, since it provides a simple controllable way to perform even samller movements on the piece for the study 
+Once the junction is broken, the motor is turned off and the piezo-device is used, since it provides a simple controllable way to perform even samller movements on the piece for the study
 
 *** Samples types
 Even though the experiment is always performed over gold "wires", there are 2 distinct clasification of the samples.
@@ -52,7 +52,7 @@ As it was already stated the measurement is splitted in 2 steps, the motor initi
 - Main loop :: As in many programs the main loop is the one that orchestrates the excecution of the program.
 - UI Interface :: Considering the requiremens for different configurations for the measurement such as the voltage applied to the juncture, there is a requierement for a reasonable to use UI, and this UI should allow the user to run a measurement.
 - The juncture creation :: Using the motor actuator, a juncture is created and then the displacement is set so that a movement generated with the piezo-electric actuator the juncture can be easily reconstructed
-- Measurement with the piezo :: With the sample in the optimal setting for the piezo is the measured by modifying the voltage applied to the piezo-electric device which in turn creates a displacement of the sample recreating the juncture an allowing for easily repetable measurements through the dynamic range of the piezo-electric device 
+- Measurement with the piezo :: With the sample in the optimal setting for the piezo is the measured by modifying the voltage applied to the piezo-electric device which in turn creates a displacement of the sample recreating the juncture an allowing for easily repetable measurements through the dynamic range of the piezo-electric device
 
 Obviously there is a series of additional modules which provide the interface to the different actuators, and additional helpeer functions to improve the presentation of the results, all of which will be presented in turn.
 
@@ -63,5 +63,3 @@ Obviously there is a series of additional modules which provide the interface to
 
 
 ** Utility functions
-
-
