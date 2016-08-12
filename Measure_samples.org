@@ -1,0 +1,67 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:3 \n:nil ^:t arch:headline author:t c:nil
+#+OPTIONS: creator:nil d:(not "LOGBOOK") date:t e:t email:nil f:t inline:t
+#+OPTIONS: num:t p:nil pri:nil prop:nil stat:t tags:t tasks:t tex:t timestamp:t
+#+OPTIONS: title:t toc:t todo:t |:t
+#+TITLE: Measure_samples
+#+DATE: <2016-08-10 Wed>
+#+AUTHOR:
+#+EMAIL: joaquin@joaquin_laptop
+#+LANGUAGE: en
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+#+CREATOR: Emacs 24.5.1 (Org mode 8.3.4)
+
+
+* Introduction
+This file is a try to document and enhance the program in python to measure the samples through the mechanism of of break-junction in gold samples for the study of molecular properties.
+The reason for this is that the current program, while functional is underdocumented and the full how-to is preserved through *oral tradition* which is regrettable for an investigation lab, and since the author of this document has a bit of experience in software development and documentation, this file was born.
+
+** Break Junction 
+The experiment is to measure the break junction
+
+
+**  Actuators and measuremnts
+The program uses 2 different mechanical actuators to perform the measurements, and there are 2 different kind of samples to be measured. Finally the measurement is performed by analyzing the conductance of the sample.
+
+*** Mechanical actuators
+Since the experiment is based on a single gold "nano-wire"  which is broken through mechanical means, there is need for mechanical acutators to beak the "wire" to measure the conductance change.
+
+**** Faulhaber Motor
+The Faulhaber motor is used to perform relatively large movements on the sample and is used to break the sample initially
+
+**** Piezo actuator
+Once the junction is broken, the motor is turned off and the piezo-device is used, since it provides a simple controllable way to perform even samller movements on the piece for the study 
+
+*** Samples types
+Even though the experiment is always performed over gold "wires", there are 2 distinct clasification of the samples.
+# So far it seems (to me) that regardless of the type of measurement the mechanism is the same
+**** Clean gold
+Since the gold is the sustrate, is measured to ensure that is clean and there are no impurities prior to a real measurement
+
+**** Gold + Molecule
+The focus of the experiment is to measure the transport (conductance) properties of a given molecule, thus once a gold sustrate has been measured and confirmed to be usable, a molecule solution is placed on the sustrate with the expectation that a molecule gets inserted in the gap between the gold terminals.
+
+*** ADWin mesurement
+The measurement of the conductance is performed using the ADWin board which has an interface and binding to python. The documentation for the ADWin measurement instrument can be found on the [[http://www.adwin.de/us/download/linux.html][Download page]]
+
+Since the objective is to measure the transport properties, the most important parameters to measure are the conductance and the separation between the gold contacts (break junction)
+
+
+* Program Description
+As it was already stated the measurement is splitted in 2 steps, the motor initialization and the piezo measurement, however a full program cannot be limited to these 2 steps, as there are additional requirements uch as a user interface for the program. Thus the program is organized as:
+- Main loop :: As in many programs the main loop is the one that orchestrates the excecution of the program.
+- UI Interface :: Considering the requiremens for different configurations for the measurement such as the voltage applied to the juncture, there is a requierement for a reasonable to use UI, and this UI should allow the user to run a measurement.
+- The juncture creation :: Using the motor actuator, a juncture is created and then the displacement is set so that a movement generated with the piezo-electric actuator the juncture can be easily reconstructed
+- Measurement with the piezo :: With the sample in the optimal setting for the piezo is the measured by modifying the voltage applied to the piezo-electric device which in turn creates a displacement of the sample recreating the juncture an allowing for easily repetable measurements through the dynamic range of the piezo-electric device 
+
+Obviously there is a series of additional modules which provide the interface to the different actuators, and additional helpeer functions to improve the presentation of the results, all of which will be presented in turn.
+
+** Main Loop
+   :PROPERTIES:
+   :tangle:   main.py
+   :END:
+
+
+** Utility functions
+
+
