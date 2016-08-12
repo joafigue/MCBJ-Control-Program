@@ -51,7 +51,7 @@ Since the objective is to measure the transport properties, the most important p
 As it was already stated the measurement is splitted in 2 steps, the motor initialization and the piezo measurement, however a full program cannot be limited to these 2 steps, as there are additional requirements uch as a user interface for the program. Thus the program is organized as:
 - Main loop :: As in many programs the main loop is the one that orchestrates the excecution of the program.
 - UI Interface :: Considering the requiremens for different configurations for the measurement such as the voltage applied to the juncture, there is a requierement for a reasonable to use UI, and this UI should allow the user to run a measurement.
-- The juncture creation :: Using the motor actuator, a juncture is created and then the displacement is set so that a movement generated with the piezo-electric actuator the juncture can be easily reconstructed
+- motor break :: Using the motor actuator, a break juncture is created and then the displacement is set so that a movement generated with the piezo-electric actuator the juncture can be easily reconstructed
 - Measurement with the piezo :: With the sample in the optimal setting for the piezo is the measured by modifying the voltage applied to the piezo-electric device which in turn creates a displacement of the sample recreating the juncture an allowing for easily repetable measurements through the dynamic range of the piezo-electric device
 
 Obviously there is a series of additional modules which provide the interface to the different actuators, and additional helpeer functions to improve the presentation of the results, all of which will be presented in turn.
@@ -61,5 +61,24 @@ Obviously there is a series of additional modules which provide the interface to
    :tangle:   main.py
    :END:
 
+As with many considerable programs this one stars importing the necesary files. In this case, all the modules imported for the main file come from the modules created for the program.
+#+BEGIN_SRC python
+  import sys
+  import modules.ui_config as ui
+  import modules.motor_break as mb
+  import modules.piezo_measure as pm
+#+END_SRC 
+
+The main loop is indeed a loop. It is intended to work in the following way.
+- First the UI is presented to the user, so the user can modify the configuration of the experiment. As a result from the UI execution there are 3 possible outcomes:
+  1. Exit the program 
+  2. Excecute only the junction creation. This is to prepare a clean sample, since there is no benefit to measure using the piezo a clean sample
+  3. Excecute a full measurement, creating the juncture and then measure the molecule
+
+Therefore the main loop continues to excecute indefinetely until the user choses to exit the program.
+
+#+BEGIN_SRC python
+
+#+END_SRC
 
 ** Utility functions
