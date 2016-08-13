@@ -1,14 +1,30 @@
+#################################################################
+## @file    Main.py
+#  @author  Joaquin Figueroa
+#  @brief   Main file for measuring break-junction experiments
+#
+#  @details This is the main file for the program used to
+#           measure samples using the break-junction technique.
+#           This program provides a GUI to control the execution
+#           based on providing the tools to configure a run.
+#           The program automates the whole procedure by:
+#           1- Automating the creation of the break junction
+#           using the motor
+#           2- Automating the measurement process using a piezo
+#           actuator.
+#################################################################
+
 import sys
-import modules.ui_config as ui
-import modules.motor_break as mb
-import modules.piezo_measure as pm
+import modules.ui_config as UI
+import modules.motor_break as MB
+import modules.piezo_measure as PM
 
 ############################################################
 ## @fn    : main_exit
 #  @brief : Terminates program execution
 ############################################################
 def main_exit() :
-    print("exit")
+    print("Program Finished successfully")
     sys.exit()
 
 ############################################################
@@ -18,8 +34,7 @@ def main_exit() :
 #             again leaving it ready for measurement
 ############################################################
 def main_motor_break():
-    print("break")
-    mb.motor_break_juncture()
+    MB.motor_break_juncture()
 
 ############################################################
 ## @fn      : main_measure
@@ -28,9 +43,8 @@ def main_motor_break():
 #             motor, and using the piezo to measure
 ############################################################
 def main_measure():
-    print("measure")
-    mb.motor_break_juncture()
-    pm.measure_sample()
+    MB.motor_break_juncture()
+    PM.measure_sample()
 
 ############################################################
 ## @fn      : execute_ui_cmd
@@ -42,9 +56,9 @@ def main_measure():
 ############################################################
 def execute_ui_cmd(ui_cmd) :
     switch = {
-        ui.cmd.exit    : main_exit,
-        ui.cmd.m_break : main_motor_break,
-        ui.cmd.measure : main_measure,
+        UI.CMD.EXIT    : main_exit,
+        UI.CMD.M_BREAK : main_motor_break,
+        UI.CMD.MEASURE : main_measure,
     }
     cmd = switch.get(ui_cmd, sys.exit)
     cmd()
@@ -54,5 +68,5 @@ def execute_ui_cmd(ui_cmd) :
 ##            the program
 ############################################################
 while True :
-    ui_cmd=ui.cmd.m_break
+    ui_cmd=UI.CMD.EXIT
     execute_ui_cmd(ui_cmd)

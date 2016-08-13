@@ -49,10 +49,10 @@ Since the objective is to measure the transport properties, the most important p
 
 * Program Description
 As it was already stated the measurement is splitted in 2 steps, the motor initialization and the piezo measurement, however a full program cannot be limited to these 2 steps, as there are additional requirements uch as a user interface for the program. Thus the program is organized as:
-- Main loop :: As in many programs the main loop is the one that orchestrates the excecution of the program.
-- UI Interface :: Considering the requiremens for different configurations for the measurement such as the voltage applied to the juncture, there is a requierement for a reasonable to use UI, and this UI should allow the user to run a measurement.
-- motor break :: Using the motor actuator, a break juncture is created and then the displacement is set so that a movement generated with the piezo-electric actuator the juncture can be easily reconstructed
-- Measurement with the piezo :: With the sample in the optimal setting for the piezo is the measured by modifying the voltage applied to the piezo-electric device which in turn creates a displacement of the sample recreating the juncture an allowing for easily repetable measurements through the dynamic range of the piezo-electric device
+- Main loop :: As in many programs the main loop is the one that orchestrates the execution of the program. For details see [[Main loop]]
+- UI Interface :: Considering the requiremens for different configurations for the measurement such as the voltage applied to the juncture, there is a requierement for a reasonable to use UI, and this UI should allow the user to run a measurement. For details see [[User Interface]]
+- motor break :: Using the motor actuator, a break juncture is created and then the displacement is set so that a movement generated with the piezo-electric actuator the juncture can be easily reconstructed. For details see [[Motor break junction]]
+- Measurement with the piezo :: With the sample in the optimal setting for the piezo is the measured by modifying the voltage applied to the piezo-electric device which in turn creates a displacement of the sample recreating the juncture an allowing for easily repetable measurements through the dynamic range of the piezo-electric device. For details see [[Measurement with Piezo]]
 
 Obviously there is a series of additional modules which provide the interface to the different actuators, and additional helpeer functions to improve the presentation of the results, all of which will be presented in turn.
 
@@ -60,13 +60,29 @@ Obviously there is a series of additional modules which provide the interface to
    :PROPERTIES:
    :tangle:   main.py
    :END:
-
+#+BEGIN_SRC python :exports none
+  #################################################################
+  ## @file    Main.py
+  #  @author  Joaquin Figueroa
+  #  @brief   Main file for measuring break-junction experiments
+  #
+  #  @details This is the main file for the program used to
+  #           measure samples using the break-junction technique.
+  #           This program provides a GUI to control the execution
+  #           based on providing the tools to configure a run.
+  #           The program automates the whole procedure by:
+  #           1- Automating the creation of the break junction
+  #           using the motor
+  #           2- Automating the measurement process using a piezo
+  #           actuator.
+  #################################################################
+#+END_SRC
 As with many considerable programs this one stars importing the necesary files. In this case, all the modules imported for the main file come from the modules created for the program.
 #+BEGIN_SRC python
   import sys
-  import modules.ui_config as ui
-  import modules.motor_break as mb
-  import modules.piezo_measure as pm
+  import modules.ui_config as UI
+  import modules.motor_break as MB
+  import modules.piezo_measure as PM
 #+END_SRC 
 
 The main loop is indeed a loop. It is intended to work in the following way.
@@ -78,6 +94,7 @@ The main loop is indeed a loop. It is intended to work in the following way.
        #  @brief : Terminates program execution
        ############################################################
        def main_exit() :
+           print("Program Finished successfully")
            sys.exit()
      #+END_SRC
   2. Excecute only the junction creation. This is to prepare a clean sample, since there is no benefit to measure using the piezo a clean sample
@@ -89,9 +106,9 @@ The main loop is indeed a loop. It is intended to work in the following way.
        #             again leaving it ready for measurement
        ############################################################
        def main_motor_break():
-           mb.motor_break_juncture()
+           MB.motor_break_juncture()
      #+END_SRC
-  3. Excecute a full measurement, creating the juncture and then measure the molecule
+  3. Execute a full measurement, creating the juncture and then measure the molecule
      #+BEGIN_SRC python
        ############################################################
        ## @fn      : main_measure
@@ -100,8 +117,8 @@ The main loop is indeed a loop. It is intended to work in the following way.
        #             motor, and using the piezo to measure
        ############################################################
        def main_measure():
-           mb.motor_break_juncture()
-           pm.measure_sample()
+           MB.motor_break_juncture()
+           PM.measure_sample()
      #+END_SRC
 
 The outcome picked by the user must be translated into a command in the program, this is performed in a similar way as a switch-case, but in python is implemented as a dictionary test, which may seem odd for someone not used to the technique. For reference please see [[http://www.pydanny.com/why-doesnt-python-have-switch-case.html][switch-case in python.]]
@@ -116,9 +133,9 @@ The outcome picked by the user must be translated into a command in the program,
   ############################################################
   def execute_ui_cmd(ui_cmd) :
       switch = {
-          ui.cmd.exit    : main_exit,
-          ui.cmd.m_break : main_motor_break,
-          ui.cmd.measure : main_measure,
+          UI.CMD.EXIT    : main_exit,
+          UI.CMD.M_BREAK : main_motor_break,
+          UI.CMD.MEASURE : main_measure,
       }
       cmd = switch.get(ui_cmd, sys.exit)
       cmd()
@@ -132,11 +149,144 @@ Finally the main loop is executed indefinitely until the user terminates the pro
   ##            the program
   ############################################################
   while True :
-      ui_cmd=ui.cmd.exit
+      ui_cmd=UI.CMD.EXIT
       execute_ui_cmd(ui_cmd)
 #+END_SRC
 
 ** User Interface
+   :PROPERTIES:
+   :tangle:   modules/ui_config.py
+   :END:
+# As with any module there is a section for the imports and the file headers, but these are unninteresting for any reader, thus they are put in comments and not exported to a PDF/HTML result
+#+BEGIN_SRC python :exports none
+  #################################################################
+  ## @file    ui_config.py
+  #  @author  Joaquin Figueroa
+  #  @date    Fri Aug 12 2016
+  #  @brief   Provides a UI for configuring the experiment
+  #
+  #  @details This file provides a GUI for the user to be able to
+  #           configure the experiment and run it.
+  #################################################################
+  from PyQt4 import QtGui
+#+END_SRC
 
+The user interface has 2 requirements.
+1. It should allow the user to run the experiment
+2. It should allow the user to tweak with the configuration for the experiment
+
+Now there is an additional requirement for the UI, which is the interface by itself, thus the UI module can be thought as the result of 2 pieces.
+- Program Interface :: The UI - program interface is how the UI interacts with the rest of the program. See [[UI - Program Interface]]
+- GUI :: The graphical User interface is how the program interacts with the user. See [[UI - GUI]]
+
+*** UI - Program Interface
+ Therefore the output of the UI execution is a tuple with one value being the command to be executed, and the other the configuration for the measurements.
+ #+BEGIN_SRC python
+   ############################################################
+   ## @class   UI_RESULT
+   #  @details This class has the return type of the UI class
+   #           The return type has:
+   #           1- Command to be executed (exit, measure)
+   #           2- Configuration for the measurements
+   ############################################################
+   class UI_RESULT:
+       def __init__(self, cmd, config):
+           self.cmd    = cmd
+           self.config = config
+ #+END_SRC
+
+**** UI command
+  Now the command to be executed has only a few possible values, which are used to, as previously explained, to terminate the program, or execute one of the routines.
+  #+BEGIN_SRC python
+    ############################################################
+    ## @class  CMD
+    #  @brief  UI calss to encode the possible commands for the
+    #         program
+    ############################################################
+    class CMD:
+        EXIT    = 0
+        M_BREAK = 1
+        MEASURE = 2
+  #+END_SRC 
+
+**** UI Configuration
+     :PROPERTIES:
+     :noweb:    yes
+     :END:
+The UI configuration is a list of variables which are used through the measurements for configuring the experiments or for controlling the presentation of the results, for simplicity the variables are classified in groups
+- Basic parameters :: These are the parameters that control the run and define it see [[UI - Basic parameters ]]
+- Advanced parameters :: There are more advanced parameters that influence the run, but have minor impact (usually) when compared with the other parameters, and the user is rarely ever expected to modify them. See [[UI - Advanced paramenter ]]
+- Presentation parameters :: The results of the experiment is processed in graph; some of the parameters for the graph can be tweaked to improve the readability of them. See [[UI - Presentation]]
+
+#+BEGIN_SRC python
+  ############################################################
+  ## @class   UI_CONFIG
+  #  @details This class stores all configuration values to be
+  #           used for the measurements.
+  ############################################################
+  class UI_CONFIG:
+      def __init__(self):
+          self._basic_param = basic_params()
+          self._adv_param = adv_param()
+          self._presentation = presentation()
+
+      <<ui-config-bp-interface>>
+      <<ui-config-ap-interface>>
+      <<ui-config-pp-interface>>
+#+END_SRC
+***** UI - Basic parameters
+#+BEGIN_SRC python
+  class basic_params:
+        def __init__(self):
+              self.asdf = 1
+#+END_SRC
+
+#+NAME: ui-config-bp-interface
+#+BEGIN_SRC python
+
+#+END_SRC
+
+***** UI - Advanced parameters
+#+BEGIN_SRC python
+  class adv_params:
+        def __init__(self):
+              self.asdf = 1
+
+#+END_SRC
+
+#+NAME: ui-config-ap-interface
+#+BEGIN_SRC python
+
+#+END_SRC
+
+***** UI - Presentation
+
+#+BEGIN_SRC python
+  class presentation:
+        def __init__(self):
+              self.asdf = 1
+#+END_SRC
+
+#+NAME: ui-config-pp-interface
+#+BEGIN_SRC python
+
+#+END_SRC
+
+*** UI - GUI
+
+
+
+** Motor break junction 
+
+** Measurement with Piezo
 
 ** Utility functions
+
+* Settings                                                         :noexport:
+#+BEGIN_SRC emacs-lisp :export none :results none
+(setq org-babel-use-quick-and-dirty-noweb-expansion t)
+#+END_SRC
+
+
+
+
