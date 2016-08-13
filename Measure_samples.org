@@ -80,9 +80,9 @@ Obviously there is a series of additional modules which provide the interface to
 As with many considerable programs this one stars importing the necesary files. In this case, all the modules imported for the main file come from the modules created for the program.
 #+BEGIN_SRC python
   import sys
-  import modules.ui_config as UI
-  import modules.motor_break as MB
-  import modules.piezo_measure as PM
+  from modules.ui_config import *
+  from modules.motor_break import *
+  from modules.piezo_measure import *
 #+END_SRC 
 
 The main loop is indeed a loop. It is intended to work in the following way.
@@ -93,7 +93,7 @@ The main loop is indeed a loop. It is intended to work in the following way.
        ## @fn    : main_exit
        #  @brief : Terminates program execution
        ############################################################
-       def main_exit() :
+       def main_exit(config) :
            print("Program Finished successfully")
            sys.exit()
      #+END_SRC
@@ -105,8 +105,8 @@ The main loop is indeed a loop. It is intended to work in the following way.
        #             creating a break-junction and then joins it
        #             again leaving it ready for measurement
        ############################################################
-       def main_motor_break():
-           MB.motor_break_juncture()
+       def main_motor_break(config):
+           motor_break_juncture()
      #+END_SRC
   3. Execute a full measurement, creating the juncture and then measure the molecule
      #+BEGIN_SRC python
@@ -116,9 +116,9 @@ The main loop is indeed a loop. It is intended to work in the following way.
        #             sample by creating the break-junction with the
        #             motor, and using the piezo to measure
        ############################################################
-       def main_measure():
-           MB.motor_break_juncture()
-           PM.measure_sample()
+       def main_measure(config):
+           motor_break_juncture()
+           measure_sample()
      #+END_SRC
 
 The outcome picked by the user must be translated into a command in the program, this is performed in a similar way as a switch-case, but in python is implemented as a dictionary test, which may seem odd for someone not used to the technique. For reference please see [[http://www.pydanny.com/why-doesnt-python-have-switch-case.html][switch-case in python.]]
@@ -131,14 +131,14 @@ The outcome picked by the user must be translated into a command in the program,
   #             2- only perform break-junction
   #             3- perform full measurement of the sample
   ############################################################
-  def execute_ui_cmd(ui_cmd) :
+  def execute_ui_cmd(ui_cmd,run_config) :
       switch = {
-          UI.CMD.EXIT    : main_exit,
-          UI.CMD.M_BREAK : main_motor_break,
-          UI.CMD.MEASURE : main_measure,
+          UI_CMD.EXIT    : main_exit,
+          UI_CMD.M_BREAK : main_motor_break,
+          UI_CMD.MEASURE : main_measure,
       }
       cmd = switch.get(ui_cmd, sys.exit)
-      cmd()
+      cmd(run_config)
 #+END_SRC
 
 Finally the main loop is executed indefinitely until the user terminates the program
@@ -149,13 +149,16 @@ Finally the main loop is executed indefinitely until the user terminates the pro
   ##            the program
   ############################################################
   while True :
-      ui_cmd=UI.CMD.EXIT
-      execute_ui_cmd(ui_cmd)
+      ui_result  = ui_get_gui_result()
+      ui_cmd     = ui_result.cmd
+      run_config = ui_result.config
+      execute_ui_cmd(ui_cmd,run_config)
 #+END_SRC
 
 ** User Interface
    :PROPERTIES:
    :tangle:   modules/ui_config.py
+   :noweb:    tangle
    :END:
 # As with any module there is a section for the imports and the file headers, but these are unninteresting for any reader, thus they are put in comments and not exported to a PDF/HTML result
 #+BEGIN_SRC python :exports none
@@ -169,6 +172,7 @@ Finally the main loop is executed indefinitely until the user terminates the pro
   #           configure the experiment and run it.
   #################################################################
   from PyQt4 import QtGui
+  import sys
 #+END_SRC
 
 The user interface has 2 requirements.
@@ -180,7 +184,7 @@ Now there is an additional requirement for the UI, which is the interface by its
 - GUI :: The graphical User interface is how the program interacts with the user. See [[UI - GUI]]
 
 *** UI - Program Interface
- Therefore the output of the UI execution is a tuple with one value being the command to be executed, and the other the configuration for the measurements.
+ Therefore the output of the UI execution is a class of 2 values with one value being the command to be executed, and the other the configuration for the measurements, which has a default initialization, but also provides functions to replace the original values with new ones
  #+BEGIN_SRC python
    ############################################################
    ## @class   UI_RESULT
@@ -190,9 +194,21 @@ Now there is an additional requirement for the UI, which is the interface by its
    #           2- Configuration for the measurements
    ############################################################
    class UI_RESULT:
-       def __init__(self, cmd, config):
-           self.cmd    = cmd
-           self.config = config
+       def __init__(self):
+           self.cmd    = UI_CMD.EXIT
+           self.config = UI_CONFIG()
+
+       ############################################################
+       ## @brief   Updates the ui_cmd with a new one
+       ############################################################
+       def update_cmd(self, new_cmd):
+           self.cmd = new_cmd
+
+       ############################################################
+       ## @brief   Updates the config with a new onw
+       ############################################################
+       def update_config(self, new_config):
+           self.config = new_config
  #+END_SRC
 
 **** UI command
@@ -203,16 +219,13 @@ Now there is an additional requirement for the UI, which is the interface by its
     #  @brief  UI calss to encode the possible commands for the
     #         program
     ############################################################
-    class CMD:
+    class UI_CMD:
         EXIT    = 0
         M_BREAK = 1
         MEASURE = 2
   #+END_SRC 
 
 **** UI Configuration
-     :PROPERTIES:
-     :noweb:    yes
-     :END:
 The UI configuration is a list of variables which are used through the measurements for configuring the experiments or for controlling the presentation of the results, for simplicity the variables are classified in groups
 - Basic parameters :: These are the parameters that control the run and define it see [[UI - Basic parameters ]]
 - Advanced parameters :: There are more advanced parameters that influence the run, but have minor impact (usually) when compared with the other parameters, and the user is rarely ever expected to modify them. See [[UI - Advanced paramenter ]]
@@ -226,14 +239,23 @@ The UI configuration is a list of variables which are used through the measureme
   ############################################################
   class UI_CONFIG:
       def __init__(self):
-          self._basic_param = basic_params()
-          self._adv_param = adv_param()
+          self._basic_params = basic_params()
+          self._adv_params = adv_params()
           self._presentation = presentation()
 
       <<ui-config-bp-interface>>
       <<ui-config-ap-interface>>
       <<ui-config-pp-interface>>
 #+END_SRC
+
+Finally the interface with the rest of the program is defined through a single method
+
+#+BEGIN_SRC python
+  def ui_get_gui_result():
+      retval = run_gui()
+      return retval
+#+END_SRC
+
 ***** UI - Basic parameters
 #+BEGIN_SRC python
   class basic_params:
@@ -273,8 +295,50 @@ The UI configuration is a list of variables which are used through the measureme
 #+END_SRC
 
 *** UI - GUI
+The Graphical user interface consist of a window that allows the user to tweak with each of the parameters defined in [[UI - Program Interface]], plus buttons for deciding which action to take.
+
+This program uses [[https://wiki.python.org/moin/PyQt][PyQt4]] as a GUI framework. To run a GUI, first is necessary to create an "application", then instantiate a widget, which corresponds to the specific UI that is being implemented to finally "execute" the "application". For a reference on how this is done under PyQt a tutorial can be found on [[http://zetcode.com/gui/pyqt4/]].
+
+#+BEGIN_SRC python
+  ############################################################
+  ## @brief   Runs the GUI for the program
+  ############################################################
+  def run_gui():
+      app = QtGui.QApplication(sys.argv) # Create appliaction
+      widget = ui_config_widget()        # Instantiate widget
+      app.exec_()                        # Execute appliaction
+      return widget.ui_result
+#+END_SRC
 
 
+#+BEGIN_SRC python
+  class ui_config_widget(QtGui.QWidget):
+
+      def __init__(self):
+          super(ui_config_widget, self).__init__()
+          self.initUI()
+
+      def initUI(self):
+
+          okButton = QtGui.QPushButton("OK")
+          cancelButton = QtGui.QPushButton("Cancel")
+
+          hbox = QtGui.QHBoxLayout()
+          hbox.addStretch(1)
+          hbox.addWidget(okButton)
+          hbox.addWidget(cancelButton)
+
+          vbox = QtGui.QVBoxLayout()
+          vbox.addStretch(1)
+          vbox.addLayout(hbox)
+          self.ui_result = UI_RESULT()
+
+          self.setLayout(vbox)
+
+          self.setGeometry(300, 300, 300, 150)
+          self.setWindowTitle('Buttons')
+          self.show()
+#+END_SRC
 
 ** Motor break junction 
 
@@ -285,6 +349,7 @@ The UI configuration is a list of variables which are used through the measureme
 * Settings                                                         :noexport:
 #+BEGIN_SRC emacs-lisp :export none :results none
 (setq org-babel-use-quick-and-dirty-noweb-expansion t)
+(setq org-src-preserve-indentation 'nil)
 #+END_SRC
 
 
