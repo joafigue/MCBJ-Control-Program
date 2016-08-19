@@ -1,4 +1,4 @@
-#+OPTIONS: ':nil *:t -:t ::t <:t H:3 \n:nil ^:t arch:headline author:t c:nil
+#+OPTIONS: ':nil *:t -:t ::t <:t H:5 \n:nil ^:t arch:headline author:t c:nil
 #+OPTIONS: creator:nil d:(not "LOGBOOK") date:t e:t email:nil f:t inline:t
 #+OPTIONS: num:t p:nil pri:nil prop:nil stat:t tags:t tasks:t tex:t timestamp:t
 #+OPTIONS: title:t toc:t todo:t |:t
@@ -46,17 +46,16 @@ The measurement of the conductance is performed using the ADWin board which has 
 
 Since the objective is to measure the transport properties, the most important parameters to measure are the conductance and the separation between the gold contacts (break junction)
 
-
 * Program Description
 As it was already stated the measurement is splitted in 2 steps, the motor initialization and the piezo measurement, however a full program cannot be limited to these 2 steps, as there are additional requirements uch as a user interface for the program. Thus the program is organized as:
-- Main loop :: As in many programs the main loop is the one that orchestrates the execution of the program. For details see [[Main loop]]
+- Main loop :: As in many programs the main loop is the one that orchestrates the execution of the program. For details see [[Main Loop]]
 - UI Interface :: Considering the requiremens for different configurations for the measurement such as the voltage applied to the juncture, there is a requierement for a reasonable to use UI, and this UI should allow the user to run a measurement. For details see [[User Interface]]
 - motor break :: Using the motor actuator, a break juncture is created and then the displacement is set so that a movement generated with the piezo-electric actuator the juncture can be easily reconstructed. For details see [[Motor break junction]]
 - Measurement with the piezo :: With the sample in the optimal setting for the piezo is the measured by modifying the voltage applied to the piezo-electric device which in turn creates a displacement of the sample recreating the juncture an allowing for easily repetable measurements through the dynamic range of the piezo-electric device. For details see [[Measurement with Piezo]]
 
 Obviously there is a series of additional modules which provide the interface to the different actuators, and additional helpeer functions to improve the presentation of the results, all of which will be presented in turn.
 
-** Main Loop
+** DONE Main Loop
    :PROPERTIES:
    :tangle:   main.py
    :END:
@@ -131,14 +130,14 @@ The outcome picked by the user must be translated into a command in the program,
   #             2- only perform break-junction
   #             3- perform full measurement of the sample
   ############################################################
-  def execute_ui_cmd(ui_cmd,run_config) :
+  def execute_ui_cmd(ui_cmd,config) :
       switch = {
           UI_CMD.EXIT    : main_exit,
           UI_CMD.M_BREAK : main_motor_break,
           UI_CMD.MEASURE : main_measure,
       }
       cmd = switch.get(ui_cmd, sys.exit)
-      cmd(run_config)
+      cmd(config)
 #+END_SRC
 
 Finally the main loop is executed indefinitely until the user terminates the program
@@ -149,13 +148,13 @@ Finally the main loop is executed indefinitely until the user terminates the pro
   ##            the program
   ############################################################
   while True :
-      ui_result  = ui_get_gui_result()
-      ui_cmd     = ui_result.cmd
-      run_config = ui_result.config
-      execute_ui_cmd(ui_cmd,run_config)
+      ui_config = ui_get_gui_config()
+      ui_cmd    = ui_config.cmd
+      config    = ui_config.config
+      execute_ui_cmd(ui_cmd,config)
 #+END_SRC
 
-** User Interface
+** TODO User Interface
    :PROPERTIES:
    :tangle:   modules/ui_config.py
    :noweb:    tangle
@@ -172,7 +171,11 @@ Finally the main loop is executed indefinitely until the user terminates the pro
   #           configure the experiment and run it.
   #################################################################
   from PyQt4 import QtGui
+  from PyQt4 import QtCore
   import sys
+  <<ui-basic-params-defaults>>
+  <<ui-advanced-params-defaults>>
+  <<ui-presentation-params-defaults>>
 #+END_SRC
 
 The user interface has 2 requirements.
@@ -183,20 +186,20 @@ Now there is an additional requirement for the UI, which is the interface by its
 - Program Interface :: The UI - program interface is how the UI interacts with the rest of the program. See [[UI - Program Interface]]
 - GUI :: The graphical User interface is how the program interacts with the user. See [[UI - GUI]]
 
-*** UI - Program Interface
+*** TODO UI - Program Interface
  Therefore the output of the UI execution is a class of 2 values with one value being the command to be executed, and the other the configuration for the measurements, which has a default initialization, but also provides functions to replace the original values with new ones
  #+BEGIN_SRC python
    ############################################################
-   ## @class   UI_RESULT
+   ## @class   UI_CONFIG
    #  @details This class has the return type of the UI class
    #           The return type has:
    #           1- Command to be executed (exit, measure)
    #           2- Configuration for the measurements
    ############################################################
-   class UI_RESULT:
+   class UI_CONFIG:
        def __init__(self):
            self.cmd    = UI_CMD.EXIT
-           self.config = UI_CONFIG()
+           self.config = UI_CONFIG_PARAMS()
 
        ############################################################
        ## @brief   Updates the ui_cmd with a new one
@@ -205,13 +208,13 @@ Now there is an additional requirement for the UI, which is the interface by its
            self.cmd = new_cmd
 
        ############################################################
-       ## @brief   Updates the config with a new onw
+       ## @brief   Updates the config with a new one
        ############################################################
        def update_config(self, new_config):
            self.config = new_config
  #+END_SRC
 
-**** UI command
+**** DONE UI command
   Now the command to be executed has only a few possible values, which are used to, as previously explained, to terminate the program, or execute one of the routines.
   #+BEGIN_SRC python
     ############################################################
@@ -225,10 +228,10 @@ Now there is an additional requirement for the UI, which is the interface by its
         MEASURE = 2
   #+END_SRC 
 
-**** UI Configuration
+**** TODO UI Configuration
 The UI configuration is a list of variables which are used through the measurements for configuring the experiments or for controlling the presentation of the results, for simplicity the variables are classified in groups
 - Basic parameters :: These are the parameters that control the run and define it see [[UI - Basic parameters ]]
-- Advanced parameters :: There are more advanced parameters that influence the run, but have minor impact (usually) when compared with the other parameters, and the user is rarely ever expected to modify them. See [[UI - Advanced paramenter ]]
+- Advanced parameters :: There are more advanced parameters that influence the run, but have minor impact (usually) when compared with the other parameters, and the user is rarely ever expected to modify them. See [[UI - Advanced parameters]]
 - Presentation parameters :: The results of the experiment is processed in graph; some of the parameters for the graph can be tweaked to improve the readability of them. See [[UI - Presentation]]
 
 #+BEGIN_SRC python
@@ -237,7 +240,7 @@ The UI configuration is a list of variables which are used through the measureme
   #  @details This class stores all configuration values to be
   #           used for the measurements.
   ############################################################
-  class UI_CONFIG:
+  class UI_CONFIG_PARAMS:
       def __init__(self):
           self._basic_params = basic_params()
           self._adv_params = adv_params()
@@ -251,16 +254,32 @@ The UI configuration is a list of variables which are used through the measureme
 Finally the interface with the rest of the program is defined through a single method
 
 #+BEGIN_SRC python
-  def ui_get_gui_result():
+  def ui_get_gui_config():
       retval = run_gui()
       return retval
 #+END_SRC
 
-***** UI - Basic parameters
+***** TODO UI - Basic parameters
+The basic parameters used to configure the measurement are parameters that are the most likely to be modified by the used, and whose side effects are better understood. These parameters usually deal with the speed and number of data points. 
+Each of these basic parameters has a default value
+
+#+name: ui-basic-params-defaults
+#+BEGIN_SRC python :exports none
+JUNCTURE_VOLTAGE_DFLT = 0.1  #[V]
+PIEZO_SPEED_BREAKING_DFLT = 0       #[V/S]
+DATA_DIRECTORY_DFLT = "./Data"
+NUMBER_TRACES_DFLT = 5000  # Measurement Cycles
+#+END_SRC
+
 #+BEGIN_SRC python
   class basic_params:
         def __init__(self):
-              self.asdf = 1
+              self.restore_defaults()
+        def restore_defaults(self):
+              self.juncture_voltage = JUNCTURE_VOLTAGE_DFLT
+              self.piezo_speed_breaking = PIEZO_SPEED_BREAKING_DFLT
+              self.data_directory = DATA_DIRECTORY_DFLT
+              self.number_traces = NUMBER_TRACES_DFLT
 #+END_SRC
 
 #+NAME: ui-config-bp-interface
@@ -268,12 +287,11 @@ Finally the interface with the rest of the program is defined through a single m
 
 #+END_SRC
 
-***** UI - Advanced parameters
+***** TODO UI - Advanced parameters
 #+BEGIN_SRC python
   class adv_params:
         def __init__(self):
               self.asdf = 1
-
 #+END_SRC
 
 #+NAME: ui-config-ap-interface
@@ -281,7 +299,32 @@ Finally the interface with the rest of the program is defined through a single m
 
 #+END_SRC
 
-***** UI - Presentation
+#+name: ui-advanced-params-defaults
+#+BEGIN_SRC python :exports none
+piezo_start_V = 0.0         # V
+high_G = 30.0              # G0
+inter_G = 20.0              # G0
+low_G = 10.0              # G0
+piezo_speed_breaking1 = 300.0        # V/s
+piezo_speed_breaking2 = 300.0        # V/s (30 to 300) Este es el que se puede cambiar
+piezo_speed_making = 500.0        # V/s
+#post_breaking_voltage = 230.0       #
+post_breaking_voltage = 300.0       # cambia cuanto abro despues de que rompo
+nGbins = 251
+nDbins = 161
+xmin = -0.5 # nm
+xmax = 2    # nm
+Gmin = 1e-7 # G0
+Gmax = 10   # G0
+#+END_SRC
+
+***** TODO UI - Presentation
+#+name: ui-presentation-params-defaults
+#+BEGIN_SRC python :exports none
+todoJUNCTURE_VOLTAGE_DFLT = 0  #[V]
+todoPIEZO_SPEED_DFLT = 0       #[V/S]
+todoDATA_DIRECTORY_DFTL = "./Data"
+#+END_SRC
 
 #+BEGIN_SRC python
   class presentation:
@@ -304,52 +347,209 @@ This program uses [[https://wiki.python.org/moin/PyQt][PyQt4]] as a GUI framewor
   ## @brief   Runs the GUI for the program
   ############################################################
   def run_gui():
-      app = QtGui.QApplication(sys.argv) # Create appliaction
-      widget = ui_config_widget()        # Instantiate widget
+      app = QtGui.QApplication(sys.argv) # Create "aplication"
+      config_window = ui_config_window() # Instantiate widget
       app.exec_()                        # Execute appliaction
-      return widget.ui_result
+      return config_window.ui_config
 #+END_SRC
 
+**** Configuration Window
 
-#+BEGIN_SRC python
-  class ui_config_widget(QtGui.QWidget):
+The configuration window is a python widget which represents the user interface of the program. As usual with user interfaces they require an large amount of code only to initialize it where is difficult to separate the functionality. 
 
+The standard procedure in python to build a widget is to delegate the initialization code to the parent class, and the UI elements specific to it, such as the buttons are defined in an internal initialization function of the class, commonly named =initUI= [[(fn-initUI)]]
+
+The window object is composed of 3 basic elements:
+- Config :: The contents of the window used to store and pass the configuration to the rest of the program [[(ui-config)]]
+- Buttons ::  The UI has a button for each action including the measurements strategies to be used and to exit the program. [[(ui-buttons)]]. For details see [[Buttons Layout]]
+- Configuration :: The forms used to configure the parameters of the run [[(ui-config)]]. For details see [[Configuration Parameters Layout]]
+
+Obviously as an object it also provides functionality to interact with it, mainly through the buttons of it, the idea is that only the window can modify it as to keep the interface as clean as possible.
+
+The widget provides a callback [[(ui-close-cb)]] to be used by the buttons which will close the widget and ensure that the selected command, for example to measure, is executed
+
+#+BEGIN_SRC python -n -r
+  ############################################################
+  ## @class   ui_config_window
+  #  @brief   Provides The UI window for the program
+  #
+  #  @details This Object provides the user interface to
+  #           configure the measurements and which procedures
+  #           to take.
+  #           The object has the description of the window
+  #           composed by the text dialogs and the buttons
+  #           to run the simulation, which are stored as
+  #           part of the window. The object also provides
+  #           the functions to interface it.
+  #           - initUI: Initialize the window
+  ############################################################
+  class ui_config_window(QtGui.QWidget):
+      # Default constructor
       def __init__(self):
-          super(ui_config_widget, self).__init__()
+          super(ui_config_window, self).__init__()
           self.initUI()
 
-      def initUI(self):
+      ############################################################
+      ## @brief   Initializes the window
+      #  @details Initialized the window components, which are the
+      #           configs, the buttons and the configuration.
+      #           Also ensures the layout of the UI elements
+      ############################################################
+      def initUI(self):    #(ref:fn-initUI)
+          self.ui_config = UI_CONFIG() #(ref:ui-config)
 
-          okButton = QtGui.QPushButton("OK")
-          cancelButton = QtGui.QPushButton("Cancel")
-
-          hbox = QtGui.QHBoxLayout()
-          hbox.addStretch(1)
-          hbox.addWidget(okButton)
-          hbox.addWidget(cancelButton)
-
+          buttons_layout = ui_create_buttons_layout(self) #(ref:ui-buttons)
+          config_layout  = ui_create_config_layout(self)  #(ref:ui-config)
           vbox = QtGui.QVBoxLayout()
           vbox.addStretch(1)
-          vbox.addLayout(hbox)
-          self.ui_result = UI_RESULT()
+          vbox.addLayout(config_layout)
+          vbox.addLayout(buttons_layout)
 
           self.setLayout(vbox)
-
           self.setGeometry(300, 300, 300, 150)
           self.setWindowTitle('Buttons')
           self.show()
+
+      ############################################################
+      ## @brief   Interface to close the window and excecute a
+      #           command
+      ############################################################
+      def close_with_cmd(self, cmd): #(ref:ui-close-cb)
+          self.ui_config.update_cmd(cmd)
+          QtCore.QCoreApplication.instance().quit()
+#+END_SRC
+**** Buttons Layout
+The buttons provide the functionality to launch the different process of the tool. Therefore clicking a button will close the UI and excecute the action stated on it. Also a small tooltip is provided in case the user requires additional information.
+
+To define a button, first it must be created using the text to be displayed, then the attributes associated to it, meaning the action it will perform and the tooltip displayed, if any.
+A special mention is made for the callback used in each button as it uses anonymous functions[[(lambda_btn)]] to call the function that excecutes the corresponding action. While a more advanced programming technique (see [[https://en.wikipedia.org/wiki/Anonymous_function]]) it provides the cleanest and easiest method to provide this functionality (See also [[http://stackoverflow.com/questions/15080731/call-a-function-when-a-button-is-pressed-pyqt]])
+
+Finally the buttons created are added to the layout of the button section of the window which is returned to the user.
+#+BEGIN_SRC python -r -n
+  ############################################################
+  ## @brief   Creates buttons layout and returns it
+  #
+  #  @details The function creates a layout to place the
+  #           buttons to perform the different actions of the
+  #           program.
+  #           The layout creates the following buttons:
+  #           - Quit Button: Ends the program
+  #           - Break Button: Use the motor do break junction
+  #           - Measure Button: Do a break junction and then
+  #                             use the piezo to measure
+  ############################################################
+  def ui_create_buttons_layout(widget):
+      # Quit Button
+      quit_button = QtGui.QPushButton("Quit")
+      quit_button.clicked.connect(
+          lambda: widget.close_with_cmd(UI_CMD.EXIT)) (ref:lambda_btn)
+      quit_button.setToolTip("Terminates the program")
+      # Break Button
+      break_button = QtGui.QPushButton("Only break")
+      break_button.clicked.connect(
+          lambda: widget.close_with_cmd(UI_CMD.M_BREAK))
+      break_button.setToolTip("Use the motor to create a break junction.")
+      # Measure Button
+      measure_button = QtGui.QPushButton("Full Measure")
+      measure_button.clicked.connect(
+          lambda: widget.close_with_cmd(UI_CMD.MEASURE))
+      measure_button.setToolTip(
+          "Performs measurement using the motor and piezo")
+
+      # Build Layout
+      hbox = QtGui.QHBoxLayout()
+      hbox.addStretch(1)
+      hbox.addWidget(quit_button)
+      hbox.addWidget(break_button)
+      hbox.addWidget(measure_button)
+
+      vbox = QtGui.QVBoxLayout()
+      vbox.addStretch(1)
+      vbox.addLayout(hbox)
+      return vbox
+#+END_SRC
+
+**** Configuration Parameters Layout
+
+#+BEGIN_SRC python
+  def ui_create_config_layout(ui_config_window):
+      basic_param_layout = ui_basic_param_layout(ui_config_window)
+      adv_param_layout = ui_adv_param_layout(ui_config_window)
+      presentation_param_layout = ui_presentation_param_layout(ui_config_window)
+      basic_label = QtGui.QLabel("---- Basic Parameters ----")
+      adv_label = QtGui.QLabel("---- Advanced Parameters ----")
+      presentation_label = QtGui.QLabel("---- Presentation Parameters ----")
+      vbox = QtGui.QVBoxLayout()
+      vbox.addStretch(1)
+      vbox.addWidget(basic_label)
+      vbox.addLayout(basic_param_layout)
+      vbox.addWidget(adv_label)
+      vbox.addLayout(adv_param_layout)
+      vbox.addWidget(presentation_label)
+      vbox.addLayout(presentation_param_layout)
+      return vbox
+#+END_SRC
+
+#+BEGIN_SRC python
+  def ui_basic_param_layout(ui_config):
+      jv_label = QtGui.QLabel("Juncture Voltage")
+      psb_label = QtGui.QLabel("Piezo Speed")
+      data_dir_label = QtGui.QLabel(str(ui_config.ui_config.config._basic_params.data_directory))
+      traces_label = QtGui.QLabel("Number Traces")
+
+      jv_ed = QtGui.QLineEdit()
+      psb_ed = QtGui.QLineEdit()
+      traces_ed = QtGui.QLineEdit()
+      dir_btn = QtGui.QPushButton('Change Directory')
+
+      jv_ed.setText(str(ui_config.ui_config.config._basic_params.juncture_voltage))
+      psb_ed.setText(str(ui_config.ui_config.config._basic_params.piezo_speed_breaking))
+      traces_ed.setText(str(ui_config.ui_config.config._basic_params.number_traces))
+
+      dir_btn.clicked.connect(lambda: showDialog(ui_config))
+
+      grid = QtGui.QGridLayout()
+      grid.setSpacing(10)
+
+      grid.addWidget(jv_label,1,0)
+      grid.addWidget(jv_ed,1,1)
+
+      grid.addWidget(psb_label,2,0)
+      grid.addWidget(psb_ed,2,1)
+
+      grid.addWidget(traces_label,3,0)
+      grid.addWidget(traces_ed,3,1)
+
+      grid.addWidget(data_dir_label,4,0)
+      grid.addWidget(dir_btn,4,1)
+
+      return grid
+
+  def showDialog(ui_config):
+      fname = QtGui.QFileDialog.getExistingDirectory(ui_config, 'Open file',
+              '/home')
+      print(fname)
+
+  def ui_adv_param_layout(ui_config):
+      return ui_basic_param_layout(ui_config)
+
+  def ui_presentation_param_layout(ui_config):
+      return ui_basic_param_layout(ui_config)
+
 #+END_SRC
 
 ** Motor break junction 
 
 ** Measurement with Piezo
 
-** Utility functions
+
+* Utility functions
+This section is for the interface with each measurement instrument.
+
 
 * Settings                                                         :noexport:
 #+BEGIN_SRC emacs-lisp :export none :results none
 (setq org-babel-use-quick-and-dirty-noweb-expansion t)
-(setq org-src-preserve-indentation 'nil)
 #+END_SRC
 
 
