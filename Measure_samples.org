@@ -58,6 +58,7 @@ Obviously there is a series of additional modules which provide the interface to
 ** DONE Main Loop
    :PROPERTIES:
    :tangle:   main.py
+   :comments: link
    :END:
 #+BEGIN_SRC python :exports none
   #################################################################
@@ -147,37 +148,22 @@ Finally the main loop is executed indefinitely until the user terminates the pro
   ## @details : Main loop. Executes UI Cmd until the user end
   ##            the program
   ############################################################
-  while True :
-      ui_config = ui_get_gui_config()
-      ui_cmd    = ui_config.cmd
-      config    = ui_config.config
-      execute_ui_cmd(ui_cmd,config)
+  def main():
+      while True :
+          ui_config = ui_get_gui_config()
+          ui_cmd    = ui_config.cmd
+          config    = ui_config.config
+          execute_ui_cmd(ui_cmd,config)
+
+  if __name__ == "__main__":
+      main()
 #+END_SRC
 
 ** TODO User Interface
    :PROPERTIES:
-   :tangle:   modules/ui_config.py
    :noweb:    tangle
+   :comments: link
    :END:
-# As with any module there is a section for the imports and the file headers, but these are unninteresting for any reader, thus they are put in comments and not exported to a PDF/HTML result
-#+BEGIN_SRC python :exports none
-  #################################################################
-  ## @file    ui_config.py
-  #  @author  Joaquin Figueroa
-  #  @date    Fri Aug 12 2016
-  #  @brief   Provides a UI for configuring the experiment
-  #
-  #  @details This file provides a GUI for the user to be able to
-  #           configure the experiment and run it.
-  #################################################################
-  from PyQt4 import QtGui
-  from PyQt4 import QtCore
-  import sys
-  <<ui-basic-params-defaults>>
-  <<ui-advanced-params-defaults>>
-  <<ui-presentation-params-defaults>>
-#+END_SRC
-
 The user interface has 2 requirements.
 1. It should allow the user to run the experiment
 2. It should allow the user to tweak with the configuration for the experiment
@@ -187,7 +173,31 @@ Now there is an additional requirement for the UI, which is the interface by its
 - GUI :: The graphical User interface is how the program interacts with the user. See [[UI - GUI]]
 
 *** TODO UI - Program Interface
- Therefore the output of the UI execution is a class of 2 values with one value being the command to be executed, and the other the configuration for the measurements, which has a default initialization, but also provides functions to replace the original values with new ones
+   :PROPERTIES:
+   :tangle:   modules/ui_config.py
+   :END:
+# As with any module there is a section for the imports and the file headers, but these are unninteresting for any reader, thus they are put in comments and not exported to a PDF/HTML result
+#+BEGIN_SRC python :exports none
+  #################################################################
+  ## @file    ui_config.py
+  #  @author  Joaquin Figueroa
+  #  @date    Fri Aug 12 2016
+  #  @brief   Provides the definitions and parameters for the UI
+  #
+  #  @details This file provides a all the necessary helper
+  #           functions to interface the different parameters
+  #           with the program.
+  #################################################################
+  from PyQt4 import QtGui
+  from PyQt4 import QtCore
+  from modules.ui_gui import run_gui
+  import sys
+  <<ui-basic-params-defaults>>
+  <<ui-advanced-params-defaults>>
+  <<ui-presentation-params-defaults>>
+#+END_SRC
+
+Therefore the output of the UI execution is a class of 2 values with one value being the command to be executed, and the other the configuration for the measurements, which has a default initialization, but also provides functions to replace the original values with new ones
  #+BEGIN_SRC python
    ############################################################
    ## @class   UI_CONFIG
@@ -337,7 +347,30 @@ todoDATA_DIRECTORY_DFTL = "./Data"
 
 #+END_SRC
 
-*** UI - GUI
+*** TODO UI - GUI
+   :PROPERTIES:
+   :tangle:   modules/ui_gui.py
+   :END:
+# As with any module there is a section for the imports and the file headers, but these are unninteresting for any reader, thus they are put in comments and not exported to a PDF/HTML result
+#+BEGIN_SRC python :exports none
+  #################################################################
+  ## @file    ui_gui.py
+  #  @author  Joaquin Figueroa
+  #  @date    Fri Aug 12 2016
+  #  @brief   Provides the GUI for configuring the experiment
+  #
+  #  @details This file provides a GUI for the user to be able to
+  #           configure the experiment and run it.
+  #################################################################
+  from PyQt4 import QtGui
+  from PyQt4 import QtCore
+  import ui_config as conf
+  import sys
+  <<ui-basic-params-defaults>>
+  <<ui-advanced-params-defaults>>
+  <<ui-presentation-params-defaults>>
+#+END_SRC
+
 The Graphical user interface consist of a window that allows the user to tweak with each of the parameters defined in [[UI - Program Interface]], plus buttons for deciding which action to take.
 
 This program uses [[https://wiki.python.org/moin/PyQt][PyQt4]] as a GUI framework. To run a GUI, first is necessary to create an "application", then instantiate a widget, which corresponds to the specific UI that is being implemented to finally "execute" the "application". For a reference on how this is done under PyQt a tutorial can be found on [[http://zetcode.com/gui/pyqt4/]].
@@ -353,7 +386,7 @@ This program uses [[https://wiki.python.org/moin/PyQt][PyQt4]] as a GUI framewor
       return config_window.ui_config
 #+END_SRC
 
-**** Configuration Window
+**** TODO Configuration Window
 
 The configuration window is a python widget which represents the user interface of the program. As usual with user interfaces they require an large amount of code only to initialize it where is difficult to separate the functionality. 
 
@@ -396,7 +429,7 @@ The widget provides a callback [[(ui-close-cb)]] to be used by the buttons which
       #           Also ensures the layout of the UI elements
       ############################################################
       def initUI(self):    #(ref:fn-initUI)
-          self.ui_config = UI_CONFIG() #(ref:ui-config)
+          self.ui_config = conf.UI_CONFIG() #(ref:ui-config)
 
           buttons_layout = ui_create_buttons_layout(self) #(ref:ui-buttons)
           config_layout  = ui_create_config_layout(self)  #(ref:ui-config)
@@ -418,7 +451,7 @@ The widget provides a callback [[(ui-close-cb)]] to be used by the buttons which
           self.ui_config.update_cmd(cmd)
           QtCore.QCoreApplication.instance().quit()
 #+END_SRC
-**** Buttons Layout
+**** TODO Buttons Layout
 The buttons provide the functionality to launch the different process of the tool. Therefore clicking a button will close the UI and excecute the action stated on it. Also a small tooltip is provided in case the user requires additional information.
 
 To define a button, first it must be created using the text to be displayed, then the attributes associated to it, meaning the action it will perform and the tooltip displayed, if any.
@@ -442,17 +475,17 @@ Finally the buttons created are added to the layout of the button section of the
       # Quit Button
       quit_button = QtGui.QPushButton("Quit")
       quit_button.clicked.connect(
-          lambda: widget.close_with_cmd(UI_CMD.EXIT)) (ref:lambda_btn)
+          lambda: widget.close_with_cmd(conf.UI_CMD.EXIT)) (ref:lambda_btn)
       quit_button.setToolTip("Terminates the program")
       # Break Button
       break_button = QtGui.QPushButton("Only break")
       break_button.clicked.connect(
-          lambda: widget.close_with_cmd(UI_CMD.M_BREAK))
+          lambda: widget.close_with_cmd(conf.UI_CMD.M_BREAK))
       break_button.setToolTip("Use the motor to create a break junction.")
       # Measure Button
       measure_button = QtGui.QPushButton("Full Measure")
       measure_button.clicked.connect(
-          lambda: widget.close_with_cmd(UI_CMD.MEASURE))
+          lambda: widget.close_with_cmd(conf.UI_CMD.MEASURE))
       measure_button.setToolTip(
           "Performs measurement using the motor and piezo")
 
@@ -469,16 +502,34 @@ Finally the buttons created are added to the layout of the button section of the
       return vbox
 #+END_SRC
 
-**** Configuration Parameters Layout
+**** TODO Configuration Parameters Layout
+The configuration parameters are split in 3 groups, the basic parameters, the advanced parameters and the presentation parameters. Each group has its own vertical section starting with the basic parameters.
 
+Leaving the initializacion of each group of parameters to functions specific for each group, the configuration parameters is shown in [[config-param-layout]], using the same techniques already used for the buttons.
+#+CAPTION: Configuration parameters layout
+#+NAME: config-param-layout
 #+BEGIN_SRC python
+  ############################################################
+  ## @brief   Describes the configuration parameters layout
+  #
+  #  @details This function provides the layout for the portion
+  #           of the window that allows the user to configure
+  #           the parameters for the run.
+  #           The layout is split in 3 vertical sections one
+  #           with each parameter group.
+  #           Each group is preceded by a small label
+  #           identifying the group
+  ############################################################
   def ui_create_config_layout(ui_config_window):
+      # Define each group layout
       basic_param_layout = ui_basic_param_layout(ui_config_window)
       adv_param_layout = ui_adv_param_layout(ui_config_window)
       presentation_param_layout = ui_presentation_param_layout(ui_config_window)
+      # Define the labels
       basic_label = QtGui.QLabel("---- Basic Parameters ----")
       adv_label = QtGui.QLabel("---- Advanced Parameters ----")
       presentation_label = QtGui.QLabel("---- Presentation Parameters ----")
+      # Configure the layout
       vbox = QtGui.QVBoxLayout()
       vbox.addStretch(1)
       vbox.addWidget(basic_label)
@@ -489,6 +540,9 @@ Finally the buttons created are added to the layout of the button section of the
       vbox.addLayout(presentation_param_layout)
       return vbox
 #+END_SRC
+
+
+
 
 #+BEGIN_SRC python
   def ui_basic_param_layout(ui_config):
@@ -538,10 +592,9 @@ Finally the buttons created are added to the layout of the button section of the
 
 #+END_SRC
 
-** Motor break junction 
+** TODO Motor break junction 
 
-** Measurement with Piezo
-
+** TODO Measurement with Piezo
 
 * Utility functions
 This section is for the interface with each measurement instrument.
