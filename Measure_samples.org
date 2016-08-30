@@ -1,7 +1,7 @@
 #+OPTIONS: ':nil *:t -:t ::t <:t H:5 \n:nil ^:t arch:headline author:t c:nil
 #+OPTIONS: creator:nil d:(not "LOGBOOK") date:t e:t email:nil f:t inline:t
 #+OPTIONS: num:t p:nil pri:nil prop:nil stat:t tags:t tasks:t tex:t timestamp:t
-#+OPTIONS: title:t toc:t todo:t |:t
+#+OPTIONS: title:t toc:t todo:nil |:t
 #+TITLE: Measure_samples
 #+DATE: <2016-08-10 Wed>
 #+AUTHOR:
@@ -223,7 +223,7 @@ Therefore the output of the UI execution is a class of 2 values with one value b
        def update_config(self, new_config):
            self.config = new_config
  #+END_SRC
-
+ 
 **** DONE UI command
   Now the command to be executed has only a few possible values, which are used to, as previously explained, to terminate the program, or execute one of the routines.
   #+BEGIN_SRC python
@@ -271,10 +271,242 @@ Finally the interface with the rest of the program is defined through a single m
 
 ***** TODO UI - Basic parameters
 The basic parameters used to configure the measurement are parameters that are the most likely to be modified by the used, and whose side effects are better understood. These parameters usually deal with the speed and number of data points. 
-Each of these basic parameters has a default value
+In a more traditional object oriented paradigm, each parameter is controlled by its own class, which defines their default values, range, validation functions and how each parameter is updated.
 
+The basic parameters are:
+- Juncture Voltage :: This represents the voltage applied to the junture. See [[Juncture Voltage]]
+- Piezo Speed Breaking :: This parameters defines the voltage rate which is applied to the piezoelectric, which has a direct impact on the juncture. See [[Piezo Speed Breaking]]
+- Number of traces :: Traces are each process of opening and closing the juncture using the piezoelectric device. Each trace is a full cycle, and the number of traces represent the number of measurements to be taken. See [[Number of traces]]
+- Data directory :: The results of the experiment are stored in a specific directory. See [[Data directory]]
+
+****** DONE Juncture Voltage
+The juncture voltage defined in [[src-config-juncture-voltage-class]], as previously stated, is the parameter that controls the voltage applied to the junture during the analysis. The juncture voltage class defines several properties required by the program.
+
+- Default value :: Shown in line [[(src-jv-dflt)]] defines the value used by default through the execution and can be modified by the user through the UI
+- Range :: defined by the minimum and maximum values in lines [[(src-jv-min)]] and  [[(src-jv-max)]], defines an acceptable range for the juncture voltage so it can never be defined outside this range.
+- Reset functionality :: As a function defined in line [[(src-jv-reset)]]  provides a mechanism to restore the default value
+- Validation function :: The function defined in line [[(src-jv-validation)]] returns a boolean determining if the new value is within the range of accepted voltages
+- Update function :: Defined in line  [[(src-jv-update)]] updates the juncture voltage to a new value defined by the user, only if the value is within the accepted range, but if not it leaves the value unchanged
+
+#+CAPTION: Juncture voltage class definition
+#+name: src-config-juncture-voltage-class
+#+BEGIN_SRC python 
+  #############################################################
+  ## @class   juncture_voltage
+  #  @brief   All functionality related to the juncture voltage
+  #
+  #  @details This class defines the behavior of the jucture
+  #           voltage. Provides the default values and range
+  #           plus the corresponding interface.
+  #############################################################
+  class juncture_voltage:
+      _dflt = 0.1 # Not to be used directly (ref:src-jv-dflt)
+      _min = 0.0  #(ref:src-jv-min)
+      _max = 1.0  #(ref:src-jv-max)
+      #############################################################
+      ## @brief   Initilaization code
+      #############################################################
+      def __init__(self):
+          self.reset()
+      #############################################################
+      ## @brief   restores the default voltage of the juncture
+      #############################################################
+      def reset(self): #(ref:src-jv-reset)
+          self.voltage = self._dflt
+      #############################################################
+      ## @brief   Determines if a new voltage is in permited range
+      #           for the juncture voltage
+      #############################################################
+      def validate(self, val):#(ref:src-jv-validation)
+          return (self._min <= val) & (val <= self._max)
+      #############################################################
+      ## @brief   Updates the juncture voltage only if the new
+      #           voltage is within range
+      #############################################################
+      def update(self,val):#(ref:src-jv-update)
+          if self.validate(val):
+              self.voltage = val
+#+END_SRC
+
+******* voltage test                                               :noexport:
+Test functionality. Just excecuted by using =C-c C-c=. Should all be true
+#+BEGIN_SRC python :tangle no
+  import modules.ui_config as c
+  jv = c.juncture_voltage()
+  t1 = jv.voltage == 0.1
+  t2 = jv.validate(1.1) == False
+  jv.update(2)
+  t3 = jv.voltage == 0.1
+  jv.update(0.2)
+  t4 = jv.voltage == 0.2
+  t5 = jv.validate(-1.1) == False
+  jv.update(5)
+  t6 = jv.voltage == 0.2
+  jv.update(0.7)
+  t7 = jv.voltage == 0.7
+  jv.reset()
+  t8 = jv.voltage == 0.1
+  return [t1,t2,t3,t4,t5,t6,t7,t8]
+#+END_SRC
+
+#+RESULTS:
+| True | True | True | True | True | True | True | True |
+****** DONE Piezo Speed Breaking
+The piezo speed breaking defined in [[src-config-piezo-speed-class]] is the parameter that controls the speed at which each measurement cycle is excecuted, defined in \([V/s]\). This definition has several properties related to its interface with the rest of the program.
+
+- Default value :: Shown in line [[(src-ps-dflt)]] defines the value used by default through the execution and can be modified by the user through the UI
+- Range :: defined by the minimum and maximum values in lines [[(src-ps-min)]] and  [[(src-ps-max)]], defines an acceptable range for the juncture voltage so it can never be defined outside this range.
+- Reset functionality :: As a function defined in line [[(src-ps-reset)]]  provides a mechanism to restore the piezo speed to its default value. Care to mention is that there are 2 parameters associated with the piezo speed, but the speed is the one that is modified.
+- Validation function :: The function defined in line [[(src-ps-validation)]] returns a boolean determining if the new value is within the range of accepted voltages
+- Update function :: Defined in line  [[(src-ps-update)]] updates the juncture voltage to a new value defined by the user, only if the value is within the accepted range, but if not it leaves the value unchanged
+
+#+CAPTION: Piezo speed breaking class definition
+#+name: src-config-piezo-speed-class
+#+BEGIN_SRC python
+  #############################################################
+  ## @class   piezo_speed
+  #  @brief   All functionality related to the
+  #           piezo_speed_breaking
+  #
+  #  @details This class defines the behavior of the piezo
+  #           speed voltage relations which is defined in [V/s]
+  #           Provides the default values and range plus the
+  #           corresponding interfaces.
+  #############################################################
+  class piezo_speed: 
+      _dflt = 300.0 #(ref:src-ps-dflt)
+      _min = 30.0   #(ref:src-ps-min)
+      _max = 300.0  #(ref:src-ps-min)
+      #############################################################
+      ## @brief   Initilaization code
+      #############################################################
+      def __init__(self):
+          self.reset()
+      #############################################################
+      ## @brief   restores the default value of the piezo speed
+      #############################################################
+      def reset(self): #(ref:src-ps-reset)
+          self.speed = self._dflt
+          self.fixed_speed = self._dflt #Unsure if useful
+      #############################################################
+      ## @brief   Determines if a new value is in permited range
+      #           for the piezo speed
+      #############################################################
+      def validate(self, val): #(ref:src-ps-validation)
+          return (self._min <= val) & (val <= self._max)
+      #############################################################
+      ## @brief   Updates the piezo speed only if the new
+      #           value is within range
+      #############################################################
+      def update(self,val): #(ref:src-ps-update)
+          if self.validate(val):
+              self.speed = val
+#+END_SRC
+******* Piezo speed test                                           :noexport:
+Test functionality. Just excecuted by using =C-c C-c=. Should all be true
+#+BEGIN_SRC python :tangle no
+  import modules.ui_config as c
+  ps = c.piezo_speed()
+  t1 = (ps.speed == 300.0) & (ps.fixed_speed == 300.0)
+  t2 = ps.validate(331.1) == False
+  ps.update(334.2)
+  t3 = (ps.speed == 300.0) & (ps.fixed_speed == 300.0)
+  ps.update(45.2)
+  t4 = (ps.speed == 45.2) & (ps.fixed_speed == 300.0)
+  t5 = ps.validate(2.1) == False
+  ps.update(700)
+  t6 = (ps.speed == 45.2) & (ps.fixed_speed == 300.0)
+  ps.update(90)
+  t7 = (ps.speed == 90) & (ps.fixed_speed == 300.0)
+  ps.reset()
+  t8 = (ps.speed == 300) & (ps.fixed_speed == 300.0)
+  ps.update(-90)
+  t9 = (ps.speed == 300) & (ps.fixed_speed == 300.0)
+  return [t1,t2,t3,t4,t5,t6,t7,t8,t9]
+#+END_SRC
+
+#+RESULTS:
+| True | True | True | True | True | True | True | True | True |
+
+****** TODO Number of traces
+The number of traces defined in [[src-config-traces-class]] is the parameter that controls the number of measurement cycles excecuted using the piezoelectric actuator, where a trace is a full cycle going from closed to open and back. This definition has several properties related to its interface with the rest of the program.
+
+- Default value :: Shown in line [[(src-tr-dflt)]] defines the value used by default through the execution and can be modified by the user through the UI
+- Range :: defined by the minimum and maximum values in lines [[(src-tr-min)]] and  [[(src-tr-max)]], defines an acceptable range for the juncture voltage so it can never be defined outside this range.
+- Reset functionality :: As a function defined in line [[(src-tr-reset)]]  provides a mechanism to restore the piezo speed to its default value. Care to mention is that there are 2 parameters associated with the piezo speed, but the speed is the one that is modified.
+- Validation function :: The function defined in line [[(src-tr-validation)]] returns a boolean determining if the new value treated as an integer is within the range of accepted voltages
+- Update function :: Defined in line  [[(src-tr-update)]] updates the juncture voltage to a new value defined by the user, only if the value is within the accepted range, but if not it leaves the value unchanged
+
+#+CAPTION: Number of traces class definition
+#+NAME: src-config-traces-class
+#+BEGIN_SRC python
+  #############################################################
+  ## @class   traces
+  #  @brief   All functionality related to the number of traces
+  #
+  #  @details This class defines the parameter that controls
+  #           the number of traces (runs) performed using the
+  #           piezo. Each trace correspond to a full cycle
+  #           from closed juncture to open and back.
+  #           Provides the default values and range plus the
+  #           corresponding interfaces.
+  #############################################################
+  class traces:
+      _dflt = 5000 #(ref:src-tr-dflt)
+      _min = 1     #(ref:src-tr-min)
+      _max = 20000 #(ref:src-tr-max)
+      #############################################################
+      ## @brief   Initilaization code
+      #############################################################
+      def __init__(self):
+          self.reset()
+      ##############################################################
+      ## @brief   restores the default value of the number of traces
+      ##############################################################
+      def reset(self): #(ref:src-tr-reset)
+          self.number = self._dflt
+      #############################################################
+      ## @brief   Determines if a new int value is in permited range
+      #           for the number of traces. Ensures it's an int
+      #############################################################
+      def validate(self, aux_val):#(ref:src-tr-validation)
+          val = int(aux_val)
+          return (self._min <= val) & (val <= self._max)
+      #############################################################
+      ## @brief   Updates the piezo speed only if the new
+      #           value is within range. Ensures it's an int
+      #############################################################
+      def update(self,aux_val):#(ref:src-tr-update)
+          val = int(aux_val)
+          if self.validate(val):
+              self.number = int(val)
+#+END_SRC
+******* number traces test                                         :noexport:
+#+BEGIN_SRC python :tangle no
+  import modules.ui_config as c
+  tr = c.traces()
+  t1 = tr.number == 5000
+  t2 = tr.validate(40000) == False
+  tr.update(0.2)
+  t3 = tr.number == 5000
+  tr.update(200)
+  t4 = tr.number == 200
+  t5 = tr.validate(-100) == False
+  tr.update(120000)
+  t6 = tr.number == 200
+  tr.update(8000)
+  t7 = tr.number == 8000
+  tr.reset()
+  t8 = tr.number == 5000
+  return [t1,t2,t3,t4,t5,t6,t7,t8]
+#+END_SRC
+
+#+RESULTS:
+| True | True | True | True | True | True | True | True |
+
+****** TODO Data directory
 #+name: ui-basic-params-defaults
-#+BEGIN_SRC python :exports none
+#+BEGIN_SRC python :exports none :tangle none
 JUNCTURE_VOLTAGE_DFLT = 0.1  #[V]
 PIEZO_SPEED_BREAKING_DFLT = 0       #[V/S]
 DATA_DIRECTORY_DFLT = "./Data"
@@ -388,19 +620,20 @@ This program uses [[https://wiki.python.org/moin/PyQt][PyQt4]] as a GUI framewor
 
 **** TODO Configuration Window
 
-The configuration window is a python widget which represents the user interface of the program. As usual with user interfaces they require an large amount of code only to initialize it where is difficult to separate the functionality. 
+The configuration window, shown in [[gui-config-window]] is a python widget which represents the user interface of the program. As usual with user interfaces they require an large amount of code only to initialize it where is difficult to separate the functionality. 
 
-The standard procedure in python to build a widget is to delegate the initialization code to the parent class, and the UI elements specific to it, such as the buttons are defined in an internal initialization function of the class, commonly named =initUI= [[(fn-initUI)]]
+The standard procedure in python to build a widget is to delegate the initialization code to the parent class, and the UI elements specific to it, such as the buttons are defined in an internal initialization function of the class, commonly named =initUI= in line [[(fn-initUI)]]
 
 The window object is composed of 3 basic elements:
-- Config :: The contents of the window used to store and pass the configuration to the rest of the program [[(ui-config)]]
-- Buttons ::  The UI has a button for each action including the measurements strategies to be used and to exit the program. [[(ui-buttons)]]. For details see [[Buttons Layout]]
-- Configuration :: The forms used to configure the parameters of the run [[(ui-config)]]. For details see [[Configuration Parameters Layout]]
+- Config :: The contents of the window used to store and pass the configuration to the rest of the program shown in line [[(ui-config)]]
+- Buttons ::  The UI has a button for each action including the measurements strategies to be used and to exit the program shown in line [[(ui-buttons)]]. For details see [[Buttons Layout]]
+- Configuration :: The forms used to configure the parameters of the run defined in line [[(ui-config)]]. For details see [[Configuration Parameters Layout]]
 
 Obviously as an object it also provides functionality to interact with it, mainly through the buttons of it, the idea is that only the window can modify it as to keep the interface as clean as possible.
 
-The widget provides a callback [[(ui-close-cb)]] to be used by the buttons which will close the widget and ensure that the selected command, for example to measure, is executed
-
+The widget provides a callback defined in line [[(ui-close-cb)]] to be used by the buttons which will close the widget and ensure that the selected command, for example to measure, is executed
+#+CAPTION: Definition of the configuration window
+#+NAME: gui-config-window
 #+BEGIN_SRC python -n -r
   ############################################################
   ## @class   ui_config_window
@@ -455,7 +688,7 @@ The widget provides a callback [[(ui-close-cb)]] to be used by the buttons which
 The buttons provide the functionality to launch the different process of the tool. Therefore clicking a button will close the UI and excecute the action stated on it. Also a small tooltip is provided in case the user requires additional information.
 
 To define a button, first it must be created using the text to be displayed, then the attributes associated to it, meaning the action it will perform and the tooltip displayed, if any.
-A special mention is made for the callback used in each button as it uses anonymous functions[[(lambda_btn)]] to call the function that excecutes the corresponding action. While a more advanced programming technique (see [[https://en.wikipedia.org/wiki/Anonymous_function]]) it provides the cleanest and easiest method to provide this functionality (See also [[http://stackoverflow.com/questions/15080731/call-a-function-when-a-button-is-pressed-pyqt]])
+A special mention is made for the callback used in each button as it uses anonymous functions as shown in line [[(lambda_btn)]] to call the function that excecutes the corresponding action. While a more advanced programming technique (see [[https://en.wikipedia.org/wiki/Anonymous_function]]) it provides the cleanest and easiest method to provide this functionality (See also [[http://stackoverflow.com/questions/15080731/call-a-function-when-a-button-is-pressed-pyqt]])
 
 Finally the buttons created are added to the layout of the button section of the window which is returned to the user.
 #+BEGIN_SRC python -r -n
@@ -595,7 +828,7 @@ Leaving the initializacion of each group of parameters to functions specific for
 ** TODO Motor break junction 
 
 ** TODO Measurement with Piezo
-
+   
 * Utility functions
 This section is for the interface with each measurement instrument.
 
@@ -603,6 +836,11 @@ This section is for the interface with each measurement instrument.
 * Settings                                                         :noexport:
 #+BEGIN_SRC emacs-lisp :export none :results none
 (setq org-babel-use-quick-and-dirty-noweb-expansion t)
+(org-babel-do-load-languages
+ 'org-babel-load-languages
+ '((python . t)
+   ))
+(setq org-babel-python-command "/bin/python2")
 #+END_SRC
 
 
