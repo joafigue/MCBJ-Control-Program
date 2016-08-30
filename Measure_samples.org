@@ -252,9 +252,9 @@ The UI configuration is a list of variables which are used through the measureme
   ############################################################
   class UI_CONFIG_PARAMS:
       def __init__(self):
-          self._basic_params = basic_params()
-          self._adv_params = adv_params()
-          self._presentation = presentation()
+          self._b_params = basic_params()
+          self._a_params = adv_params()
+          self._p_params = presentation()
 
       <<ui-config-bp-interface>>
       <<ui-config-ap-interface>>
@@ -279,6 +279,21 @@ The basic parameters are:
 - Number of traces :: Traces are each process of opening and closing the juncture using the piezoelectric device. Each trace is a full cycle, and the number of traces represent the number of measurements to be taken. See [[Number of traces]]
 - Data directory :: The results of the experiment are stored in a specific directory. See [[Data directory]]
 
+
+#+BEGIN_SRC python
+  class basic_params:
+        def __init__(self):
+              self.juncture = juncture_voltage()
+              self.piezo_speed = piezo_speed()
+              self.traces = traces()
+              self.data_dir = data_dir()
+        def restore_defaults(self):
+              self.juncture.reset()
+              self.piezo_speed.reset()
+              self.traces.reset()
+              self.data_dir.reset()
+#+END_SRC
+
 ****** DONE Juncture Voltage
 The juncture voltage defined in [[src-config-juncture-voltage-class]], as previously stated, is the parameter that controls the voltage applied to the junture during the analysis. The juncture voltage class defines several properties required by the program.
 
@@ -290,7 +305,7 @@ The juncture voltage defined in [[src-config-juncture-voltage-class]], as previo
 
 #+CAPTION: Juncture voltage class definition
 #+name: src-config-juncture-voltage-class
-#+BEGIN_SRC python 
+#+BEGIN_SRC python  -n -r
   #############################################################
   ## @class   juncture_voltage
   #  @brief   All functionality related to the juncture voltage
@@ -350,7 +365,6 @@ Test functionality. Just excecuted by using =C-c C-c=. Should all be true
 #+END_SRC
 
 #+RESULTS:
-| True | True | True | True | True | True | True | True |
 ****** DONE Piezo Speed Breaking
 The piezo speed breaking defined in [[src-config-piezo-speed-class]] is the parameter that controls the speed at which each measurement cycle is excecuted, defined in \([V/s]\). This definition has several properties related to its interface with the rest of the program.
 
@@ -362,7 +376,7 @@ The piezo speed breaking defined in [[src-config-piezo-speed-class]] is the para
 
 #+CAPTION: Piezo speed breaking class definition
 #+name: src-config-piezo-speed-class
-#+BEGIN_SRC python
+#+BEGIN_SRC python -n -r
   #############################################################
   ## @class   piezo_speed
   #  @brief   All functionality related to the
@@ -376,7 +390,7 @@ The piezo speed breaking defined in [[src-config-piezo-speed-class]] is the para
   class piezo_speed: 
       _dflt = 300.0 #(ref:src-ps-dflt)
       _min = 30.0   #(ref:src-ps-min)
-      _max = 300.0  #(ref:src-ps-min)
+      _max = 300.0  #(ref:src-ps-max)
       #############################################################
       ## @brief   Initilaization code
       #############################################################
@@ -428,7 +442,7 @@ Test functionality. Just excecuted by using =C-c C-c=. Should all be true
 #+RESULTS:
 | True | True | True | True | True | True | True | True | True |
 
-****** TODO Number of traces
+****** DONE Number of traces
 The number of traces defined in [[src-config-traces-class]] is the parameter that controls the number of measurement cycles excecuted using the piezoelectric actuator, where a trace is a full cycle going from closed to open and back. This definition has several properties related to its interface with the rest of the program.
 
 - Default value :: Shown in line [[(src-tr-dflt)]] defines the value used by default through the execution and can be modified by the user through the UI
@@ -439,7 +453,7 @@ The number of traces defined in [[src-config-traces-class]] is the parameter tha
 
 #+CAPTION: Number of traces class definition
 #+NAME: src-config-traces-class
-#+BEGIN_SRC python
+#+BEGIN_SRC python -n -r
   #############################################################
   ## @class   traces
   #  @brief   All functionality related to the number of traces
@@ -505,24 +519,39 @@ The number of traces defined in [[src-config-traces-class]] is the parameter tha
 | True | True | True | True | True | True | True | True |
 
 ****** TODO Data directory
-#+name: ui-basic-params-defaults
-#+BEGIN_SRC python :exports none :tangle none
-JUNCTURE_VOLTAGE_DFLT = 0.1  #[V]
-PIEZO_SPEED_BREAKING_DFLT = 0       #[V/S]
-DATA_DIRECTORY_DFLT = "./Data"
-NUMBER_TRACES_DFLT = 5000  # Measurement Cycles
+#+BEGIN_SRC python -n -r
+  #############################################################
+  ## @class   traces
+  #  @brief   All functionality related to the data directory
+  #
+  #  @details This class defines the parameter that controls
+  #           where the results will be stored. PENDING- TODO
+  #############################################################
+  class data_dir:
+      _dflt = "./" #(ref:src-dd-dflt)
+      _subdir_fmt= "data"
+      #############################################################
+      ## @brief   Initilaization code
+      #############################################################
+      def __init__(self):
+          self.reset()
+      ##############################################################
+      ## @brief   restores the default value of the number of traces
+      ##############################################################
+      def reset(self): #(ref:src-dd-reset)
+          self.path = self._dflt
+      ## @brief   there is no need to validate?
+      def validate(self, aux_val):#(ref:src-dd-validation)
+          return true
+      #############################################################
+      ## @brief   Updates the piezo speed only if the new
+      #           value is within range. Ensures it's an int
+      #############################################################
+      def update(self,new_path):#(ref:src-dd-update)
+          if self.validate(new_path):
+              self.path = new_path
 #+END_SRC
 
-#+BEGIN_SRC python
-  class basic_params:
-        def __init__(self):
-              self.restore_defaults()
-        def restore_defaults(self):
-              self.juncture_voltage = JUNCTURE_VOLTAGE_DFLT
-              self.piezo_speed_breaking = PIEZO_SPEED_BREAKING_DFLT
-              self.data_directory = DATA_DIRECTORY_DFLT
-              self.number_traces = NUMBER_TRACES_DFLT
-#+END_SRC
 
 #+NAME: ui-config-bp-interface
 #+BEGIN_SRC python
@@ -780,18 +809,18 @@ Leaving the initializacion of each group of parameters to functions specific for
 #+BEGIN_SRC python
   def ui_basic_param_layout(ui_config):
       jv_label = QtGui.QLabel("Juncture Voltage")
-      psb_label = QtGui.QLabel("Piezo Speed")
-      data_dir_label = QtGui.QLabel(str(ui_config.ui_config.config._basic_params.data_directory))
+      ps_label = QtGui.QLabel("Piezo Speed")
+      dir_label = QtGui.QLabel(ui_config.ui_config.config._b_params.data_dir.path)
       traces_label = QtGui.QLabel("Number Traces")
 
       jv_ed = QtGui.QLineEdit()
-      psb_ed = QtGui.QLineEdit()
+      ps_ed = QtGui.QLineEdit()
       traces_ed = QtGui.QLineEdit()
       dir_btn = QtGui.QPushButton('Change Directory')
 
-      jv_ed.setText(str(ui_config.ui_config.config._basic_params.juncture_voltage))
-      psb_ed.setText(str(ui_config.ui_config.config._basic_params.piezo_speed_breaking))
-      traces_ed.setText(str(ui_config.ui_config.config._basic_params.number_traces))
+      jv_ed.setText(str(ui_config.ui_config.config._b_params.juncture.voltage))
+      ps_ed.setText(str(ui_config.ui_config.config._b_params.piezo_speed.speed))
+      traces_ed.setText(str(ui_config.ui_config.config._b_params.traces.number))
 
       dir_btn.clicked.connect(lambda: showDialog(ui_config))
 
@@ -801,20 +830,21 @@ Leaving the initializacion of each group of parameters to functions specific for
       grid.addWidget(jv_label,1,0)
       grid.addWidget(jv_ed,1,1)
 
-      grid.addWidget(psb_label,2,0)
-      grid.addWidget(psb_ed,2,1)
+      grid.addWidget(ps_label,2,0)
+      grid.addWidget(ps_ed,2,1)
 
       grid.addWidget(traces_label,3,0)
       grid.addWidget(traces_ed,3,1)
 
-      grid.addWidget(data_dir_label,4,0)
+      grid.addWidget(dir_label,4,0)
       grid.addWidget(dir_btn,4,1)
 
       return grid
 
   def showDialog(ui_config):
       fname = QtGui.QFileDialog.getExistingDirectory(ui_config, 'Open file',
-              '/home')
+              ui_config.ui_config.config._b_params.data_dir.path)
+      ui_config.ui_config.config._b_params.data_dir.update(fname)
       print(fname)
 
   def ui_adv_param_layout(ui_config):
@@ -843,6 +873,14 @@ This section is for the interface with each measurement instrument.
 (setq org-babel-python-command "/bin/python2")
 #+END_SRC
 
+** colorize
+#+BEGIN_SRC emacs-lisp
+  (add-to-list 'org-latex-packages-alist '("" "listings"))
+  (setq org-latex-listings t)
+#+END_SRC
+
+#+RESULTS:
+: t
 
 
 
