@@ -542,7 +542,7 @@ The number of traces defined in [[src-config-traces-class]] is the parameter tha
           self.path = self._dflt
       ## @brief   there is no need to validate?
       def validate(self, aux_val):#(ref:src-dd-validation)
-          return true
+          return True
       #############################################################
       ## @brief   Updates the piezo speed only if the new
       #           value is within range. Ensures it's an int
@@ -822,7 +822,7 @@ Leaving the initializacion of each group of parameters to functions specific for
       ps_ed.setText(str(ui_config.ui_config.config._b_params.piezo_speed.speed))
       traces_ed.setText(str(ui_config.ui_config.config._b_params.traces.number))
 
-      dir_btn.clicked.connect(lambda: showDialog(ui_config))
+      dir_btn.clicked.connect(lambda: showDialog(ui_config,dir_label))
 
       grid = QtGui.QGridLayout()
       grid.setSpacing(10)
@@ -841,11 +841,12 @@ Leaving the initializacion of each group of parameters to functions specific for
 
       return grid
 
-  def showDialog(ui_config):
+  def showDialog(ui_config,dir_label):
       fname = QtGui.QFileDialog.getExistingDirectory(ui_config, 'Open file',
               ui_config.ui_config.config._b_params.data_dir.path)
       ui_config.ui_config.config._b_params.data_dir.update(fname)
-      print(fname)
+      dir_label.setText(ui_config.ui_config.config._b_params.data_dir.path)
+      print(ui_config.ui_config.config._b_params.data_dir.path)
 
   def ui_adv_param_layout(ui_config):
       return ui_basic_param_layout(ui_config)
@@ -856,9 +857,26 @@ Leaving the initializacion of each group of parameters to functions specific for
 #+END_SRC
 
 ** TODO Motor break junction 
+   :PROPERTIES:
+   :tangle:   modules/motor_break.py
+   :END:
+#+BEGIN_SRC python
+  def motor_break_juncture():
+      print ("Picked Motor break")
+
+#+END_SRC
+
 
 ** TODO Measurement with Piezo
+   :PROPERTIES:
+   :tangle:   modules/piezo_measure.py
+   :END:
    
+#+BEGIN_SRC python
+  def measure_sample():
+      print("Picked measure sample")
+
+#+END_SRC
 * Utility functions
 This section is for the interface with each measurement instrument.
 
