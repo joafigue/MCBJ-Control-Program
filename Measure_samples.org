@@ -819,13 +819,18 @@ Leaving the initializacion of each group of parameters to functions specific for
               self.param = param
 
           def validate(self, text, pos):
-              if self.param.validate(float(text)):
-                  self.param.update(float(text))
-                  return (QtGui.QValidator.Acceptable, pos)
-              else:
-                  return (QtGui.QValidator.Invalid, pos)
+                  try:
+                          num = float(text)
+                  except ValueError:
+                          return (QtGui.QValidator.Invalid, pos)
 
-              return (QtGui.QValidator.Invalid, pos)
+                  if self.param.validate(num):
+                          self.param.update(num)
+                          return (QtGui.QValidator.Acceptable, pos)
+                  else:
+                          return (QtGui.QValidator.Invalid, pos)
+
+                  return (QtGui.QValidator.Invalid, pos)
 
           def fixup(self, s):
               pass
