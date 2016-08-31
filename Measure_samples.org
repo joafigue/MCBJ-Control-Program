@@ -153,6 +153,7 @@ Finally the main loop is executed indefinitely until the user terminates the pro
           ui_config = ui_get_gui_config()
           ui_cmd    = ui_config.cmd
           config    = ui_config.config
+          config._b_params.print_all()
           execute_ui_cmd(ui_cmd,config)
 
   if __name__ == "__main__":
@@ -292,6 +293,11 @@ The basic parameters are:
               self.piezo_speed.reset()
               self.traces.reset()
               self.data_dir.reset()
+        def print_all(self):
+              print("juncture_voltage = %f" % self.juncture.voltage)
+              print("piezo_speed = %f" % self.piezo_speed.speed)
+              print("traces = %d" % self.traces.number)
+              print("Directory = %s" % self.data_dir.path)
 #+END_SRC
 
 ****** DONE Juncture Voltage
@@ -341,6 +347,8 @@ The juncture voltage defined in [[src-config-juncture-voltage-class]], as previo
       def update(self,val):#(ref:src-jv-update)
           if self.validate(val):
               self.voltage = val
+      def get_value(self):
+          return self.voltage
 #+END_SRC
 
 ******* voltage test                                               :noexport:
@@ -804,25 +812,42 @@ Leaving the initializacion of each group of parameters to functions specific for
 #+END_SRC
 
 
-
-
 #+BEGIN_SRC python
-  def ui_basic_param_layout(ui_config):
+  class validate_num_param(QtGui.QValidator):
+          def __init__(self, param):
+              QtGui.QValidator.__init__(self)
+              self.param = param
+
+          def validate(self, text, pos):
+              if self.param.validate(float(text)):
+                  self.param.update(float(text))
+                  return (QtGui.QValidator.Acceptable, pos)
+              else:
+                  return (QtGui.QValidator.Invalid, pos)
+
+              return (QtGui.QValidator.Invalid, pos)
+
+          def fixup(self, s):
+              pass
+
+  def ui_basic_param_layout(window):
       jv_label = QtGui.QLabel("Juncture Voltage")
       ps_label = QtGui.QLabel("Piezo Speed")
-      dir_label = QtGui.QLabel(ui_config.ui_config.config._b_params.data_dir.path)
+      dir_label = QtGui.QLabel(window.ui_config.config._b_params.data_dir.path)
       traces_label = QtGui.QLabel("Number Traces")
 
       jv_ed = QtGui.QLineEdit()
+      jv_validator = validate_num_param(window.ui_config.config._b_params.juncture)
+      jv_ed.setValidator(jv_validator)
       ps_ed = QtGui.QLineEdit()
       traces_ed = QtGui.QLineEdit()
       dir_btn = QtGui.QPushButton('Change Directory')
 
-      jv_ed.setText(str(ui_config.ui_config.config._b_params.juncture.voltage))
-      ps_ed.setText(str(ui_config.ui_config.config._b_params.piezo_speed.speed))
-      traces_ed.setText(str(ui_config.ui_config.config._b_params.traces.number))
+      jv_ed.setText(str(window.ui_config.config._b_params.juncture.voltage))
+      ps_ed.setText(str(window.ui_config.config._b_params.piezo_speed.speed))
+      traces_ed.setText(str(window.ui_config.config._b_params.traces.number))
 
-      dir_btn.clicked.connect(lambda: showDialog(ui_config,dir_label))
+      dir_btn.clicked.connect(lambda: showDialog(window,dir_label))
 
       grid = QtGui.QGridLayout()
       grid.setSpacing(10)
@@ -841,18 +866,18 @@ Leaving the initializacion of each group of parameters to functions specific for
 
       return grid
 
-  def showDialog(ui_config,dir_label):
-      fname = QtGui.QFileDialog.getExistingDirectory(ui_config, 'Open file',
-              ui_config.ui_config.config._b_params.data_dir.path)
-      ui_config.ui_config.config._b_params.data_dir.update(fname)
-      dir_label.setText(ui_config.ui_config.config._b_params.data_dir.path)
-      print(ui_config.ui_config.config._b_params.data_dir.path)
+  def showDialog(window,dir_label):
+      fname = QtGui.QFileDialog.getExistingDirectory(window, 'Open file',
+              window.ui_config.config._b_params.data_dir.path)
+      window.ui_config.config._b_params.data_dir.update(fname)
+      dir_label.setText(window.ui_config.config._b_params.data_dir.path)
+      print(window.ui_config.config._b_params.data_dir.path)
 
-  def ui_adv_param_layout(ui_config):
-      return ui_basic_param_layout(ui_config)
+  def ui_adv_param_layout(window):
+      return ui_basic_param_layout(window)
 
-  def ui_presentation_param_layout(ui_config):
-      return ui_basic_param_layout(ui_config)
+  def ui_presentation_param_layout(window):
+      return ui_basic_param_layout(window)
 
 #+END_SRC
 
