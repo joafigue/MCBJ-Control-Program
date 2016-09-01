@@ -153,6 +153,7 @@ Finally the main loop is executed indefinitely until the user terminates the pro
           ui_config = ui_get_gui_config()
           ui_cmd    = ui_config.cmd
           config    = ui_config.config
+          config._b_params.print_all()
           execute_ui_cmd(ui_cmd,config)
 
   if __name__ == "__main__":
@@ -234,7 +235,7 @@ Therefore the output of the UI execution is a class of 2 values with one value b
         MEASURE = 2
   #+END_SRC 
 
-**** TODO UI Configuration
+**** TODO UI Configuration Parameters
 The UI configuration is a list of variables which are used through the measurements for configuring the experiments or for controlling the presentation of the results, for simplicity the variables are classified in groups
 - Basic parameters :: These are the parameters that control the run and define it see [[UI - Basic parameters ]]
 - Advanced parameters :: There are more advanced parameters that influence the run, but have minor impact (usually) when compared with the other parameters, and the user is rarely ever expected to modify them. See [[UI - Advanced parameters]]
@@ -264,7 +265,6 @@ Finally the interface with the rest of the program is defined through a single m
       retval = run_gui()
       return retval
 #+END_SRC
-
 ***** TODO UI - Basic parameters
 The basic parameters used to configure the measurement are parameters that are the most likely to be modified by the used, and whose side effects are better understood. These parameters usually deal with the speed and number of data points. 
 In a more traditional object oriented paradigm, each parameter is controlled by its own class, which defines their default values, range, validation functions and how each parameter is updated.
@@ -288,16 +288,105 @@ The basic parameters are:
               self.piezo_speed.reset()
               self.traces.reset()
               self.data_dir.reset()
+        def print_all(self):
+              print("juncture_voltage = %f" % self.juncture.voltage)
+              print("piezo_speed = %f" % self.piezo_speed.speed)
+              print("traces = %d" % self.traces.number)
+              print("Directory = %s" % self.data_dir.path)
 #+END_SRC
 
-****** DONE Juncture Voltage
-The juncture voltage defined in [[src-config-juncture-voltage-class]], as previously stated, is the parameter that controls the voltage applied to the junture during the analysis. The juncture voltage class defines several properties required by the program.
+It's clear that most parameters are numerical, therefore it makes sense to define a class which encapsulates the common functionality for the numerical parameters. This class is defined in [[Numerical Parameters definition]]
 
-- Default value :: Shown in line [[(src-jv-dflt)]] defines the value used by default through the execution and can be modified by the user through the UI
-- Range :: defined by the minimum and maximum values in lines [[(src-jv-min)]] and  [[(src-jv-max)]], defines an acceptable range for the juncture voltage so it can never be defined outside this range.
-- Reset functionality :: As a function defined in line [[(src-jv-reset)]]  provides a mechanism to restore the default value
-- Validation function :: The function defined in line [[(src-jv-validation)]] returns a boolean determining if the new value is within the range of accepted voltages
-- Update function :: Defined in line  [[(src-jv-update)]] updates the juncture voltage to a new value defined by the user, only if the value is within the accepted range, but if not it leaves the value unchanged
+****** TODO Numerical Parameters definition
+As previously stated most parameters are numerical, so a parent class is created to provide a common interface for them all and to ensure that all numerical parameters behave consistently.
+The numerical parameters are defined in [[src-config-num-param-class]], which provides the interfaces that define the numerical parameters
+- Initialization function :: The function defined in line [[(np-init)]], provide the initialization code for a generic numerical parameter, which is defined by the following parameters:
+  - Default Value :: Is the value that the parameter takes by default, such as the voltage for the juncture.
+  - Minimum value :: The minimum value acceptable for the parameter. With the maximum value defines the range of admissible values
+  - Maximum value :: The maximum value acceptable for the parameter. With the minimum value defines the range of admissible values
+  - Name :: The name defines a name for the parameter, which is useful to print information about it. 
+- Reset function :: Defined in line  [[(src-np-reset)]], provides a mechanism to restore the parameter value to its default.
+- Validation function ::  Defined in line [[(src-np-validation)]] returns a boolean determining if the new value is within the range of accepted values
+- Update function :: Defined in line  [[(src-np-update)]] updates the juncture voltage to a new value defined by the user, only if the value is within the accepted range, but if not it leaves the value unchanged
+- Print function ::  Defined in line  [[(src-np-print)]] provides an utility to print the current value to the terminal. Useful during testing and for sending messages
+
+
+#+CAPTION: Numerical parameters class definition
+#+NAME: src-config-num-param-class
+#+BEGIN_SRC python  -n -r
+  #############################################################
+  ## @class   Numerical Parameter
+  #  @brief   All functionality related to the numerical
+  #           parameters
+  #
+  #  @details This class defines the basic behavior common to
+  #           all numerical parameters, including common
+  #           interfaces and values.
+  #############################################################
+  class numerical_parameter(object):
+      #############################################################
+      ## @brief   Initilaization code
+      #############################################################
+      def __init__(self,name,dflt_val,min_val,max_val):#(ref:src-np-init)
+          self._dflt = dflt_val
+          self._min = min_val
+          self._max = max_val
+          self.name = name
+          self.reset()
+      #############################################################
+      ## @brief   restores the default value of the parameter
+      #############################################################
+      def reset(self): #(ref:src-np-reset)
+          self.value = self._dflt
+      #############################################################
+      ## @brief   Determines if a new value is in the permited
+      #           range
+      #############################################################
+      def validate(self, val):#(ref:src-np-validation)
+          return (self._min <= val) & (val <= self._max)
+      #############################################################
+      ## @brief   Updates the juncture voltage only if the new
+      #           value is within range
+      #############################################################
+      def update(self,new_val):#(ref:src-np-update)
+          if self.validate(new_val):
+              self.value = new_val
+      #############################################################
+      ## @brief   Prints the parameter name and its value
+      #############################################################
+      def print_param(self):#(ref:src-np-print)
+          print("%s = %f" % self.name % self.value)
+
+#+END_SRC
+
+****** Numerical Parameter Test                                    :noexport:
+Test the functionality of a generic numerical parameter. Just excecuted by using =C-c C-c=. Should all be true
+#+BEGIN_SRC python :tangle no
+  import modules.ui_config as c
+  tp = c.numerical_parameter("Test", 7.8, 0.5,50)
+  t1 = tp.value == 7.8
+  t2 = tp.validate(-1.1) == False
+  tp.update(0.12)
+  t3 = tp.value == 7.8
+  tp.update(9)
+  t4 = tp.value == 9
+  t5 = tp.validate(88) == False
+  tp.update(55)
+  t6 = tp.value == 9
+  tp.update(0.7)
+  t7 = tp.value == 0.7
+  tp.reset()
+  t8 = tp.value == 7.8
+  t9 = tp.name == "Test"
+  return [t1,t2,t3,t4,t5,t6,t7,t8,t9]
+#+END_SRC
+
+#+RESULTS:
+| True | True | True | True | True | True | True | True | True |
+
+
+****** DONE Juncture Voltage
+The juncture voltage defined in [[src-config-juncture-voltage-class]], as previously stated, is the parameter that controls the voltage applied to the juncture during the analysis. The juncture voltage class is just a specialization of the Numerical parameter class described in [[Numerical Parameters definition]]
 
 #+CAPTION: Juncture voltage class definition
 #+name: src-config-juncture-voltage-class
@@ -310,33 +399,16 @@ The juncture voltage defined in [[src-config-juncture-voltage-class]], as previo
   #           voltage. Provides the default values and range
   #           plus the corresponding interface.
   #############################################################
-  class juncture_voltage:
-      _dflt = 0.1 # Not to be used directly (ref:src-jv-dflt)
-      _min = 0.0  #(ref:src-jv-min)
-      _max = 1.0  #(ref:src-jv-max)
+  class juncture_voltage(numerical_parameter):
       #############################################################
       ## @brief   Initilaization code
       #############################################################
       def __init__(self):
-          self.reset()
-      #############################################################
-      ## @brief   restores the default voltage of the juncture
-      #############################################################
-      def reset(self): #(ref:src-jv-reset)
-          self.voltage = self._dflt
-      #############################################################
-      ## @brief   Determines if a new voltage is in permited range
-      #           for the juncture voltage
-      #############################################################
-      def validate(self, val):#(ref:src-jv-validation)
-          return (self._min <= val) & (val <= self._max)
-      #############################################################
-      ## @brief   Updates the juncture voltage only if the new
-      #           voltage is within range
-      #############################################################
-      def update(self,val):#(ref:src-jv-update)
-          if self.validate(val):
-              self.voltage = val
+          _dflt = 0.1 # (ref:src-jv-dflt)
+          _min = 0.0  #(ref:src-jv-min)
+          _max = 0.3  #(ref:src-jv-max)
+          _name = "Juncture Voltage"
+          super(juncture_voltage, self).__init__(_name,_dflt, _min, _max)
 #+END_SRC
 
 ******* voltage test                                               :noexport:
@@ -344,31 +416,29 @@ Test functionality. Just excecuted by using =C-c C-c=. Should all be true
 #+BEGIN_SRC python :tangle no
   import modules.ui_config as c
   jv = c.juncture_voltage()
-  t1 = jv.voltage == 0.1
+  t1 = jv.value == 0.1
   t2 = jv.validate(1.1) == False
   jv.update(2)
-  t3 = jv.voltage == 0.1
+  t3 = jv.value == 0.1
   jv.update(0.2)
-  t4 = jv.voltage == 0.2
+  t4 = jv.value == 0.2
   t5 = jv.validate(-1.1) == False
   jv.update(5)
-  t6 = jv.voltage == 0.2
-  jv.update(0.7)
-  t7 = jv.voltage == 0.7
+  t6 = jv.value == 0.2
+  jv.update(0.22)
+  t7 = jv.value == 0.22
   jv.reset()
-  t8 = jv.voltage == 0.1
-  return [t1,t2,t3,t4,t5,t6,t7,t8]
+  t8 = jv.value == 0.1
+  t9 = jv.name == "Juncture Voltage"
+  return [t1,t2,t3,t4,t5,t6,t7,t8,t9]
 #+END_SRC
 
-#+RESULTS:
-****** DONE Piezo Speed Breaking
-The piezo speed breaking defined in [[src-config-piezo-speed-class]] is the parameter that controls the speed at which each measurement cycle is excecuted, defined in \([V/s]\). This definition has several properties related to its interface with the rest of the program.
+ #+RESULTS:
+ | True | True | True | True | True | True | True | True | True |
 
-- Default value :: Shown in line [[(src-ps-dflt)]] defines the value used by default through the execution and can be modified by the user through the UI
-- Range :: defined by the minimum and maximum values in lines [[(src-ps-min)]] and  [[(src-ps-max)]], defines an acceptable range for the juncture voltage so it can never be defined outside this range.
-- Reset functionality :: As a function defined in line [[(src-ps-reset)]]  provides a mechanism to restore the piezo speed to its default value. Care to mention is that there are 2 parameters associated with the piezo speed, but the speed is the one that is modified.
-- Validation function :: The function defined in line [[(src-ps-validation)]] returns a boolean determining if the new value is within the range of accepted voltages
-- Update function :: Defined in line  [[(src-ps-update)]] updates the juncture voltage to a new value defined by the user, only if the value is within the accepted range, but if not it leaves the value unchanged
+
+****** DONE Piezo Speed Breaking
+The piezo speed breaking defined in [[src-config-piezo-speed-class]] is the parameter that controls the speed at which each measurement cycle is executed, defined in \([V/s]\). The Piezo speed class is just a specialization of the Numerical parameter class described in [[Numerical Parameters definition]], with the additional fixed speed value.
 
 #+CAPTION: Piezo speed breaking class definition
 #+name: src-config-piezo-speed-class
@@ -383,55 +453,38 @@ The piezo speed breaking defined in [[src-config-piezo-speed-class]] is the para
   #           Provides the default values and range plus the
   #           corresponding interfaces.
   #############################################################
-  class piezo_speed: 
-      _dflt = 300.0 #(ref:src-ps-dflt)
-      _min = 30.0   #(ref:src-ps-min)
-      _max = 300.0  #(ref:src-ps-max)
+  class piezo_speed(numerical_parameter):
       #############################################################
       ## @brief   Initilaization code
       #############################################################
       def __init__(self):
-          self.reset()
-      #############################################################
-      ## @brief   restores the default value of the piezo speed
-      #############################################################
-      def reset(self): #(ref:src-ps-reset)
-          self.speed = self._dflt
-          self.fixed_speed = self._dflt #Unsure if useful
-      #############################################################
-      ## @brief   Determines if a new value is in permited range
-      #           for the piezo speed
-      #############################################################
-      def validate(self, val): #(ref:src-ps-validation)
-          return (self._min <= val) & (val <= self._max)
-      #############################################################
-      ## @brief   Updates the piezo speed only if the new
-      #           value is within range
-      #############################################################
-      def update(self,val): #(ref:src-ps-update)
-          if self.validate(val):
-              self.speed = val
+          _dflt = 300.0 #(ref:src-ps-dflt)
+          _min = 30.0   #(ref:src-ps-min)
+          _max = 300.0  #(ref:src-ps-max)
+          _name = "Piezo Speed"
+          super(piezo_speed, self).__init__(_name,_dflt, _min, _max)
+          self.fixed_speed = _dflt
 #+END_SRC
 ******* Piezo speed test                                           :noexport:
-Test functionality. Just excecuted by using =C-c C-c=. Should all be true
+Test functionality. Just executed by using =C-c C-c=. Should all be true
 #+BEGIN_SRC python :tangle no
   import modules.ui_config as c
   ps = c.piezo_speed()
-  t1 = (ps.speed == 300.0) & (ps.fixed_speed == 300.0)
+  t1 = (ps.value == 300.0) & (ps.fixed_speed == 300.0)
   t2 = ps.validate(331.1) == False
   ps.update(334.2)
-  t3 = (ps.speed == 300.0) & (ps.fixed_speed == 300.0)
+  t3 = (ps.value == 300.0) & (ps.fixed_speed == 300.0)
   ps.update(45.2)
-  t4 = (ps.speed == 45.2) & (ps.fixed_speed == 300.0)
+  t4 = (ps.value == 45.2) & (ps.fixed_speed == 300.0)
   t5 = ps.validate(2.1) == False
   ps.update(700)
-  t6 = (ps.speed == 45.2) & (ps.fixed_speed == 300.0)
+  t6 = (ps.value == 45.2) & (ps.fixed_speed == 300.0)
   ps.update(90)
-  t7 = (ps.speed == 90) & (ps.fixed_speed == 300.0)
+  t7 = (ps.value == 90) & (ps.fixed_speed == 300.0)
   ps.reset()
-  t8 = (ps.speed == 300) & (ps.fixed_speed == 300.0)
+  t8 = (ps.value == 300) & (ps.fixed_speed == 300.0)
   ps.update(-90)
-  t9 = (ps.speed == 300) & (ps.fixed_speed == 300.0)
+  t9 = (ps.value == 300) & (ps.fixed_speed == 300.0)
   return [t1,t2,t3,t4,t5,t6,t7,t8,t9]
 #+END_SRC
 
@@ -439,13 +492,9 @@ Test functionality. Just excecuted by using =C-c C-c=. Should all be true
 | True | True | True | True | True | True | True | True | True |
 
 ****** DONE Number of traces
-The number of traces defined in [[src-config-traces-class]] is the parameter that controls the number of measurement cycles excecuted using the piezoelectric actuator, where a trace is a full cycle going from closed to open and back. This definition has several properties related to its interface with the rest of the program.
-
-- Default value :: Shown in line [[(src-tr-dflt)]] defines the value used by default through the execution and can be modified by the user through the UI
-- Range :: defined by the minimum and maximum values in lines [[(src-tr-min)]] and  [[(src-tr-max)]], defines an acceptable range for the juncture voltage so it can never be defined outside this range.
-- Reset functionality :: As a function defined in line [[(src-tr-reset)]]  provides a mechanism to restore the piezo speed to its default value. Care to mention is that there are 2 parameters associated with the piezo speed, but the speed is the one that is modified.
-- Validation function :: The function defined in line [[(src-tr-validation)]] returns a boolean determining if the new value treated as an integer is within the range of accepted voltages
-- Update function :: Defined in line  [[(src-tr-update)]] updates the juncture voltage to a new value defined by the user, only if the value is within the accepted range, but if not it leaves the value unchanged
+The number of traces defined in [[src-config-traces-class]] is the parameter that controls the number of measurement cycles excecuted using the piezoelectric actuator, where a trace is a full cycle going from closed to open and back. The traces class is a specialization of the Numerical parameter class described in [[Numerical Parameters definition]], with the following modifications:
+- Values must be integers :: This class must have all its values as integers, thus the default values and other parameters are redundantly cast as integers.
+- Validation Function :: Defined in line [[(ref:src-tr-validation)]], this function also confirms that the parameter is an integer
 
 #+CAPTION: Number of traces class definition
 #+NAME: src-config-traces-class
@@ -460,54 +509,43 @@ The number of traces defined in [[src-config-traces-class]] is the parameter tha
   #           from closed juncture to open and back.
   #           Provides the default values and range plus the
   #           corresponding interfaces.
+  #           IMPORTANT:  all parameters must be integers
   #############################################################
-  class traces:
-      _dflt = 5000 #(ref:src-tr-dflt)
-      _min = 1     #(ref:src-tr-min)
-      _max = 20000 #(ref:src-tr-max)
-      #############################################################
-      ## @brief   Initilaization code
-      #############################################################
-      def __init__(self):
-          self.reset()
-      ##############################################################
-      ## @brief   restores the default value of the number of traces
-      ##############################################################
-      def reset(self): #(ref:src-tr-reset)
-          self.number = self._dflt
-      #############################################################
-      ## @brief   Determines if a new int value is in permited range
-      #           for the number of traces. Ensures it's an int
-      #############################################################
-      def validate(self, aux_val):#(ref:src-tr-validation)
-          val = int(aux_val)
-          return (self._min <= val) & (val <= self._max)
-      #############################################################
-      ## @brief   Updates the piezo speed only if the new
-      #           value is within range. Ensures it's an int
-      #############################################################
-      def update(self,aux_val):#(ref:src-tr-update)
-          val = int(aux_val)
-          if self.validate(val):
-              self.number = int(val)
+  class traces(numerical_parameter):
+        #############################################################
+        ## @brief   Initilaization code
+        #############################################################
+        def __init__(self):
+            _dflt = int(5000)  #(ref:src-tr-dflt)
+            _min = int(1)      #(ref:src-tr-min)
+            _max = int(20000)  #(ref:src-tr-max)
+            _name = "Number of Traces"
+            super(traces, self).__init__(_name,_dflt, _min, _max)
+        #############################################################
+        ## @brief   Determines if a new int value is in permited range
+        #           for the number of traces. Ensures it's an int
+        #############################################################
+        def validate(self, val):#(ref:src-tr-validation)
+              valid_range = super(traces,self).validate(val)
+              return float(val).is_integer() & valid_range
 #+END_SRC
 ******* number traces test                                         :noexport:
 #+BEGIN_SRC python :tangle no
   import modules.ui_config as c
   tr = c.traces()
-  t1 = tr.number == 5000
+  t1 = tr.value == 5000
   t2 = tr.validate(40000) == False
-  tr.update(0.2)
-  t3 = tr.number == 5000
+  tr.update(5.2)
+  t3 = tr.value == 5000
   tr.update(200)
-  t4 = tr.number == 200
+  t4 = tr.value == 200
   t5 = tr.validate(-100) == False
   tr.update(120000)
-  t6 = tr.number == 200
+  t6 = tr.value == 200
   tr.update(8000)
-  t7 = tr.number == 8000
+  t7 = tr.value == 8000
   tr.reset()
-  t8 = tr.number == 5000
+  t8 = tr.value == 5000
   return [t1,t2,t3,t4,t5,t6,t7,t8]
 #+END_SRC
 
@@ -778,25 +816,43 @@ Leaving the initializacion of each group of parameters to functions specific for
 #+END_SRC
 
 
-
-
 #+BEGIN_SRC python
-  def ui_basic_param_layout(ui_config):
+  class validate_num_param(QtGui.QValidator):
+          def __init__(self, param):
+              QtGui.QValidator.__init__(self)
+              self.param = param
+
+          def validate(self, text, pos):
+                  try:
+                          num = float(text)
+                  except ValueError:
+                          return (QtGui.QValidator.Invalid, pos)
+
+                  if self.param.validate(num):
+                          self.param.update(num)
+                          return (QtGui.QValidator.Acceptable, pos)
+                  return (QtGui.QValidator.Invalid, pos)
+
+  def ui_basic_param_layout(window):
       jv_label = QtGui.QLabel("Juncture Voltage")
       ps_label = QtGui.QLabel("Piezo Speed")
-      dir_label = QtGui.QLabel(ui_config.ui_config.config._b_params.data_dir.path)
-      traces_label = QtGui.QLabel("Number Traces")
+      dir_label = QtGui.QLabel(window.ui_config.config._b_params.data_dir.path)
+      tr_label = QtGui.QLabel("Number Traces")
 
       jv_ed = QtGui.QLineEdit()
+      jv_validator = validate_num_param(window.ui_config.config._b_params.juncture)
+      jv_ed.setValidator(jv_validator)
       ps_ed = QtGui.QLineEdit()
-      traces_ed = QtGui.QLineEdit()
+      tr_ed = QtGui.QLineEdit()
+      tr_validator = validate_num_param(window.ui_config.config._b_params.traces)
+      tr_ed.setValidator(tr_validator)
       dir_btn = QtGui.QPushButton('Change Directory')
 
-      jv_ed.setText(str(ui_config.ui_config.config._b_params.juncture.voltage))
-      ps_ed.setText(str(ui_config.ui_config.config._b_params.piezo_speed.speed))
-      traces_ed.setText(str(ui_config.ui_config.config._b_params.traces.number))
+      jv_ed.setText(str(window.ui_config.config._b_params.juncture.voltage))
+      ps_ed.setText(str(window.ui_config.config._b_params.piezo_speed.speed))
+      tr_ed.setText(str(window.ui_config.config._b_params.traces.number))
 
-      dir_btn.clicked.connect(lambda: showDialog(ui_config,dir_label))
+      dir_btn.clicked.connect(lambda: showDialog(window,dir_label))
 
       grid = QtGui.QGridLayout()
       grid.setSpacing(10)
@@ -807,26 +863,26 @@ Leaving the initializacion of each group of parameters to functions specific for
       grid.addWidget(ps_label,2,0)
       grid.addWidget(ps_ed,2,1)
 
-      grid.addWidget(traces_label,3,0)
-      grid.addWidget(traces_ed,3,1)
+      grid.addWidget(tr_label,3,0)
+      grid.addWidget(tr_ed,3,1)
 
       grid.addWidget(dir_label,4,0)
       grid.addWidget(dir_btn,4,1)
 
       return grid
 
-  def showDialog(ui_config,dir_label):
-      fname = QtGui.QFileDialog.getExistingDirectory(ui_config, 'Open file',
-              ui_config.ui_config.config._b_params.data_dir.path)
-      ui_config.ui_config.config._b_params.data_dir.update(fname)
-      dir_label.setText(ui_config.ui_config.config._b_params.data_dir.path)
-      print(ui_config.ui_config.config._b_params.data_dir.path)
+  def showDialog(window,dir_label):
+      fname = QtGui.QFileDialog.getExistingDirectory(window, 'Open file',
+              window.ui_config.config._b_params.data_dir.path)
+      window.ui_config.config._b_params.data_dir.update(fname)
+      dir_label.setText(window.ui_config.config._b_params.data_dir.path)
+      print(window.ui_config.config._b_params.data_dir.path)
 
-  def ui_adv_param_layout(ui_config):
-      return ui_basic_param_layout(ui_config)
+  def ui_adv_param_layout(window):
+      return ui_basic_param_layout(window)
 
-  def ui_presentation_param_layout(ui_config):
-      return ui_basic_param_layout(ui_config)
+  def ui_presentation_param_layout(window):
+      return ui_basic_param_layout(window)
 
 #+END_SRC
 
