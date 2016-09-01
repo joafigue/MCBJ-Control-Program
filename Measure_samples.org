@@ -308,6 +308,7 @@ The juncture voltage defined in [[src-config-juncture-voltage-class]], as previo
 - Reset functionality :: As a function defined in line [[(src-jv-reset)]]  provides a mechanism to restore the default value
 - Validation function :: The function defined in line [[(src-jv-validation)]] returns a boolean determining if the new value is within the range of accepted voltages
 - Update function :: Defined in line  [[(src-jv-update)]] updates the juncture voltage to a new value defined by the user, only if the value is within the accepted range, but if not it leaves the value unchanged
+- Getter function :: Defined in line [[(src-jv-get)]] extracts the value of the parameter. This is used as a generic interface available for every parameter
 
 #+CAPTION: Juncture voltage class definition
 #+name: src-config-juncture-voltage-class
@@ -347,7 +348,10 @@ The juncture voltage defined in [[src-config-juncture-voltage-class]], as previo
       def update(self,val):#(ref:src-jv-update)
           if self.validate(val):
               self.voltage = val
-      def get_value(self):
+      #############################################################
+      ## @brief   Get the parameter value (voltage)
+      #############################################################
+      def get_value(self):#(ref:src-jv-get)
           return self.voltage
 #+END_SRC
 
@@ -381,6 +385,7 @@ The piezo speed breaking defined in [[src-config-piezo-speed-class]] is the para
 - Reset functionality :: As a function defined in line [[(src-ps-reset)]]  provides a mechanism to restore the piezo speed to its default value. Care to mention is that there are 2 parameters associated with the piezo speed, but the speed is the one that is modified.
 - Validation function :: The function defined in line [[(src-ps-validation)]] returns a boolean determining if the new value is within the range of accepted voltages
 - Update function :: Defined in line  [[(src-ps-update)]] updates the juncture voltage to a new value defined by the user, only if the value is within the accepted range, but if not it leaves the value unchanged
+- Getter function :: Defined in line [[(src-ps-get)]] extracts the value of the parameter. This is used as a generic interface available for every parameter
 
 #+CAPTION: Piezo speed breaking class definition
 #+name: src-config-piezo-speed-class
@@ -423,6 +428,11 @@ The piezo speed breaking defined in [[src-config-piezo-speed-class]] is the para
       def update(self,val): #(ref:src-ps-update)
           if self.validate(val):
               self.speed = val
+      #############################################################
+      ## @brief   Get the parameter value (speed)
+      #############################################################
+      def get_value(self):#(ref:src-ps-get)
+          return self.speed
 #+END_SRC
 ******* Piezo speed test                                           :noexport:
 Test functionality. Just excecuted by using =C-c C-c=. Should all be true
@@ -458,6 +468,8 @@ The number of traces defined in [[src-config-traces-class]] is the parameter tha
 - Reset functionality :: As a function defined in line [[(src-tr-reset)]]  provides a mechanism to restore the piezo speed to its default value. Care to mention is that there are 2 parameters associated with the piezo speed, but the speed is the one that is modified.
 - Validation function :: The function defined in line [[(src-tr-validation)]] returns a boolean determining if the new value treated as an integer is within the range of accepted voltages
 - Update function :: Defined in line  [[(src-tr-update)]] updates the juncture voltage to a new value defined by the user, only if the value is within the accepted range, but if not it leaves the value unchanged
+- Getter function :: Defined in line [[(src-tr-get)]] extracts the value of the parameter. This is used as a generic interface available for every parameter
+
 
 #+CAPTION: Number of traces class definition
 #+NAME: src-config-traces-class
@@ -502,6 +514,11 @@ The number of traces defined in [[src-config-traces-class]] is the parameter tha
           val = int(aux_val)
           if self.validate(val):
               self.number = int(val)
+      #############################################################
+      ## @brief   Get the parameter value (traces)
+      #############################################################
+      def get_value(self):#(ref:src-tr-get)
+          return self.number
 #+END_SRC
 ******* number traces test                                         :noexport:
 #+BEGIN_SRC python :tangle no
@@ -827,13 +844,7 @@ Leaving the initializacion of each group of parameters to functions specific for
                   if self.param.validate(num):
                           self.param.update(num)
                           return (QtGui.QValidator.Acceptable, pos)
-                  else:
-                          return (QtGui.QValidator.Invalid, pos)
-
                   return (QtGui.QValidator.Invalid, pos)
-
-          def fixup(self, s):
-              pass
 
   def ui_basic_param_layout(window):
       jv_label = QtGui.QLabel("Juncture Voltage")
