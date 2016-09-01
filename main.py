@@ -85,6 +85,7 @@ def main():
         ui_config = ui_get_gui_config()
         ui_cmd    = ui_config.cmd
         config    = ui_config.config
+        config._b_params.print_all()
         execute_ui_cmd(ui_cmd,config)
 
 if __name__ == "__main__":

@@ -1,2 +1,2 @@
-def measure_sample() :
-    print("picked measure sample")
+def measure_sample():
+    print("Picked measure sample")

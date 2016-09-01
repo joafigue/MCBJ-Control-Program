@@ -12,10 +12,7 @@
 from PyQt4 import QtGui
 from PyQt4 import QtCore
 import sys
-JUNCTURE_VOLTAGE_DFLT = 0.1  #[V]
-PIEZO_SPEED_BREAKING_DFLT = 0       #[V/S]
-DATA_DIRECTORY_DFLT = "./Data"
-NUMBER_TRACES_DFLT = 5000  # Measurement Cycles
+
 piezo_start_V = 0.0         # V
 high_G = 30.0              # G0
 inter_G = 20.0              # G0
@@ -74,7 +71,7 @@ class UI_CMD:
     MEASURE = 2
 # UI\ command:1 ends here
 
-# [[file:../Measure_samples.org::*UI%20Configuration][UI\ Configuration:1]]
+# [[file:../Measure_samples.org::*UI%20Configuration%20Parameters][UI\ Configuration\ Parameters:1]]
 ############################################################
 ## @class   UI_CONFIG
 #  @details This class stores all configuration values to be
@@ -82,34 +79,190 @@ class UI_CMD:
 ############################################################
 class UI_CONFIG_PARAMS:
     def __init__(self):
-        self._basic_params = basic_params()
-        self._adv_params = adv_params()
-        self._presentation = presentation()
-# UI\ Configuration:1 ends here
+        self._b_params = basic_params()
+        self._a_params = adv_params()
+        self._p_params = presentation()
+# UI\ Configuration\ Parameters:1 ends here
 
-# [[file:../Measure_samples.org::*UI%20Configuration][UI\ Configuration:2]]
+# [[file:../Measure_samples.org::*UI%20Configuration%20Parameters][UI\ Configuration\ Parameters:2]]
 def ui_get_gui_config():
     retval = run_gui()
     return retval
-# UI\ Configuration:2 ends here
+# UI\ Configuration\ Parameters:2 ends here
 
-# [[file:../Measure_samples.org::ui-basic-params-defaults][ui-basic-params-defaults]]
-JUNCTURE_VOLTAGE_DFLT = 0.1  #[V]
-PIEZO_SPEED_BREAKING_DFLT = 0       #[V/S]
-DATA_DIRECTORY_DFLT = "./Data"
-NUMBER_TRACES_DFLT = 5000  # Measurement Cycles
-# ui-basic-params-defaults ends here
-
-# [[file:../Measure_samples.org::*UI%20-%20Basic%20parameters][UI\ -\ Basic\ parameters:2]]
+# [[file:../Measure_samples.org::*UI%20-%20Basic%20parameters][UI\ -\ Basic\ parameters:1]]
 class basic_params:
       def __init__(self):
-            self.restore_defaults()
+            self.juncture = juncture_voltage()
+            self.piezo_speed = piezo_speed()
+            self.traces = traces()
+            self.data_dir = data_dir()
       def restore_defaults(self):
-            self.juncture_voltage = JUNCTURE_VOLTAGE_DFLT
-            self.piezo_speed_breaking = PIEZO_SPEED_BREAKING_DFLT
-            self.data_directory = DATA_DIRECTORY_DFLT
-            self.number_traces = NUMBER_TRACES_DFLT
-# UI\ -\ Basic\ parameters:2 ends here
+            self.juncture.reset()
+            self.piezo_speed.reset()
+            self.traces.reset()
+            self.data_dir.reset()
+      def print_all(self):
+            print("juncture_voltage = %f" % self.juncture.voltage)
+            print("piezo_speed = %f" % self.piezo_speed.speed)
+            print("traces = %d" % self.traces.number)
+            print("Directory = %s" % self.data_dir.path)
+# UI\ -\ Basic\ parameters:1 ends here
+
+# [[file:../Measure_samples.org::src-config-num-param-class][src-config-num-param-class]]
+#############################################################
+## @class   Numerical Parameter
+#  @brief   All functionality related to the numerical
+#           parameters
+#
+#  @details This class defines the basic behavior common to
+#           all numerical parameters, including common
+#           interfaces and values.
+#############################################################
+class numerical_parameter(object):
+    #############################################################
+    ## @brief   Initilaization code
+    #############################################################
+    def __init__(self,name,dflt_val,min_val,max_val):#
+        self._dflt = dflt_val
+        self._min = min_val
+        self._max = max_val
+        self.name = name
+        self.reset()
+    #############################################################
+    ## @brief   restores the default value of the parameter
+    #############################################################
+    def reset(self): #
+        self.value = self._dflt
+    #############################################################
+    ## @brief   Determines if a new value is in the permited
+    #           range
+    #############################################################
+    def validate(self, val):#
+        return (self._min <= val) & (val <= self._max)
+    #############################################################
+    ## @brief   Updates the juncture voltage only if the new
+    #           value is within range
+    #############################################################
+    def update(self,new_val):#
+        if self.validate(new_val):
+            self.value = new_val
+    #############################################################
+    ## @brief   Prints the parameter name and its value
+    #############################################################
+    def print_param(self):#
+        print("%s = %f" % self.name % self.value)
+# src-config-num-param-class ends here
+
+# [[file:../Measure_samples.org::src-config-juncture-voltage-class][src-config-juncture-voltage-class]]
+#############################################################
+## @class   juncture_voltage
+#  @brief   All functionality related to the juncture voltage
+#
+#  @details This class defines the behavior of the jucture
+#           voltage. Provides the default values and range
+#           plus the corresponding interface.
+#############################################################
+class juncture_voltage(numerical_parameter):
+    #############################################################
+    ## @brief   Initilaization code
+    #############################################################
+    def __init__(self):
+        _dflt = 0.1 # 
+        _min = 0.0  #
+        _max = 0.3  #
+        _name = "Juncture Voltage"
+        super(juncture_voltage, self).__init__(_name,_dflt, _min, _max)
+# src-config-juncture-voltage-class ends here
+
+# [[file:../Measure_samples.org::src-config-piezo-speed-class][src-config-piezo-speed-class]]
+#############################################################
+## @class   piezo_speed
+#  @brief   All functionality related to the
+#           piezo_speed_breaking
+#
+#  @details This class defines the behavior of the piezo
+#           speed voltage relations which is defined in [V/s]
+#           Provides the default values and range plus the
+#           corresponding interfaces.
+#############################################################
+class piezo_speed(numerical_parameter):
+    #############################################################
+    ## @brief   Initilaization code
+    #############################################################
+    def __init__(self):
+        _dflt = 300.0 #
+        _min = 30.0   #
+        _max = 300.0  #
+        _name = "Piezo Speed"
+        super(piezo_speed, self).__init__(_name,_dflt, _min, _max)
+        self.fixed_speed = _dflt
+# src-config-piezo-speed-class ends here
+
+# [[file:../Measure_samples.org::src-config-traces-class][src-config-traces-class]]
+#############################################################
+## @class   traces
+#  @brief   All functionality related to the number of traces
+#
+#  @details This class defines the parameter that controls
+#           the number of traces (runs) performed using the
+#           piezo. Each trace correspond to a full cycle
+#           from closed juncture to open and back.
+#           Provides the default values and range plus the
+#           corresponding interfaces.
+#           IMPORTANT:  all parameters must be integers
+#############################################################
+class traces(numerical_parameter):
+      #############################################################
+      ## @brief   Initilaization code
+      #############################################################
+      def __init__(self):
+          _dflt = int(5000)  #
+          _min = int(1)      #
+          _max = int(20000)  #
+          _name = "Number of Traces"
+          super(traces, self).__init__(_name,_dflt, _min, _max)
+      #############################################################
+      ## @brief   Determines if a new int value is in permited range
+      #           for the number of traces. Ensures it's an int
+      #############################################################
+      def validate(self, val):#
+            valid_range = super(traces,self).validate(val)
+            return float(val).is_integer() & valid_range
+# src-config-traces-class ends here
+
+# [[file:../Measure_samples.org::*Data%20directory][Data\ directory:1]]
+#############################################################
+## @class   traces
+#  @brief   All functionality related to the data directory
+#
+#  @details This class defines the parameter that controls
+#           where the results will be stored. PENDING- TODO
+#############################################################
+class data_dir:
+    _dflt = "./" #
+    _subdir_fmt= "data"
+    #############################################################
+    ## @brief   Initilaization code
+    #############################################################
+    def __init__(self):
+        self.reset()
+    ##############################################################
+    ## @brief   restores the default value of the number of traces
+    ##############################################################
+    def reset(self): #
+        self.path = self._dflt
+    ## @brief   there is no need to validate?
+    def validate(self, aux_val):#
+        return True
+    #############################################################
+    ## @brief   Updates the piezo speed only if the new
+    #           value is within range. Ensures it's an int
+    #############################################################
+    def update(self,new_path):#
+        if self.validate(new_path):
+            self.path = new_path
+# Data\ directory:1 ends here
 
 # [[file:../Measure_samples.org::ui-config-bp-interface][ui-config-bp-interface]]
 
@@ -170,7 +323,7 @@ def run_gui():
     return config_window.ui_config
 # UI\ -\ GUI:1 ends here
 
-# [[file:../Measure_samples.org::*Configuration%20Window][Configuration\ Window:1]]
+# [[file:../Measure_samples.org::gui-config-window][gui-config-window]]
 ############################################################
 ## @class   ui_config_window
 #  @brief   Provides The UI window for the program
@@ -219,7 +372,7 @@ class ui_config_window(QtGui.QWidget):
     def close_with_cmd(self, cmd): #
         self.ui_config.update_cmd(cmd)
         QtCore.QCoreApplication.instance().quit()
-# Configuration\ Window:1 ends here
+# gui-config-window ends here
 
 # [[file:../Measure_samples.org::*Buttons%20Layout][Buttons\ Layout:1]]
 ############################################################
@@ -299,22 +452,42 @@ def ui_create_config_layout(ui_config_window):
 # config-param-layout ends here
 
 # [[file:../Measure_samples.org::*Configuration%20Parameters%20Layout][Configuration\ Parameters\ Layout:2]]
-def ui_basic_param_layout(ui_config):
+class validate_num_param(QtGui.QValidator):
+        def __init__(self, param):
+            QtGui.QValidator.__init__(self)
+            self.param = param
+
+        def validate(self, text, pos):
+                try:
+                        num = float(text)
+                except ValueError:
+                        return (QtGui.QValidator.Invalid, pos)
+
+                if self.param.validate(num):
+                        self.param.update(num)
+                        return (QtGui.QValidator.Acceptable, pos)
+                return (QtGui.QValidator.Invalid, pos)
+
+def ui_basic_param_layout(window):
     jv_label = QtGui.QLabel("Juncture Voltage")
-    psb_label = QtGui.QLabel("Piezo Speed")
-    data_dir_label = QtGui.QLabel(str(ui_config.ui_config.config._basic_params.data_directory))
-    traces_label = QtGui.QLabel("Number Traces")
+    ps_label = QtGui.QLabel("Piezo Speed")
+    dir_label = QtGui.QLabel(window.ui_config.config._b_params.data_dir.path)
+    tr_label = QtGui.QLabel("Number Traces")
 
     jv_ed = QtGui.QLineEdit()
-    psb_ed = QtGui.QLineEdit()
-    traces_ed = QtGui.QLineEdit()
+    jv_validator = validate_num_param(window.ui_config.config._b_params.juncture)
+    jv_ed.setValidator(jv_validator)
+    ps_ed = QtGui.QLineEdit()
+    tr_ed = QtGui.QLineEdit()
+    tr_validator = validate_num_param(window.ui_config.config._b_params.traces)
+    tr_ed.setValidator(tr_validator)
     dir_btn = QtGui.QPushButton('Change Directory')
 
-    jv_ed.setText(str(ui_config.ui_config.config._basic_params.juncture_voltage))
-    psb_ed.setText(str(ui_config.ui_config.config._basic_params.piezo_speed_breaking))
-    traces_ed.setText(str(ui_config.ui_config.config._basic_params.number_traces))
+    jv_ed.setText(str(window.ui_config.config._b_params.juncture.voltage))
+    ps_ed.setText(str(window.ui_config.config._b_params.piezo_speed.speed))
+    tr_ed.setText(str(window.ui_config.config._b_params.traces.number))
 
-    dir_btn.clicked.connect(lambda: showDialog(ui_config))
+    dir_btn.clicked.connect(lambda: showDialog(window,dir_label))
 
     grid = QtGui.QGridLayout()
     grid.setSpacing(10)
@@ -322,25 +495,27 @@ def ui_basic_param_layout(ui_config):
     grid.addWidget(jv_label,1,0)
     grid.addWidget(jv_ed,1,1)
 
-    grid.addWidget(psb_label,2,0)
-    grid.addWidget(psb_ed,2,1)
+    grid.addWidget(ps_label,2,0)
+    grid.addWidget(ps_ed,2,1)
 
-    grid.addWidget(traces_label,3,0)
-    grid.addWidget(traces_ed,3,1)
+    grid.addWidget(tr_label,3,0)
+    grid.addWidget(tr_ed,3,1)
 
-    grid.addWidget(data_dir_label,4,0)
+    grid.addWidget(dir_label,4,0)
     grid.addWidget(dir_btn,4,1)
 
     return grid
 
-def showDialog(ui_config):
-    fname = QtGui.QFileDialog.getExistingDirectory(ui_config, 'Open file',
-            '/home')
-    print(fname)
+def showDialog(window,dir_label):
+    fname = QtGui.QFileDialog.getExistingDirectory(window, 'Open file',
+            window.ui_config.config._b_params.data_dir.path)
+    window.ui_config.config._b_params.data_dir.update(fname)
+    dir_label.setText(window.ui_config.config._b_params.data_dir.path)
+    print(window.ui_config.config._b_params.data_dir.path)
 
-def ui_adv_param_layout(ui_config):
-    return ui_basic_param_layout(ui_config)
+def ui_adv_param_layout(window):
+    return ui_basic_param_layout(window)
 
-def ui_presentation_param_layout(ui_config):
-    return ui_basic_param_layout(ui_config)
+def ui_presentation_param_layout(window):
+    return ui_basic_param_layout(window)
 # Configuration\ Parameters\ Layout:2 ends here
