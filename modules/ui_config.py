@@ -1,4 +1,4 @@
-# [[file:../Measure_samples.org::*User%20Interface][User\ Interface:1]]
+# [[file:../Measure_samples.org::*UI%20-%20Program%20Interface][UI\ -\ Program\ Interface:1]]
 #################################################################
 ## @file    ui_config.py
 #  @author  Joaquin Figueroa
@@ -31,9 +31,9 @@ Gmax = 10   # G0
 todoJUNCTURE_VOLTAGE_DFLT = 0  #[V]
 todoPIEZO_SPEED_DFLT = 0       #[V/S]
 todoDATA_DIRECTORY_DFTL = "./Data"
-# User\ Interface:1 ends here
+# UI\ -\ Program\ Interface:1 ends here
 
-# [[file:../Measure_samples.org::*UI%20-%20Program%20Interface][UI\ -\ Program\ Interface:1]]
+# [[file:../Measure_samples.org::*UI%20-%20Program%20Interface][UI\ -\ Program\ Interface:2]]
 ############################################################
 ## @class   UI_CONFIG
 #  @details This class has the return type of the UI class
@@ -57,7 +57,7 @@ class UI_CONFIG:
     ############################################################
     def update_config(self, new_config):
         self.config = new_config
-# UI\ -\ Program\ Interface:1 ends here
+# UI\ -\ Program\ Interface:2 ends here
 
 # [[file:../Measure_samples.org::*UI%20command][UI\ command:1]]
 ############################################################
@@ -103,9 +103,9 @@ class basic_params:
             self.traces.reset()
             self.data_dir.reset()
       def print_all(self):
-            print("juncture_voltage = %f" % self.juncture.voltage)
-            print("piezo_speed = %f" % self.piezo_speed.speed)
-            print("traces = %d" % self.traces.number)
+            self.juncture.print_param()
+            self.piezo_speed.print_param()
+            self.traces.print_param()
             print("Directory = %s" % self.data_dir.path)
 # UI\ -\ Basic\ parameters:1 ends here
 
@@ -151,7 +151,7 @@ class numerical_parameter(object):
     ## @brief   Prints the parameter name and its value
     #############################################################
     def print_param(self):#
-        print("%s = %f" % self.name % self.value)
+        print("%s = %f" % (self.name, self.value))
 # src-config-num-param-class ends here
 
 # [[file:../Measure_samples.org::src-config-juncture-voltage-class][src-config-juncture-voltage-class]]
@@ -229,6 +229,11 @@ class traces(numerical_parameter):
       def validate(self, val):#
             valid_range = super(traces,self).validate(val)
             return float(val).is_integer() & valid_range
+      #############################################################
+      ## @brief   Prints the parameter
+      #############################################################
+      def print_param(self):
+            print("%s = %d" % (self.name, self.value))
 # src-config-traces-class ends here
 
 # [[file:../Measure_samples.org::*Data%20directory][Data\ directory:1]]

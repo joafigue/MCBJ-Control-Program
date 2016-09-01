@@ -289,9 +289,9 @@ The basic parameters are:
               self.traces.reset()
               self.data_dir.reset()
         def print_all(self):
-              print("juncture_voltage = %f" % self.juncture.voltage)
-              print("piezo_speed = %f" % self.piezo_speed.speed)
-              print("traces = %d" % self.traces.number)
+              self.juncture.print_param()
+              self.piezo_speed.print_param()
+              self.traces.print_param()
               print("Directory = %s" % self.data_dir.path)
 #+END_SRC
 
@@ -355,8 +355,7 @@ The numerical parameters are defined in [[src-config-num-param-class]], which pr
       ## @brief   Prints the parameter name and its value
       #############################################################
       def print_param(self):#(ref:src-np-print)
-          print("%s = %f" % self.name % self.value)
-
+          print("%s = %f" % (self.name, self.value))
 #+END_SRC
 
 ****** Numerical Parameter Test                                    :noexport:
@@ -528,6 +527,11 @@ The number of traces defined in [[src-config-traces-class]] is the parameter tha
         def validate(self, val):#(ref:src-tr-validation)
               valid_range = super(traces,self).validate(val)
               return float(val).is_integer() & valid_range
+        #############################################################
+        ## @brief   Prints the parameter
+        #############################################################
+        def print_param(self):
+              print("%s = %d" % (self.name, self.value))
 #+END_SRC
 ******* number traces test                                         :noexport:
 #+BEGIN_SRC python :tangle no
@@ -848,9 +852,9 @@ Leaving the initializacion of each group of parameters to functions specific for
       tr_ed.setValidator(tr_validator)
       dir_btn = QtGui.QPushButton('Change Directory')
 
-      jv_ed.setText(str(window.ui_config.config._b_params.juncture.voltage))
-      ps_ed.setText(str(window.ui_config.config._b_params.piezo_speed.speed))
-      tr_ed.setText(str(window.ui_config.config._b_params.traces.number))
+      jv_ed.setText(str(window.ui_config.config._b_params.juncture.value))
+      ps_ed.setText(str(window.ui_config.config._b_params.piezo_speed.value))
+      tr_ed.setText(str(window.ui_config.config._b_params.traces.value))
 
       dir_btn.clicked.connect(lambda: showDialog(window,dir_label))
 
