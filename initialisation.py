@@ -49,20 +49,38 @@ start_V = start_V * V_per_V
 set_V = set_V * V_per_V
 end_V = end_V * V_per_V
 
+# Define the target conductance as a binary number (must be converted back).
 tmp = array(log10(log_conversion[-32769:-1]))
 set_I = set_G * set_V * G0
 set_G_bin = abs(tmp - log10(set_I)).argmin() + 32768
 
 total_points =  int(scanrate / points_av * Gt_time)             # get Gt total number of points
 
+# The measurement process is the process 2, this is a basic program loaded in the ADwin in order to take the measurments for the faulhaber breaking process,
 ADwin_set_processdelay(2,int(process_delay))     # set process delay
+
+# It seems that this is not used for any meaningful measurement.
 ADwin_set_data_float(10,log_conversion) # set log conversion table
-ADwin_set_Par(7,int(start_V_bin))                # set start voltage
-ADwin_set_Par(8,int(set_V_bin))                  # set set voltage
-ADwin_set_Par(9,int(end_V_bin))                  # set set voltage
-ADwin_set_Par(10,int(total_points))              # set total run time
-ADwin_set_Par(55,int(points_av))                 # set points to average
+
+# The Adwin performs several measurements continuously. This means that the adwin performs a task each cycle of (25ns), The task are classified to a full measurement process (process 2)
+
+# First the juncture voltage is driven to the measurement value.
+# We start with the juncture voltage at 0, then the ADwin increases the voltage to the desired value, and start the measurment process. After all the measurements have been made, the Juncture voltage is set back to 0.
+ADwin_set_Par(7,int(start_V_bin))                # set start Juncture voltage
+ADwin_set_Par(8,int(set_V_bin))                  # set juncture voltage
+ADwin_set_Par(9,int(end_V_bin))                  # set end juncture voltage
+
+
+# When the voltage reaches the measurement value, the adwin waits some cycles to ensure that the system is in equilibrium before measuring.
 ADwin_set_Par(56,int(loops_waiting))             # set settling time
+
+# After the equilibrium is reached, the ADWIN measures the juncture current, but it measures during several cycles (par55, points_AV), to take an average. Each average is a data point.
+ADwin_set_Par(55,int(points_av))                 # set points to average
+
+# The adwin will continue measurint until a specific number of data points is reached.
+ADwin_set_Par(10,int(total_points))              # set total run time
+
+# The Adwin uses a status value stored in par59.
 ADwin_set_Par(59,1)                              # 1 =  process is running; 2 = process is finished
 
 ## RUN PROCESS ##
@@ -93,8 +111,9 @@ stopped = True
 text = 'stopped'
 Run = True
 
+# The run process will move the motor position while the adwin take measurements.
 while Run:
-    ## get data ##
+    ## get data  from the adwin##
     sleep(0.01)
     t = ADwin_get_Par(11) / scanrate * points_av
     Current1 = ADwin_get_FPar(14)
@@ -103,13 +122,16 @@ while Run:
     if log != 1:
         Current1 = convert_bin_to_V(bin1, input_range, resolution) / lin_gain
 
+    # Store the conductance and the "measured time" in 2 arrays
     Gt_1.append(Current1 / set_V / G0)
     Time.append(t)
+    # Query the motor position.
     if motor:
         axispos = int(Faulhaber_command('pos'))
     else:
         axispos = 0
         text = 'Off'
+    # Plot The data so far, then print a status message
     line.set_data(Time, Gt_1)
     ax.set_xlim([Time[0], Time[-1]*1.2])
     pause(0.001)
@@ -119,6 +141,7 @@ while Run:
     print("%3.2fs    %1.2e  %d  %s"%(t, Current1 / set_V / G0, axispos, text))
 
     ## stop if stop_on_target is on
+    # JF: The 3 following if should stop the motor, or keep it bouncing back and forth, but they don't seem to work.
     if (abs((bin1 - set_G_bin) / float(set_G_bin) ) <= tolerance/100) & move_motor:
         text =  'In range'
         Faulhaber_command('v 0')

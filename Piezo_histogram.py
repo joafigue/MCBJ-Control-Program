@@ -69,9 +69,9 @@ post_breaking_points = int(post_breaking_voltage / piezo_speed_breaking2 * (scan
 ADwin_set_processdelay(4,int(process_delay))     # set process delay
 ADwin_set_data_float(10,log_conversion)          # set log conversion table
 
-ADwin_set_Par(1,int(piezo_start_V_bin))                # set start voltage
-ADwin_set_Par(7,int(start_V_bin))                # set start voltage
-ADwin_set_Par(8,int(set_V_bin))                  # set set voltage
+ADwin_set_Par(1,int(piezo_start_V_bin))                # set piezo start voltage
+ADwin_set_Par(7,int(start_V_bin))                # set juncture start voltage
+ADwin_set_Par(8,int(set_V_bin))                  # set juncture iddle voltage
 
 ADwin_set_FPar(20,high_I)                  # set high I
 ADwin_set_FPar(21,inter_I)                  # set intermediate I
@@ -107,6 +107,20 @@ ax2.set_position([0.39, 0.1, 0.25, 0.8])
 ax3.set_position([0.72, 0.1, 0.25, 0.8])
 fig.set_facecolor('white')
 matplotlib.rc('font', **font)
+##################################################################################
+# ADWIN histogram storer.
+# I studied the basic program that creates the histogram for the piezo measurement
+# It performs 5 processes, which are executed step by step due to the nature of the adwin program
+#   1- Sets the Juncture voltage each cycle until the juncture voltage has the proper value, then it leaves it as is.
+#   2,3,4 - Are almost the same. The idea is that each breaking measurement step,
+#      - the piezo voltage is increased
+#      - for a number of cycles, the process waits until the system has stabilized.
+#      - Once stabilized it measures a number of data points and averages them
+#      - After reachin a transition point it changes the measurement type
+#   5- Is a making measurement, is basically the same as above but backwards.
+#      After this process finishes, there are no more measurements.
+##################################################################################
+## Found potential bug. In each cycle, the variables piezocounter and average counter are increased in tandem, which means that a measurement may be performed while the system is stabilizing. This is valid for 2,3,4,5.
 
 #switch_backend('wxagg')
 
