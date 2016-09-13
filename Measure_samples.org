@@ -926,7 +926,6 @@ Leaving the initializacion of each group of parameters to functions specific for
 
 #+END_SRC
 
-
 ** TODO Measurement with Piezo
    :PROPERTIES:
    :tangle:   modules/piezo_measure.py
@@ -937,6 +936,25 @@ Leaving the initializacion of each group of parameters to functions specific for
       print("Picked measure sample")
 
 #+END_SRC
+
+* ADwin Measurements
+The Adwin instrument is capable of controlling the piezo actuator and to take measurements by using its several hardware interfaces. Thus is the ADwin which actually performs the measurements by using different *process* or sub-routines, written in basic, and then handing the data back to the main program. These sub-routines must be compiled and then loaded into the instrument, so any program that process the data, is reduced to query the results of the measurements.
+
+For the measurements required in the break-junction experiment the following process have been identified:
+- Juncture Voltage Measurement :: This process is used to measure the voltage  and current on the juncture, periodically for a given time
+      see [[file:basic_orig/Gt_MUX12.bas]]
+- Juncture Voltage Histogram :: This process uses some of the same sub-routines to measure the voltage and current on the juncture, but perform the same measurement several times as it also actuates on the piezoelectric actuator to perform the breaking and joining of the juncture.
+     # see [[file:basic_orig/piezo_histogram.bas]]
+
+
+
+
+
+
+
+
+
+ 
 * Utility functions
 This section is for the interface with each measurement instrument.
 
@@ -961,4 +979,44 @@ This section is for the interface with each measurement instrument.
 : t
 
 
+
+** Basic-mode
+#+BEGIN_SRC emacs-lisp
+  (defvar basic-events
+    '("INIT"
+      "END"
+      "EVENT"))
+
+  (defvar basic-keywords
+    '("SELECTCASE"
+      "CASE"
+      "ENDSELECT"
+      "IF"
+      "THEN"
+      "ENDIF"
+      "DIM"
+      ))
+
+  (defvar basic-font-lock-defaults
+    `((
+       ;; stuff between "
+       ("\"\\.\\*\\?" . font-lock-string-face)
+       ;; ; : , ; { } =>  @ $ = are all special elements
+       (":\\|,\\|;\\|{\\|}\\|=>\\|@\\|$\\|=" . font-lock-constant-face)
+       ( ,(regexp-opt basic-keywords 'words) . font-lock-builtin-face)
+       ( ,(regexp-opt basic-events 'words) . font-lock-builtin-face)
+       )))
+
+  (define-derived-mode basic-mode prog-mode "Basic"
+    "Major mode for editing basic files."
+    ;"Got it from https://www.emacswiki.org/emacs/DerivedMode"
+    (setq-local comment-start "'")
+    (setq-local comment-start-skip "'+[\t]*")
+    (setq font-lock-defaults basic-font-lock-defaults)
+    )
+  (provide 'basic-mode)
+#+END_SRC
+
+#+RESULTS:
+: basic-mode
 
