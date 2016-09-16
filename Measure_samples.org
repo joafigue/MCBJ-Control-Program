@@ -193,6 +193,8 @@ Now there is an additional requirement for the UI, which is the interface by its
   from PyQt4 import QtCore
   from modules.ui_gui import run_gui
   import sys
+  import os
+  import inspect
   <<ui-basic-params-defaults>>
   <<ui-advanced-params-defaults>>
   <<ui-presentation-params-defaults>>
@@ -414,7 +416,7 @@ The basic parameters are:
               self.juncture = juncture_voltage()
               self.piezo_speed = piezo_speed()
               self.traces = traces()
-              self.data_dir = data_dir()
+              self.paths = paths()
         def restore_defaults(self):
               self.juncture.reset()
               self.piezo_speed.reset()
@@ -425,7 +427,7 @@ The basic parameters are:
               self.juncture.print_param()
               self.piezo_speed.print_param()
               self.traces.print_param()
-              print("Directory = %s" % self.data_dir.path)
+              self.paths.print_param()
 #+END_SRC
 
 ****** DONE Juncture Voltage
@@ -591,9 +593,8 @@ The number of traces defined in [[src-config-traces-class]] is the parameter tha
   #  @details This class defines the parameter that controls
   #           where the results will be stored. PENDING- TODO
   #############################################################
-  class data_dir:
-      _dflt = "./" #(ref:src-dd-dflt)
-      _subdir_fmt= "data"
+  class paths:
+      _subdir= "data"#(ref:src-dd-dflt)
       #############################################################
       ## @brief   Initilaization code
       #############################################################
@@ -603,17 +604,28 @@ The number of traces defined in [[src-config-traces-class]] is the parameter tha
       ## @brief   restores the default value of the number of traces
       ##############################################################
       def reset(self): #(ref:src-dd-reset)
-          self.path = self._dflt
+          fname = inspect.getframeinfo(inspect.currentframe()).filename
+          module_path = os.path.dirname(os.path.abspath(fname))
+          script_path = os.path.dirname(module_path)
+          data_path = os.path.join(script_path,self._subdir)
+          self.script_root = script_path
+          self.data_dir = data_path
       ## @brief   there is no need to validate?
-      def validate(self, aux_val):#(ref:src-dd-validation)
-          return True
+      def validate(self, new_path):#(ref:src-dd-validation)
+          return os.path.isdir(new_path)
       #############################################################
       ## @brief   Updates the piezo speed only if the new
       #           value is within range. Ensures it's an int
       #############################################################
       def update(self,new_path):#(ref:src-dd-update)
           if self.validate(new_path):
-              self.path = new_path
+              self.data_dir = new_path
+      #############################################################
+      ## @brief   Print the parameter.
+      #############################################################
+      def print_param(self):#(ref:src-np-print)
+          print("Script Root Directory = %s" % self.script_root)
+          print("Data Directory = %s" % self.data_dir)
 #+END_SRC
 
 
@@ -880,7 +892,7 @@ Since the configuration parameters are split in different groups so it is the la
       ps_label, ps_text = num_param_label_textbox(basic_params.piezo_speed)
       tr_label, tr_text = num_param_label_textbox(basic_params.traces)
       # Change directory dialog and fields
-      dir_label = QtGui.QLabel(basic_params.data_dir.path)
+      dir_label = QtGui.QLabel(basic_params.paths.data_dir)
       dir_btn = QtGui.QPushButton('Change Directory')
       dir_btn.clicked.connect(lambda: showDialog(window,dir_label))
       # Add fields to the layout
@@ -981,12 +993,13 @@ To provide the GUI for a parameter, a label and a text-box are needed, however f
 ****** Change directory dialog
 #+BEGIN_SRC python
   def showDialog(window,dir_label):
-      data_dir = window.ui_config.config._b_params.data_dir
+      paths = window.ui_config.config._b_params.paths
       fname = QtGui.QFileDialog.getExistingDirectory(window, 'Open file',
-              data_dir.path)
-      data_dir.update(fname)
-      dir_label.setText(data_dir.path)
-      print(data_dir.path)
+              paths.data_dir)
+      if(fname):
+          paths.update(fname)
+          dir_label.setText(paths.data_dir)
+          print(data_dir.path)
 #+END_SRC
 
 ** TODO Motor break junction 
@@ -1010,66 +1023,22 @@ To provide the GUI for a parameter, a label and a text-box are needed, however f
 
 #+END_SRC
 
-** TODO Instruments interface
-The program has to interact with the mechanical actuators and the measurement instruments to perform the breaking of the juncture and measure the conductance. The program has only 2 "real-world" interfaces.
-- Faulhaber Motor :: Is a motor, which controls the initial breaking of the juncture. The program then requires a simple interface to move the motor a given distance in order to open or close the juncture.
-- ADwin :: The ADwin is a multipurpose instrument which is not only capable to taking measurements, but also provides the control for the piezoelectric actuator, and the other parameters used in the experiment, thus the ADwin interface is by necessity more complex as it has to deal with far more phenomena.
+* ADwin Measurements
+The Adwin instrument is capable of controlling the piezo actuator and to take measurements by using its several hardware interfaces. Thus is the ADwin which actually performs the measurements by using different *process* or sub-routines, written in basic, and then handing the data back to the main program. These sub-routines must be compiled and then loaded into the instrument, so any program that process the data, is reduced to query the results of the measurements.
 
-*** Faulhaber Interface
-*** TODO Adwin Interface
-    :PROPERTIES:
-    :tangle:   modules/ADwin_interface.py
-    :noweb:    tangle
-    :comments: link
-    :END:
-According to the ADwin manual, the instrument provides with 3 data groups to transfer data between the instrument and the computer. Each data group is indexed and can be accessed by using the corresponding interface. 
-To properly work with the ADwin, 2 interfaces are needed. 
-- Hardware Interface :: Describes how to interact with the hardware by itself. Fortunately it has been mostly taken care of by the Python bindings
-- Program Interface :: Obviously is not a good idea to interact directly with the instrument, so a second layer is used to provide abstraction so the actual queries are meaningful in the context of the program.
+For the measurements required in the break-junction experiment the following process have been identified:
+- Juncture Voltage Measurement :: This process is used to measure the voltage  and current on the juncture, periodically for a given time
+      see [[file:basic_orig/Gt_MUX12.bas]]
+- Juncture Voltage Histogram :: This process uses some of the same sub-routines to measure the voltage and current on the juncture, but perform the same measurement several times as it also actuates on the piezoelectric actuator to perform the breaking and joining of the juncture.
+     # see [[file:basic_orig/piezo_histogram.bas]]
 
-There is also the need to define which ADwin variable corresponds to the interest variables for the program.
-**** ADwin Data indices
-The ADwin instrument holds several variables which can be interfaced with the program, and the program  uses the different indices and data groups for different purposes [fn:: which as far as I can, tell the correspondence is defined in the process files which are binary files so I can't confirm it], therefore the parameters are indexed with meaningful names according to their intended purpose.
-***** Adwin Juncture Voltage
-#+BEGIN_SRC python
-  class juncture_v_idx:
-#+END_SRC
 
- #+BEGIN_SRC python :tangle no
-   # Index of analyzed parameters. In progress .
-   class adwin_params:
-       p_start_v = 7    # Start_voltage
-       p_set_v   = 8    # Set Voltage
-       p_end_v   = 9    # End Voltage
-       p_length_v = 57  # Length of voltage array ?
-       p_average_v = 55 # Number of points to average
-       p_settling_time = 56 # Settling time
-       p_proces_status = 59 # Process status
-       p_bin_current = 70 # Current in binary ?
-       p_current_v = 8  # Current for voltage ?
-       p_runtime_total = 10 # Total runtime ->similar to 57 ?
-       p_time_get = 11 # Parameter to get current time ? -> array?
-       f_current  = 14 # Temporary current (seems not used)
-       f_bin_current = 12 # Current as a binary number ?
-       p_gate_voltage_start = 31 # Gate start voltage
-       p_gate_voltage = 32 # gate voltage
-       p_gate_voltage_end = 33 # gate voltage end
-       p_settling_gate = 34 # Settling time for gate voltage
-       p_runtime = 38 # Set runtime -> for gate ?
-       p_gate_status = 39 # Gate process status ?
-       p_voltage_current = 8 # Voltage current. Seems unused
-       f_current_high = 20 # High current parameter
-       f_current_intermediate = 21 # Intermediate current parameter
-       f_current_low = 20 # Low current parameter
-       p_break_wait_piezo =23 # Cycles to wait piezo 1
-       p_break_wait_piezo2 =24 # Cycles to wait piezo 2. unsue differece with 23
-       p_make_wait_piezo =25 # Cycles to wait piezo for making
-       p_wait_post = 26 # Cicles to wait after breaking ?
-       p_program = 60 # Adwin crash status ?
-       p_length_breaking = 2 # Number of data points in breaking
-       p_length_making = 3 # Number of data points in making
-       p_process_type = 4 # Determine which process type is running ?
- #+END_SRC
+
+
+
+
+
+
 
 * Utility functions
 This section is for the interface with each measurement instrument.
@@ -1095,4 +1064,44 @@ This section is for the interface with each measurement instrument.
 : t
 
 
+
+** Basic-mode
+#+BEGIN_SRC emacs-lisp
+  (defvar basic-events
+    '("INIT"
+      "END"
+      "EVENT"))
+
+  (defvar basic-keywords
+    '("SELECTCASE"
+      "CASE"
+      "ENDSELECT"
+      "IF"
+      "THEN"
+      "ENDIF"
+      "DIM"
+      ))
+
+  (defvar basic-font-lock-defaults
+    `((
+       ;; stuff between "
+       ("\"\\.\\*\\?" . font-lock-string-face)
+       ;; ; : , ; { } =>  @ $ = are all special elements
+       (":\\|,\\|;\\|{\\|}\\|=>\\|@\\|$\\|=" . font-lock-constant-face)
+       ( ,(regexp-opt basic-keywords 'words) . font-lock-builtin-face)
+       ( ,(regexp-opt basic-events 'words) . font-lock-builtin-face)
+       )))
+
+  (define-derived-mode basic-mode prog-mode "Basic"
+    "Major mode for editing basic files."
+    ;"Got it from https://www.emacswiki.org/emacs/DerivedMode"
+    (setq-local comment-start "'")
+    (setq-local comment-start-skip "'+[\t]*")
+    (setq font-lock-defaults basic-font-lock-defaults)
+    )
+  (provide 'basic-mode)
+#+END_SRC
+
+#+RESULTS:
+: basic-mode
 
