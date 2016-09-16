@@ -12,6 +12,8 @@
 from PyQt4 import QtGui
 from PyQt4 import QtCore
 import sys
+import os
+import inspect
 
 piezo_start_V = 0.0         # V
 high_G = 30.0              # G0
@@ -90,25 +92,6 @@ def ui_get_gui_config():
     return retval
 # UI\ Configuration\ Parameters:2 ends here
 
-# [[file:../Measure_samples.org::*UI%20-%20Basic%20parameters][UI\ -\ Basic\ parameters:1]]
-class basic_params:
-      def __init__(self):
-            self.juncture = juncture_voltage()
-            self.piezo_speed = piezo_speed()
-            self.traces = traces()
-            self.data_dir = data_dir()
-      def restore_defaults(self):
-            self.juncture.reset()
-            self.piezo_speed.reset()
-            self.traces.reset()
-            self.data_dir.reset()
-      def print_all(self):
-            self.juncture.print_param()
-            self.piezo_speed.print_param()
-            self.traces.print_param()
-            print("Directory = %s" % self.data_dir.path)
-# UI\ -\ Basic\ parameters:1 ends here
-
 # [[file:../Measure_samples.org::src-config-num-param-class][src-config-num-param-class]]
 #############################################################
 ## @class   Numerical Parameter
@@ -141,7 +124,7 @@ class numerical_parameter(object):
     def validate(self, val):#
         return (self._min <= val) & (val <= self._max)
     #############################################################
-    ## @brief   Updates the juncture voltage only if the new
+    ## @brief   Updates the stored value only if the new
     #           value is within range
     #############################################################
     def update(self,new_val):#
@@ -153,6 +136,55 @@ class numerical_parameter(object):
     def print_param(self):#
         print("%s = %f" % (self.name, self.value))
 # src-config-num-param-class ends here
+
+# [[file:../Measure_samples.org::src-config-int-param-class][src-config-int-param-class]]
+#############################################################
+## @class   Integer Parameter
+#  @brief   All functionality related to the numerical
+#           parameters that are to be treated as int
+#############################################################
+class integer_parameter(numerical_parameter):
+    #############################################################
+    ## @brief   Initilaization code
+    #############################################################
+    def __init__(self,name,dflt_val,min_val,max_val):
+        _dflt = int(dflt_val)
+        _min = int(min_val)
+        _max = int(max_val)
+        super(integer_parameter,self).__init__(name,_dflt,_min,_max)
+    #############################################################
+    ## @brief   Determines if a new int value is in the permited
+    #           range, and integer
+    #############################################################
+    def validate(self, val): # 
+        is_valid = super(integer_parameter,self).validate(val)
+        return  float(val).is_integer() & is_valid
+    #############################################################
+    ## @brief   Prints the parameter name and its value
+    #############################################################
+    def print_param(self): # 
+        print("%s = %d" % (self.name, self.value))
+# src-config-int-param-class ends here
+
+# [[file:../Measure_samples.org::*UI%20-%20Basic%20parameters][UI\ -\ Basic\ parameters:1]]
+class basic_params:
+      def __init__(self):
+            self.juncture = juncture_voltage()
+            self.piezo_speed = piezo_speed()
+            self.traces = traces()
+            self.paths = paths()
+      def restore_defaults(self):
+            self.juncture.reset()
+            self.piezo_speed.reset()
+            self.traces.reset()
+            self.data_dir.reset()
+      def print_all(self):
+            print("--- Basic Parameters ---")
+            self.juncture.print_param()
+            self.piezo_speed.print_param()
+            self.traces.print_param()
+            self.paths.print_param()
+# UI\ -\ Basic\ parameters:1 ends here
 
 # [[file:../Measure_samples.org::src-config-juncture-voltage-class][src-config-juncture-voltage-class]]
 #############################################################
@@ -208,11 +240,8 @@ class piezo_speed(numerical_parameter):
 #           the number of traces (runs) performed using the
 #           piezo. Each trace correspond to a full cycle
 #           from closed juncture to open and back.
-#           Provides the default values and range plus the
-#           corresponding interfaces.
-#           IMPORTANT:  all parameters must be integers
 #############################################################
-class traces(numerical_parameter):
+class traces(integer_parameter):
       #############################################################
       ## @brief   Initilaization code
       #############################################################
@@ -222,18 +251,6 @@ class traces(numerical_parameter):
           _max = int(20000)  #
           _name = "Number of Traces"
           super(traces, self).__init__(_name,_dflt, _min, _max)
-      #############################################################
-      ## @brief   Determines if a new int value is in permited range
-      #           for the number of traces. Ensures it's an int
-      #############################################################
-      def validate(self, val):#
-            valid_range = super(traces,self).validate(val)
-            return float(val).is_integer() & valid_range
-      #############################################################
-      ## @brief   Prints the parameter
-      #############################################################
-      def print_param(self):
-            print("%s = %d" % (self.name, self.value))
 # src-config-traces-class ends here
 
 # [[file:../Measure_samples.org::*Data%20directory][Data\ directory:1]]
@@ -244,9 +261,8 @@ class traces(numerical_parameter):
 #  @details This class defines the parameter that controls
 #           where the results will be stored. PENDING- TODO
 #############################################################
-class data_dir:
-    _dflt = "./" #
-    _subdir_fmt= "data"
+class paths:
+    _subdir= "data"#
     #############################################################
     ## @brief   Initilaization code
     #############################################################
@@ -256,17 +272,28 @@ class data_dir:
     ## @brief   restores the default value of the number of traces
     ##############################################################
     def reset(self): #
-        self.path = self._dflt
+        fname = inspect.getframeinfo(inspect.currentframe()).filename
+        module_path = os.path.dirname(os.path.abspath(fname))
+        script_path = os.path.dirname(module_path)
+        data_path = os.path.join(script_path,self._subdir)
+        self.script_root = script_path
+        self.data_dir = data_path
     ## @brief   there is no need to validate?
-    def validate(self, aux_val):#
-        return True
+    def validate(self, new_path):#
+        return os.path.isdir(new_path)
     #############################################################
     ## @brief   Updates the piezo speed only if the new
     #           value is within range. Ensures it's an int
     #############################################################
     def update(self,new_path):#
         if self.validate(new_path):
-            self.path = new_path
+            self.data_dir = new_path
+    #############################################################
+    ## @brief   Print the parameter.
+    #############################################################
+    def print_param(self):#
+        print("Script Root Directory = %s" % self.script_root)
+        print("Data Directory = %s" % self.data_dir)
 # Data\ directory:1 ends here
 
 # [[file:../Measure_samples.org::ui-config-bp-interface][ui-config-bp-interface]]
