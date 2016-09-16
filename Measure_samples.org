@@ -193,6 +193,8 @@ Now there is an additional requirement for the UI, which is the interface by its
   from PyQt4 import QtCore
   from modules.ui_gui import run_gui
   import sys
+  import os
+  import inspect
   <<ui-basic-params-defaults>>
   <<ui-advanced-params-defaults>>
   <<ui-presentation-params-defaults>>
@@ -286,17 +288,17 @@ The basic parameters are:
               self.juncture = juncture_voltage()
               self.piezo_speed = piezo_speed()
               self.traces = traces()
-              self.data_dir = data_dir()
+              self.paths = paths()
         def restore_defaults(self):
               self.juncture.reset()
               self.piezo_speed.reset()
               self.traces.reset()
-              self.data_dir.reset()
+              self.paths.reset()
         def print_all(self):
               self.juncture.print_param()
               self.piezo_speed.print_param()
               self.traces.print_param()
-              print("Directory = %s" % self.data_dir.path)
+              self.paths.print_param()
 #+END_SRC
 
 It's clear that most parameters are numerical, therefore it makes sense to define a class which encapsulates the common functionality for the numerical parameters. This class is defined in [[Numerical Parameters definition]]
@@ -569,9 +571,8 @@ The number of traces defined in [[src-config-traces-class]] is the parameter tha
   #  @details This class defines the parameter that controls
   #           where the results will be stored. PENDING- TODO
   #############################################################
-  class data_dir:
-      _dflt = "./" #(ref:src-dd-dflt)
-      _subdir_fmt= "data"
+  class paths:
+      _subdir= "data"#(ref:src-dd-dflt)
       #############################################################
       ## @brief   Initilaization code
       #############################################################
@@ -581,17 +582,28 @@ The number of traces defined in [[src-config-traces-class]] is the parameter tha
       ## @brief   restores the default value of the number of traces
       ##############################################################
       def reset(self): #(ref:src-dd-reset)
-          self.path = self._dflt
+          fname = inspect.getframeinfo(inspect.currentframe()).filename
+          module_path = os.path.dirname(os.path.abspath(fname))
+          script_path = os.path.dirname(module_path)
+          data_path = os.path.join(script_path,self._subdir)
+          self.script_root = script_path
+          self.data_dir = data_path
       ## @brief   there is no need to validate?
-      def validate(self, aux_val):#(ref:src-dd-validation)
-          return True
+      def validate(self, new_path):#(ref:src-dd-validation)
+          return os.path.is_dir(new_path)
       #############################################################
       ## @brief   Updates the piezo speed only if the new
       #           value is within range. Ensures it's an int
       #############################################################
       def update(self,new_path):#(ref:src-dd-update)
           if self.validate(new_path):
-              self.path = new_path
+              self.data_dir = new_path
+      #############################################################
+      ## @brief   Print the parameter.
+      #############################################################
+      def print_param(self):#(ref:src-np-print)
+          print("Script Root Directory = %s" % self.script_root)
+          print("Data Directory = %s" % self.data_dir)
 #+END_SRC
 
 
@@ -866,7 +878,7 @@ Leaving the initializacion of each group of parameters to functions specific for
   def ui_basic_param_layout(window):
       jv_label = QtGui.QLabel("Juncture Voltage")
       ps_label = QtGui.QLabel("Piezo Speed")
-      dir_label = QtGui.QLabel(window.ui_config.config._b_params.data_dir.path)
+      dir_label = QtGui.QLabel(window.ui_config.config._b_params.paths.data_dir)
       tr_label = QtGui.QLabel("Number Traces")
 
       jv_ed = QtGui.QLineEdit()
@@ -903,10 +915,11 @@ Leaving the initializacion of each group of parameters to functions specific for
 
   def showDialog(window,dir_label):
       fname = QtGui.QFileDialog.getExistingDirectory(window, 'Open file',
-              window.ui_config.config._b_params.data_dir.path)
-      window.ui_config.config._b_params.data_dir.update(fname)
-      dir_label.setText(window.ui_config.config._b_params.data_dir.path)
-      print(window.ui_config.config._b_params.data_dir.path)
+              window.ui_config.config._b_params.paths.data_dir)
+      if(fname):
+              window.ui_config.config._b_params.paths.update(fname)
+              dir_label.setText(window.ui_config.config._b_params.paths.data_dir)
+              print(window.ui_config.config._b_params.paths.data_dir)
 
   def ui_adv_param_layout(window):
       return ui_basic_param_layout(window)

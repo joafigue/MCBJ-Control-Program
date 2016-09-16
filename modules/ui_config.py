@@ -13,6 +13,8 @@ from PyQt4 import QtGui
 from PyQt4 import QtCore
 from modules.ui_gui import run_gui
 import sys
+import os
+import inspect
 
 piezo_start_V = 0.0         # V
 high_G = 30.0              # G0
@@ -97,17 +99,17 @@ class basic_params:
             self.juncture = juncture_voltage()
             self.piezo_speed = piezo_speed()
             self.traces = traces()
-            self.data_dir = data_dir()
+            self.paths = paths()
       def restore_defaults(self):
             self.juncture.reset()
             self.piezo_speed.reset()
             self.traces.reset()
-            self.data_dir.reset()
+            self.paths.reset()
       def print_all(self):
             self.juncture.print_param()
             self.piezo_speed.print_param()
             self.traces.print_param()
-            print("Directory = %s" % self.data_dir.path)
+            self.paths.print_param()
 # UI\ -\ Basic\ parameters:1 ends here
 
 # [[file:../Measure_samples.org::src-config-num-param-class][src-config-num-param-class]]
@@ -245,9 +247,8 @@ class traces(numerical_parameter):
 #  @details This class defines the parameter that controls
 #           where the results will be stored. PENDING- TODO
 #############################################################
-class data_dir:
-    _dflt = "./" #
-    _subdir_fmt= "data"
+class paths:
+    _subdir= "data"#
     #############################################################
     ## @brief   Initilaization code
     #############################################################
@@ -257,7 +258,12 @@ class data_dir:
     ## @brief   restores the default value of the number of traces
     ##############################################################
     def reset(self): #
-        self.path = self._dflt
+        fname = inspect.getframeinfo(inspect.currentframe()).filename
+        module_path = os.path.dirname(os.path.abspath(fname))
+        script_path = os.path.dirname(module_path)
+        data_path = os.path.join(script_path,self._subdir)
+        self.script_root = script_path
+        self.data_dir = data_path
     ## @brief   there is no need to validate?
     def validate(self, aux_val):#
         return True
@@ -267,7 +273,13 @@ class data_dir:
     #############################################################
     def update(self,new_path):#
         if self.validate(new_path):
-            self.path = new_path
+            self.data_dir = new_path
+    #############################################################
+    ## @brief   Print the parameter.
+    #############################################################
+    def print_param(self):#
+        print("Script Root Directory = %s" % self.script_root)
+        print("Data Directory = %s" % self.data_dir)
 # Data\ directory:1 ends here
 
 # [[file:../Measure_samples.org::ui-config-bp-interface][ui-config-bp-interface]]
