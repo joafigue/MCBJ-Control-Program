@@ -192,9 +192,9 @@ Now there is an additional requirement for the UI, which is the interface by its
   from PyQt4 import QtGui
   from PyQt4 import QtCore
   from modules.ui_gui import run_gui
-  import sys
+  import modules.utilities as utl
   import os
-  import inspect
+  import sys
   <<ui-basic-params-defaults>>
   <<ui-advanced-params-defaults>>
   <<ui-presentation-params-defaults>>
@@ -263,7 +263,6 @@ The UI configuration is a list of variables which are used through the measureme
       <<ui-config-ap-interface>>
       <<ui-config-pp-interface>>
 #+END_SRC
-
 
 Finally the interface with the rest of the program is defined through a single method
 
@@ -414,7 +413,7 @@ The basic parameters are:
               self.juncture = juncture_voltage()
               self.piezo_speed = piezo_speed()
               self.traces = traces()
-              self.paths = paths()
+              self.data_dir = data_dir()
         def restore_defaults(self):
               self.juncture.reset()
               self.piezo_speed.reset()
@@ -425,7 +424,7 @@ The basic parameters are:
               self.juncture.print_param()
               self.piezo_speed.print_param()
               self.traces.print_param()
-              self.paths.print_param()
+              self.data_dir.print_param()
 #+END_SRC
 
 ****** DONE Juncture Voltage
@@ -582,7 +581,7 @@ The number of traces defined in [[src-config-traces-class]] is the parameter tha
 #+RESULTS:
 | True | True | True | True | True | True | True | True |
 
-****** TODO Program Paths
+****** TODO Data directory
 The program provides the user with the ability to store the Data in a directory of his choice, which is stored as a string, however the default directory is chosen from  the location of program main file, so that path is analyzed and also stored for future reference in this parameter.
 
 
@@ -594,7 +593,7 @@ The program provides the user with the ability to store the Data in a directory 
   #  @details This class defines the parameter that controls
   #           where the results will be stored. PENDING- TODO
   #############################################################
-  class paths:
+  class data_dir:
       _subdir= "data"#(ref:src-dd-dflt)
       #############################################################
       ## @brief   Initilaization code
@@ -605,12 +604,9 @@ The program provides the user with the ability to store the Data in a directory 
       ## @brief   restores the default value of the number of traces
       ##############################################################
       def reset(self): #(ref:src-dd-reset)
-          fname = inspect.getframeinfo(inspect.currentframe()).filename
-          module_path = os.path.dirname(os.path.abspath(fname))
-          script_path = os.path.dirname(module_path)
-          data_path = os.path.join(script_path,self._subdir)
-          self.script_root = script_path
-          self.data_dir = data_path
+          script_root = utl.get_script_root_path()
+          data_path = os.path.join(script_root,self._subdir)
+          self.path = data_path
       ## @brief   there is no need to validate?
       def validate(self, new_path):#(ref:src-dd-validation)
           return os.path.isdir(new_path)
@@ -620,13 +616,12 @@ The program provides the user with the ability to store the Data in a directory 
       #############################################################
       def update(self,new_path):#(ref:src-dd-update)
           if self.validate(new_path):
-              self.data_dir = new_path
+              self.path = new_path
       #############################################################
       ## @brief   Print the parameter.
       #############################################################
       def print_param(self):#(ref:src-np-print)
-          print("Script Root Directory = %s" % self.script_root)
-          print("Data Directory = %s" % self.data_dir)
+          print("Data Directory = %s" % self.path)
 #+END_SRC
 
 
@@ -893,7 +888,7 @@ Since the configuration parameters are split in different groups so it is the la
       ps_label, ps_text = num_param_label_textbox(basic_params.piezo_speed)
       tr_label, tr_text = num_param_label_textbox(basic_params.traces)
       # Change directory dialog and fields
-      dir_label = QtGui.QLabel(basic_params.paths.data_dir)
+      dir_label = QtGui.QLabel(basic_params.data_dir.path)
       dir_btn = QtGui.QPushButton('Change Directory')
       dir_btn.clicked.connect(lambda: showDialog(window,dir_label))
       # Add fields to the layout
@@ -994,12 +989,12 @@ To provide the GUI for a parameter, a label and a text-box are needed, however f
 ****** Change directory dialog
 #+BEGIN_SRC python
   def showDialog(window,dir_label):
-      paths = window.ui_config.config._b_params.paths
+      data_dir = window.ui_config.config._b_params.data_dir
       fname = QtGui.QFileDialog.getExistingDirectory(window, 'Open file',
-              paths.data_dir)
+              data_dir.path)
       if(fname):
-          paths.update(fname)
-          dir_label.setText(paths.data_dir)
+          data_dir.update(fname)
+          dir_label.setText(data_dir.path)
           print(data_dir.path)
 #+END_SRC
 
