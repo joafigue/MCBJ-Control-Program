@@ -939,12 +939,12 @@ The overloading is performed by adding a parameter to the validator in the initi
                   try:
                           num = float(text)
                   except ValueError:
-                          return (QtGui.QValidator.Invalid, pos)
+                          return (QtGui.QValidator.Invalid, text, pos)
 
                   if self.param.validate(num):
                           self.param.update(num)
-                          return (QtGui.QValidator.Acceptable, pos)
-                  return (QtGui.QValidator.Invalid, pos)
+                          return (QtGui.QValidator.Acceptable, text,pos)
+                  return (QtGui.QValidator.Invalid, text, pos)
 #+END_SRC
 
 ****** TODO Parameter labels
@@ -973,7 +973,7 @@ To provide the GUI for a parameter, a label and a text-box are needed, however f
       if(fname):
           paths.update(fname)
           dir_label.setText(paths.data_dir)
-          print(data_dir.path)
+          print(paths.data_dir)
 #+END_SRC
 
 ** TODO Motor break junction 

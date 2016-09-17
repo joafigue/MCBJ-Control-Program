@@ -1,4 +1,4 @@
-# [[file:../Measure_samples.org::*UI%20-%20Program%20Interface][UI\ -\ Program\ Interface:1]]
+# [[file:../Measure_samples.org::*User%20Interface][User\ Interface:1]]
 #################################################################
 ## @file    ui_config.py
 #  @author  Joaquin Figueroa
@@ -33,9 +33,9 @@ Gmax = 10   # G0
 todoJUNCTURE_VOLTAGE_DFLT = 0  #[V]
 todoPIEZO_SPEED_DFLT = 0       #[V/S]
 todoDATA_DIRECTORY_DFTL = "./Data"
-# UI\ -\ Program\ Interface:1 ends here
+# User\ Interface:1 ends here
 
-# [[file:../Measure_samples.org::*UI%20-%20Program%20Interface][UI\ -\ Program\ Interface:2]]
+# [[file:../Measure_samples.org::*UI%20-%20Program%20Interface][UI\ -\ Program\ Interface:1]]
 ############################################################
 ## @class   UI_CONFIG
 #  @details This class has the return type of the UI class
@@ -59,7 +59,7 @@ class UI_CONFIG:
     ############################################################
     def update_config(self, new_config):
         self.config = new_config
-# UI\ -\ Program\ Interface:2 ends here
+# UI\ -\ Program\ Interface:1 ends here
 
 # [[file:../Measure_samples.org::*UI%20command][UI\ command:1]]
 ############################################################
@@ -483,71 +483,98 @@ def ui_create_config_layout(ui_config_window):
     return vbox
 # config-param-layout ends here
 
-# [[file:../Measure_samples.org::*Configuration%20Parameters%20Layout][Configuration\ Parameters\ Layout:2]]
-class validate_num_param(QtGui.QValidator):
-        def __init__(self, param):
-            QtGui.QValidator.__init__(self)
-            self.param = param
-
-        def validate(self, text, pos):
-                try:
-                        num = float(text)
-                except ValueError:
-                        return (QtGui.QValidator.Invalid, pos)
-
-                if self.param.validate(num):
-                        self.param.update(num)
-                        return (QtGui.QValidator.Acceptable, pos)
-                return (QtGui.QValidator.Invalid, pos)
-
+# [[file:../Measure_samples.org::*Basic%20parameters%20layout][Basic\ parameters\ layout:1]]
 def ui_basic_param_layout(window):
-    jv_label = QtGui.QLabel("Juncture Voltage")
-    ps_label = QtGui.QLabel("Piezo Speed")
-    dir_label = QtGui.QLabel(window.ui_config.config._b_params.data_dir.path)
-    tr_label = QtGui.QLabel("Number Traces")
-
-    jv_ed = QtGui.QLineEdit()
-    jv_validator = validate_num_param(window.ui_config.config._b_params.juncture)
-    jv_ed.setValidator(jv_validator)
-    ps_ed = QtGui.QLineEdit()
-    tr_ed = QtGui.QLineEdit()
-    tr_validator = validate_num_param(window.ui_config.config._b_params.traces)
-    tr_ed.setValidator(tr_validator)
+    basic_params = window.ui_config.config._b_params ## Fix this
+    # Num parameters fields
+    jv_label, jv_text = num_param_label_textbox(basic_params.juncture)
+    ps_label, ps_text = num_param_label_textbox(basic_params.piezo_speed)
+    tr_label, tr_text = num_param_label_textbox(basic_params.traces)
+    # Change directory dialog and fields
+    dir_label = QtGui.QLabel(basic_params.paths.data_dir)
     dir_btn = QtGui.QPushButton('Change Directory')
-
-    jv_ed.setText(str(window.ui_config.config._b_params.juncture.voltage))
-    ps_ed.setText(str(window.ui_config.config._b_params.piezo_speed.speed))
-    tr_ed.setText(str(window.ui_config.config._b_params.traces.number))
-
     dir_btn.clicked.connect(lambda: showDialog(window,dir_label))
-
+    # Add fields to the layout
     grid = QtGui.QGridLayout()
     grid.setSpacing(10)
 
     grid.addWidget(jv_label,1,0)
-    grid.addWidget(jv_ed,1,1)
+    grid.addWidget(jv_text,1,1)
 
     grid.addWidget(ps_label,2,0)
-    grid.addWidget(ps_ed,2,1)
+    grid.addWidget(ps_text,2,1)
 
     grid.addWidget(tr_label,3,0)
-    grid.addWidget(tr_ed,3,1)
+    grid.addWidget(tr_text,3,1)
 
     grid.addWidget(dir_label,4,0)
     grid.addWidget(dir_btn,4,1)
 
     return grid
+# Basic\ parameters\ layout:1 ends here
 
-def showDialog(window,dir_label):
-    fname = QtGui.QFileDialog.getExistingDirectory(window, 'Open file',
-            window.ui_config.config._b_params.data_dir.path)
-    window.ui_config.config._b_params.data_dir.update(fname)
-    dir_label.setText(window.ui_config.config._b_params.data_dir.path)
-    print(window.ui_config.config._b_params.data_dir.path)
-
+# [[file:../Measure_samples.org::*Presentation%20parameters%20layout][Presentation\ parameters\ layout:1]]
 def ui_adv_param_layout(window):
     return ui_basic_param_layout(window)
 
 def ui_presentation_param_layout(window):
     return ui_basic_param_layout(window)
-# Configuration\ Parameters\ Layout:2 ends here
+# Presentation\ parameters\ layout:1 ends here
+
+# [[file:../Measure_samples.org::src-qvalidator-num-param][src-qvalidator-num-param]]
+#############################################################
+## @class   QValidator_num_param
+#  @brief   Validator for numerical parameters
+#
+#  @details This class provides a specialization of the
+#           QValidator class for numerical parameters and
+#           allow only values that are valid for the
+#           parameter.
+#############################################################
+class QValidator_num_param(QtGui.QValidator):
+        #############################################################
+        ## @brief   Initialization function, with the parameter
+        #############################################################
+        def __init__(self, param): #
+            QtGui.QValidator.__init__(self)
+            self.param = param
+        #############################################################
+        ## @brief   Validate function using the parameter validation
+        #           Ensures data is a number.
+        #############################################################
+        def validate(self, text, pos):#
+                try:
+                        num = float(text)
+                except ValueError:
+                        return (QtGui.QValidator.Invalid, text, pos)
+
+                if self.param.validate(num):
+                        self.param.update(num)
+                        return (QtGui.QValidator.Acceptable, text,pos)
+                return (QtGui.QValidator.Invalid, text, pos)
+# src-qvalidator-num-param ends here
+
+# [[file:../Measure_samples.org::*Parameter%20labels][Parameter\ labels:1]]
+#############################################################
+## @brief   Creates a label and textbox for a numerical
+#           parameter.
+#############################################################
+def num_param_label_textbox(parameter):
+    label = QtGui.QLabel(parameter.name)
+    textbox = QtGui.QLineEdit()
+    param_validator = QValidator_num_param(parameter)
+    textbox.setValidator(param_validator)
+    textbox.setText(str(parameter.value))
+    return (label, textbox)
+# Parameter\ labels:1 ends here
+
+# [[file:../Measure_samples.org::*Change%20directory%20dialog][Change\ directory\ dialog:1]]
+def showDialog(window,dir_label):
+    paths = window.ui_config.config._b_params.paths
+    fname = QtGui.QFileDialog.getExistingDirectory(window, 'Open file',
+            paths.data_dir)
+    if(fname):
+        paths.update(fname)
+        dir_label.setText(paths.data_dir)
+        print(paths.data_dir)
+# Change\ directory\ dialog:1 ends here
