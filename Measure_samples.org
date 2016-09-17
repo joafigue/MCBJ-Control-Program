@@ -1024,9 +1024,44 @@ To provide the GUI for a parameter, a label and a text-box are needed, however f
 
 #+END_SRC
 
-** TODO Utilities
-
-
+** TODO General purpose Utilities
+   :PROPERTIES:
+   :tangle:   modules/utilities.py
+   :noweb:    tangle
+   :comments: link
+   :END:
+As with many programs, there are some general purpose functionalities that do not fit cleanly in other sections or files. This section is for these types of utilities.
+#+BEGIN_SRC python :exports none
+  #################################################################
+  ## @file    utilities.py
+  #  @author  Joaquin Figueroa
+  #  @brief   General purpose utilities
+  #
+  #  @details This file stores several general purpose utilities
+  #           that do not fit cleanly anywhere else. Obviously
+  #           grat care has been tanke to ensure that this file
+  #           is kept small
+  #################################################################
+  import os
+  import inspect
+#+END_SRC
+*** Path utilities.
+Although Python already provides with a good interface to interface with the filesystem, without going into the specifics, there is still a need to provide some specific functionality for the program considering the usage of several files in the filesystem relative to the script root, thus to provide with the appropriate interface, this archive provides:
+- Determine script root :: This program uses several files in paths relative to the script root, therefore is necessary to provide a functionality to determine the script root.
+#+BEGIN_SRC python
+  #############################################################
+  ## @brief   Returns the path to the main.py directory
+  #  @details Uses the inspect functionality to determine
+  #           the current filename, then determines the
+  #           absolute path. Since this file is at a fixed
+  #           path from the script_root, it's return
+  #############################################################
+  def get_script_root_path():
+      fname = inspect.getframeinfo(inspect.currentframe()).filename
+      module_path = os.path.dirname(os.path.abspath(fname))
+      script_root_path = os.path.dirname(module_path)
+      return script_root_path
+#+END_SRC 
 * ADwin Driver
 The Adwin instrument is capable of controlling the piezo actuator and to take measurements by using its several hardware interfaces. Thus is the ADwin which actually performs the measurements by using different *process* or sub-routines, written in basic, and then handing the data back to the main program. These sub-routines must be compiled and then loaded into the instrument, so any program that process the data, is reduced to query the results of the measurements.
 
