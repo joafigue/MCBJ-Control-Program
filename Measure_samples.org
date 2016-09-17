@@ -372,7 +372,6 @@ There is also a requirement to treat some numerical parameters as integers, ther
           print("%s = %d" % (self.name, self.value))
 #+END_SRC
 
-
 ****** Numerical Parameter Test                                    :noexport:
  Test the functionality of a generic numerical parameter. Just excecuted by using =C-c C-c=. Should all be true
  #+BEGIN_SRC python :tangle no
@@ -397,7 +396,6 @@ There is also a requirement to treat some numerical parameters as integers, ther
 
  #+RESULTS:
  | True | True | True | True | True | True | True | True | True |
-
 
 ***** TODO UI - Basic parameters
 The basic parameters used to configure the measurement are parameters that are the most likely to be modified by the used, and whose side effects are better understood. These parameters usually deal with the speed and number of data points. 
@@ -584,7 +582,10 @@ The number of traces defined in [[src-config-traces-class]] is the parameter tha
 #+RESULTS:
 | True | True | True | True | True | True | True | True |
 
-****** TODO Data directory
+****** TODO Program Paths
+The program provides the user with the ability to store the Data in a directory of his choice, which is stored as a string, however the default directory is chosen from  the location of program main file, so that path is analyzed and also stored for future reference in this parameter.
+
+
 #+BEGIN_SRC python -n -r
   #############################################################
   ## @class   traces
@@ -1023,7 +1024,10 @@ To provide the GUI for a parameter, a label and a text-box are needed, however f
 
 #+END_SRC
 
-* ADwin Measurements
+** TODO Utilities
+
+
+* ADwin Driver
 The Adwin instrument is capable of controlling the piezo actuator and to take measurements by using its several hardware interfaces. Thus is the ADwin which actually performs the measurements by using different *process* or sub-routines, written in basic, and then handing the data back to the main program. These sub-routines must be compiled and then loaded into the instrument, so any program that process the data, is reduced to query the results of the measurements.
 
 For the measurements required in the break-junction experiment the following process have been identified:
@@ -1032,8 +1036,8 @@ For the measurements required in the break-junction experiment the following pro
 - Juncture Voltage Histogram :: This process uses some of the same sub-routines to measure the voltage and current on the juncture, but perform the same measurement several times as it also actuates on the piezoelectric actuator to perform the breaking and joining of the juncture.
      # see [[file:basic_orig/piezo_histogram.bas]]
 
-
-
+* Faulhaber Driver
+The Faulhaber motor is used to perform the initial breaking of the juncture as it has a far larger dynamic range than possible with a single piezoelectric actuator.  
 
 
 
