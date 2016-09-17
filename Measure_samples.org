@@ -180,9 +180,9 @@ Finally the main loop is executed indefinitely until the user terminates the pro
   #################################################################
   from PyQt4 import QtGui
   from PyQt4 import QtCore
-  import sys
+  import modules.utilities as utl
   import os
-  import inspect
+  import sys
   <<ui-basic-params-defaults>>
   <<ui-advanced-params-defaults>>
   <<ui-presentation-params-defaults>>
@@ -259,7 +259,6 @@ The UI configuration is a list of variables which are used through the measureme
       <<ui-config-ap-interface>>
       <<ui-config-pp-interface>>
 #+END_SRC
-
 
 Finally the interface with the rest of the program is defined through a single method
 
@@ -368,7 +367,6 @@ There is also a requirement to treat some numerical parameters as integers, ther
           print("%s = %d" % (self.name, self.value))
 #+END_SRC
 
-
 ****** Numerical Parameter Test                                    :noexport:
  Test the functionality of a generic numerical parameter. Just excecuted by using =C-c C-c=. Should all be true
  #+BEGIN_SRC python :tangle no
@@ -394,7 +392,6 @@ There is also a requirement to treat some numerical parameters as integers, ther
  #+RESULTS:
  | True | True | True | True | True | True | True | True | True |
 
-
 ***** TODO UI - Basic parameters
 The basic parameters used to configure the measurement are parameters that are the most likely to be modified by the used, and whose side effects are better understood. These parameters usually deal with the speed and number of data points. 
 In a more traditional object oriented paradigm, each parameter is controlled by its own class, which defines their default values, range, validation functions and how each parameter is updated.
@@ -412,7 +409,7 @@ The basic parameters are:
               self.juncture = juncture_voltage()
               self.piezo_speed = piezo_speed()
               self.traces = traces()
-              self.paths = paths()
+              self.data_dir = data_dir()
         def restore_defaults(self):
               self.juncture.reset()
               self.piezo_speed.reset()
@@ -423,7 +420,7 @@ The basic parameters are:
               self.juncture.print_param()
               self.piezo_speed.print_param()
               self.traces.print_param()
-              self.paths.print_param()
+              self.data_dir.print_param()
 #+END_SRC
 
 ****** DONE Juncture Voltage
@@ -581,6 +578,9 @@ The number of traces defined in [[src-config-traces-class]] is the parameter tha
 | True | True | True | True | True | True | True | True |
 
 ****** TODO Data directory
+The program provides the user with the ability to store the Data in a directory of his choice, which is stored as a string, however the default directory is chosen from  the location of program main file, so that path is analyzed and also stored for future reference in this parameter.
+
+
 #+BEGIN_SRC python -n -r
   #############################################################
   ## @class   traces
@@ -589,7 +589,7 @@ The number of traces defined in [[src-config-traces-class]] is the parameter tha
   #  @details This class defines the parameter that controls
   #           where the results will be stored. PENDING- TODO
   #############################################################
-  class paths:
+  class data_dir:
       _subdir= "data"#(ref:src-dd-dflt)
       #############################################################
       ## @brief   Initilaization code
@@ -600,12 +600,9 @@ The number of traces defined in [[src-config-traces-class]] is the parameter tha
       ## @brief   restores the default value of the number of traces
       ##############################################################
       def reset(self): #(ref:src-dd-reset)
-          fname = inspect.getframeinfo(inspect.currentframe()).filename
-          module_path = os.path.dirname(os.path.abspath(fname))
-          script_path = os.path.dirname(module_path)
-          data_path = os.path.join(script_path,self._subdir)
-          self.script_root = script_path
-          self.data_dir = data_path
+          script_root = utl.get_script_root_path()
+          data_path = os.path.join(script_root,self._subdir)
+          self.path = data_path
       ## @brief   there is no need to validate?
       def validate(self, new_path):#(ref:src-dd-validation)
           return os.path.isdir(new_path)
@@ -615,13 +612,12 @@ The number of traces defined in [[src-config-traces-class]] is the parameter tha
       #############################################################
       def update(self,new_path):#(ref:src-dd-update)
           if self.validate(new_path):
-              self.data_dir = new_path
+              self.path = new_path
       #############################################################
       ## @brief   Print the parameter.
       #############################################################
       def print_param(self):#(ref:src-np-print)
-          print("Script Root Directory = %s" % self.script_root)
-          print("Data Directory = %s" % self.data_dir)
+          print("Data Directory = %s" % self.path)
 #+END_SRC
 
 
@@ -866,7 +862,7 @@ Since the configuration parameters are split in different groups so it is the la
       ps_label, ps_text = num_param_label_textbox(basic_params.piezo_speed)
       tr_label, tr_text = num_param_label_textbox(basic_params.traces)
       # Change directory dialog and fields
-      dir_label = QtGui.QLabel(basic_params.paths.data_dir)
+      dir_label = QtGui.QLabel(basic_params.data_dir.path)
       dir_btn = QtGui.QPushButton('Change Directory')
       dir_btn.clicked.connect(lambda: showDialog(window,dir_label))
       # Add fields to the layout
@@ -967,13 +963,13 @@ To provide the GUI for a parameter, a label and a text-box are needed, however f
 ****** Change directory dialog
 #+BEGIN_SRC python
   def showDialog(window,dir_label):
-      paths = window.ui_config.config._b_params.paths
+      data_dir = window.ui_config.config._b_params.data_dir
       fname = QtGui.QFileDialog.getExistingDirectory(window, 'Open file',
-              paths.data_dir)
+              data_dir.path)
       if(fname):
-          paths.update(fname)
-          dir_label.setText(paths.data_dir)
-          print(paths.data_dir)
+          data_dir.update(fname)
+          dir_label.setText(data_dir.path)
+          print(data_dir.path)
 #+END_SRC
 
 ** TODO Motor break junction 
@@ -997,7 +993,45 @@ To provide the GUI for a parameter, a label and a text-box are needed, however f
 
 #+END_SRC
 
-* ADwin Measurements
+** TODO General purpose Utilities
+   :PROPERTIES:
+   :tangle:   modules/utilities.py
+   :noweb:    tangle
+   :comments: link
+   :END:
+As with many programs, there are some general purpose functionalities that do not fit cleanly in other sections or files. This section is for these types of utilities.
+#+BEGIN_SRC python :exports none
+  #################################################################
+  ## @file    utilities.py
+  #  @author  Joaquin Figueroa
+  #  @brief   General purpose utilities
+  #
+  #  @details This file stores several general purpose utilities
+  #           that do not fit cleanly anywhere else. Obviously
+  #           grat care has been tanke to ensure that this file
+  #           is kept small
+  #################################################################
+  import os
+  import inspect
+#+END_SRC
+*** Path utilities.
+Although Python already provides with a good interface to interface with the filesystem, without going into the specifics, there is still a need to provide some specific functionality for the program considering the usage of several files in the filesystem relative to the script root, thus to provide with the appropriate interface, this archive provides:
+- Determine script root :: This program uses several files in paths relative to the script root, therefore is necessary to provide a functionality to determine the script root.
+#+BEGIN_SRC python
+  #############################################################
+  ## @brief   Returns the path to the main.py directory
+  #  @details Uses the inspect functionality to determine
+  #           the current filename, then determines the
+  #           absolute path. Since this file is at a fixed
+  #           path from the script_root, it's return
+  #############################################################
+  def get_script_root_path():
+      fname = inspect.getframeinfo(inspect.currentframe()).filename
+      module_path = os.path.dirname(os.path.abspath(fname))
+      script_root_path = os.path.dirname(module_path)
+      return script_root_path
+#+END_SRC 
+* ADwin Driver
 The Adwin instrument is capable of controlling the piezo actuator and to take measurements by using its several hardware interfaces. Thus is the ADwin which actually performs the measurements by using different *process* or sub-routines, written in basic, and then handing the data back to the main program. These sub-routines must be compiled and then loaded into the instrument, so any program that process the data, is reduced to query the results of the measurements.
 
 For the measurements required in the break-junction experiment the following process have been identified:
@@ -1006,8 +1040,8 @@ For the measurements required in the break-junction experiment the following pro
 - Juncture Voltage Histogram :: This process uses some of the same sub-routines to measure the voltage and current on the juncture, but perform the same measurement several times as it also actuates on the piezoelectric actuator to perform the breaking and joining of the juncture.
      # see [[file:basic_orig/piezo_histogram.bas]]
 
-
-
+* Faulhaber Driver
+The Faulhaber motor is used to perform the initial breaking of the juncture as it has a far larger dynamic range than possible with a single piezoelectric actuator.  
 
 
 
