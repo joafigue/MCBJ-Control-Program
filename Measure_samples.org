@@ -162,9 +162,20 @@ Finally the main loop is executed indefinitely until the user terminates the pro
 
 ** TODO User Interface
    :PROPERTIES:
-   :tangle:   modules/ui_config.py
    :noweb:    tangle
    :comments: link
+   :END:
+The user interface has 2 requirements.
+1. It should allow the user to run the experiment
+2. It should allow the user to tweak with the configuration for the experiment
+
+Now there is an additional requirement for the UI, which is the interface by itself, thus the UI module can be thought as the result of 2 pieces.
+- Program Interface :: The UI - program interface is how the UI interacts with the rest of the program. See [[UI - Program Interface]]
+- GUI :: The graphical User interface is how the program interacts with the user. See [[UI - GUI]]
+
+*** TODO UI - Program Interface
+   :PROPERTIES:
+   :tangle:   modules/ui_config.py
    :END:
 # As with any module there is a section for the imports and the file headers, but these are unninteresting for any reader, thus they are put in comments and not exported to a PDF/HTML result
 #+BEGIN_SRC python :exports none
@@ -180,6 +191,7 @@ Finally the main loop is executed indefinitely until the user terminates the pro
   #################################################################
   from PyQt4 import QtGui
   from PyQt4 import QtCore
+  import modules.ui_gui
   import modules.utilities as utl
   import os
   import sys
@@ -187,15 +199,7 @@ Finally the main loop is executed indefinitely until the user terminates the pro
   <<ui-advanced-params-defaults>>
   <<ui-presentation-params-defaults>>
 #+END_SRC
-The user interface has 2 requirements.
-1. It should allow the user to run the experiment
-2. It should allow the user to tweak with the configuration for the experiment
 
-Now there is an additional requirement for the UI, which is the interface by itself, thus the UI module can be thought as the result of 2 pieces.
-- Program Interface :: The UI - program interface is how the UI interacts with the rest of the program. See [[UI - Program Interface]]
-- GUI :: The graphical User interface is how the program interacts with the user. See [[UI - GUI]]
-
-*** TODO UI - Program Interface
 Therefore the output of the UI execution is a class of 2 values with one value being the command to be executed, and the other the configuration for the measurements, which has a default initialization, but also provides functions to replace the original values with new ones
  #+BEGIN_SRC python
    ############################################################
@@ -264,7 +268,7 @@ Finally the interface with the rest of the program is defined through a single m
 
 #+BEGIN_SRC python
   def ui_get_gui_config():
-      retval = run_gui()
+      retval = modules.ui_gui.run_gui()
       return retval
 #+END_SRC
 
@@ -677,6 +681,28 @@ todoDATA_DIRECTORY_DFTL = "./Data"
 #+END_SRC
 
 *** TODO UI - GUI
+   :PROPERTIES:
+   :tangle:   modules/ui_gui.py
+   :END:
+# As with any module there is a section for the imports and the file headers, but these are unninteresting for any reader, thus they are put in comments and not exported to a PDF/HTML result
+#+BEGIN_SRC python :exports none
+  #################################################################
+  ## @file    ui_gui.py
+  #  @author  Joaquin Figueroa
+  #  @date    Fri Aug 12 2016
+  #  @brief   Provides the GUI for configuring the experiment
+  #
+  #  @details This file provides a GUI for the user to be able to
+  #           configure the experiment and run it.
+  #################################################################
+  from PyQt4 import QtGui
+  from PyQt4 import QtCore
+  import modules.ui_config
+  import sys
+  <<ui-basic-params-defaults>>
+  <<ui-advanced-params-defaults>>
+  <<ui-presentation-params-defaults>>
+#+END_SRC
 
 The Graphical user interface consist of a window that allows the user to tweak with each of the parameters defined in [[UI - Program Interface]], plus buttons for deciding which action to take.
 
@@ -737,7 +763,7 @@ The widget provides a callback defined in line [[(ui-close-cb)]] to be used by t
       #           Also ensures the layout of the UI elements
       ############################################################
       def initUI(self):    #(ref:fn-initUI)
-          self.ui_config = UI_CONFIG() #(ref:ui-config)
+          self.ui_config = modules.ui_config.UI_CONFIG() #(ref:ui-config)
 
           buttons_layout = ui_create_buttons_layout(self) #(ref:ui-buttons)
           config_layout  = ui_create_config_layout(self)  #(ref:ui-config)
@@ -783,17 +809,17 @@ Finally the buttons created are added to the layout of the button section of the
       # Quit Button
       quit_button = QtGui.QPushButton("Quit")
       quit_button.clicked.connect(
-          lambda: widget.close_with_cmd(UI_CMD.EXIT)) (ref:lambda_btn)
+          lambda: widget.close_with_cmd(modules.ui_config.UI_CMD.EXIT)) (ref:lambda_btn)
       quit_button.setToolTip("Terminates the program")
       # Break Button
       break_button = QtGui.QPushButton("Only break")
       break_button.clicked.connect(
-          lambda: widget.close_with_cmd(UI_CMD.M_BREAK))
+          lambda: widget.close_with_cmd(modules.ui_config.UI_CMD.M_BREAK))
       break_button.setToolTip("Use the motor to create a break junction.")
       # Measure Button
       measure_button = QtGui.QPushButton("Full Measure")
       measure_button.clicked.connect(
-          lambda: widget.close_with_cmd(UI_CMD.MEASURE))
+          lambda: widget.close_with_cmd(modules.ui_config.UI_CMD.MEASURE))
       measure_button.setToolTip(
           "Performs measurement using the motor and piezo")
 
