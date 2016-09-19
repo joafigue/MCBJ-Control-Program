@@ -254,20 +254,22 @@ class traces(integer_parameter):
           super(traces, self).__init__(_name,_dflt, _min, _max)
 # src-config-traces-class ends here
 
-# [[file:../Measure_samples.org::*Data%20directory][Data\ directory:1]]
+# [[file:../Measure_samples.org::src-config-data-dir-class][src-config-data-dir-class]]
 #############################################################
 ## @class   traces
 #  @brief   All functionality related to the data directory
 #
 #  @details This class defines the parameter that controls
-#           where the results will be stored. PENDING- TODO
+#           where the results will be stored. Is a string
+#           that codifies the directory, depending on the
+#           os and inspect modules
 #############################################################
 class data_dir:
     _subdir= "data"#
     #############################################################
     ## @brief   Initilaization code
     #############################################################
-    def __init__(self):
+    def __init__(self):#
         self.reset()
     ##############################################################
     ## @brief   restores the default value of the number of traces
@@ -276,12 +278,14 @@ class data_dir:
         script_root = utl.get_script_root_path()
         data_path = os.path.join(script_root,self._subdir)
         self.path = data_path
-    ## @brief   there is no need to validate?
+    ##############################################################
+    ## @brief   Ensures the new target string is a directory
+    ##############################################################
     def validate(self, new_path):#
         return os.path.isdir(new_path)
     #############################################################
-    ## @brief   Updates the piezo speed only if the new
-    #           value is within range. Ensures it's an int
+    ## @brief   Updates the target directory only if its a
+    #           directory in the filesystem
     #############################################################
     def update(self,new_path):#
         if self.validate(new_path):
@@ -291,7 +295,7 @@ class data_dir:
     #############################################################
     def print_param(self):#
         print("Data Directory = %s" % self.path)
-# Data\ directory:1 ends here
+# src-config-data-dir-class ends here
 
 # [[file:../Measure_samples.org::ui-config-bp-interface][ui-config-bp-interface]]
 
