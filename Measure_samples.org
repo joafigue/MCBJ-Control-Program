@@ -591,6 +591,8 @@ The data directory parameter is defined in [[src-config-data-dir-class]], which 
 - Update functionality :: Defined at [[(src-dd-update)]], this function is used to change the data directory to a new chosen path in the computer.
 -  Printing function ::  Defined at [[(src-dd-print)]] and used mainly for debug purposes this function prints the chosen data directory to the console.
 
+#+CAPTION: Data directory parameter class
+#+NAME: src-config-data-dir-class
 #+BEGIN_SRC python -n -r
   #############################################################
   ## @class   traces
@@ -1059,7 +1061,7 @@ Although Python already provides with a good interface to interface with the fil
   #  @details Uses the inspect functionality to determine
   #           the current filename, then determines the
   #           absolute path. Since this file is at a fixed
-  #           path from the script_root, it's return
+  #           path from the script_root, it's returned
   #############################################################
   def get_script_root_path():
       fname = inspect.getframeinfo(inspect.currentframe()).filename
@@ -1074,15 +1076,198 @@ For the measurements required in the break-junction experiment the following pro
 - Juncture Voltage Measurement :: This process is used to measure the voltage  and current on the juncture, periodically for a given time
       see [[file:basic_orig/Gt_MUX12.bas]]
 - Juncture Voltage Histogram :: This process uses some of the same sub-routines to measure the voltage and current on the juncture, but perform the same measurement several times as it also actuates on the piezoelectric actuator to perform the breaking and joining of the juncture.
-     # see [[file:basic_orig/piezo_histogram.bas]]
+      see [[file:basic_orig/piezo_histogram.bas]]
 
 * Faulhaber Driver
-The Faulhaber motor is used to perform the initial breaking of the juncture as it has a far larger dynamic range than possible with a single piezoelectric actuator.  
+  :PROPERTIES:
+  :tangle:   modules/Faulhaber_driver.py
+  :noweb:    tangle
+  :comments: link
+  :END:
+The Faulhaber motor is used to perform the initial breaking of the juncture as it has a far larger dynamic range than possible with a single piezoelectric actuator. The driver class defines an interface for the rest of the program 
 
+As with many files, this file has a description header and the corresponding includes. In order to control the motor, the generic [[http://pyvisa.readthedocs.io/en/stable/index.html][Python Visa]] interface is used.
+#+BEGIN_SRC python
+  #################################################################
+  ## @file    Faulhaber_driver.py
+  #  @author  Joaquin Figueroa
+  #  @date    Sun Sep 18, 2016
+  #  @brief   Provides the interfaces for the Faulhaber motor
+  #
+  #  @details This file provides only the faulhaber interface,
+  #           which defines high and low level functionalities.
+  #           The user should use the high level functionality
+  #           if possible.
+  #           Also this file provides with some extra utilities
+  #           that are not necesary inside the same faulhaber
+  #           class.
+  #################################################################
+  import visa
+#+END_SRC
 
+The rest of the file is organized in 3 mayor sections:
+- Constants :: The motor has some constant that are related to physical parameters of it, or the ports used for communication. These are defined in [[Faulhaber Constants]]
+- Utilities :: There are some minor utilities that do not really belong inside the faulhaber class, these are defined in [[Faulhaber Utilities]]
+- Faulhaber Driver :: The faulhaber driver is the python class that provides the full interface to the motor. Its defined in [[Faulhaber Driver Class]]
 
+** Faulhaber Constants
+As previously mentioned, the Faulhaber VISA interface, and some of the physical parameter of the motor are stored as global constants.
+The constants are:
+- Port :: Defined in line [[(fh-const-port)]], describes the port used to communicate with the motor.
+- Baud rate :: Defined in line [[(fh-const-br)]]Is the communication rate in the channel used by the motor interface with the computer
+- Motor Pitch :: Defined in line [[(fh-const-pitch)]], describes the pitch angle of the differential screw of the motor, relating a distance to an angle of the motor. 
+- Motor gearbox :: Defined in line [[(fh-const-gear)]], describes the gearbox multiplier of the motor, indicating how many full revolutions of the motor correspond to a given target angle.
+- Motor Maximum position :: Described in line [[(fh-const-max)]] Describes the maximum position allowed for the motor as to avoid damaging the equipment.
+- Motor Minimum position ::  Described in line [[(fh-const-min)]] Describes the minimum position allowed for the motor to avoid damaging the equipment
+- Motor Max Speed :: Described in line [[(fh-const-max-speed)]] Describes the maximum speed in *[rpm]* for the motor
+- Motor Maximum acceleration  :: Described in line [[(fh-const-accel)]] Describes the maximum acceleration required for the motor  in *[rpm/s]*
 
+#+CAPTION: Description of the basic constants used by the faulhaber motor driver
+#+NAME: src-faulhaber-constants
+#+BEGIN_SRC python -n -r
+  #################################################################
+  ## @author  Joaquin Figueroa
+  #  @brief   Constants used for the faulhaber interface
+  #
+  #  @details These are the constants used by the faulhaber
+  #           interface.
+  #################################################################
+  class fh_const:
+      port = "COM3" #(ref:fh-const-port)
+      baud_rate = 9600 #(ref:fh-const-br)
+      pitch = 150 #(ref:fh-const-pitch)
+      gearbox = 246 #(ref:fh-const-gear)
+      max_pos =  5000000#(ref:fh-const-max)
+      min_pos = -7000000#(ref:fh-const-min)
+      max_speed = 800#in RPM(ref:fh-const-max-speed)
+      max_accel = 40#in RPM/s(ref:fh-const-accel)
+#+END_SRC
+** Faulhaber Driver Class
+The Faulhaber class defined in the code block [[faulhaber-class-def]], provides the interface for all operation related to the motor. The functionality is distributed in 3 groups.
+- Initialization function :: This function defined in line [[(fh-init-fn)]], ensures that the motor is prepared to excecute the instructions and defines the limits to it, in order to prevent damage to the motor. At the end of the initialization function the motor is disabled (turned off) to conserve power.
+- Faulhaber Basic functions :: A set of functions defined in the  [[Faulhaber Basic Functions]], whose purpose is to provide the basic set of instructions to the motor. It's important to remember that these functions are not expected to be executed by the program dirctly, but to provide with the building blocks to create the interfaces to the program.
+- Faulhaber Program Interface :: The set of functions defined in [[Faulhaber Program Interface]] provide with the instructions that make sense from the algorithm perspective and thus abstract the specific instructions of the motor from the high level program. These functions are the ones that should be called by a user program.
+#+CAPTION: Faulhaber driver class definition
+#+NAME: faulhaber-class-def
+#+BEGIN_SRC python
+  #################################################################
+  ## @author  Joaquin Figueroa
+  #  @brief   Faulhaber class interface
+  #
+  #  @details These are the constants used by the faulhaber
+  #           interface.
+  #################################################################
+  class Faulhaber_motor:
+      def __init__(self): #(ref:fh-init-fn)
+      ###  Beware the interface may not be completely correct
+          self.motor_ctrl = visa.SerialInstrument(fh_const.port)
+          self.motor_ctrl.baud_rate = fh_const.baud_rate
+      ###  Beware the interface may not be completely correct
+          self._enable_motor()
+          self._set_pos_range()
+          self._set_respect_user_limits()
+          self._set_max_speed()
+          self._set_max_acceleration()
+          self._disable_motor()
+      <<faulhaber-basic-fn-interface>>
+      <<faulhaber-real-interface>>
+#+END_SRC
+*** Faulhaber Basic Functions
+    :PROPERTIES:
+    :tangle:   no
+    :END:
+As previously stated this section defines the basic functions of the Faulhaber motor.
+- Enable Motor :: This function enables the motor to allow it to move.
+   #+NAME: faulhaber-basic-fn-interface
+   #+BEGIN_SRC python 
+     #################################################################
+     ## @brief   Enables the motor
+     #################################################################
+     def _enable_motor(self):
+         self.motor_ctrl.write("en")
+   #+END_SRC
+- Disable motor :: This function disables the motor, stopping its movement
+  #+NAME: faulhaber-basic-fn-interface
+  #+BEGIN_SRC python
+    #################################################################
+    ## @brief   Disables the motor
+    #################################################################
+    def _disable_motor(self):
+        self.motor_ctrl.write("di")
+  #+END_SRC
+- Respect user limits :: It seems that the motor may not respect the user defined limits by default, so this function forces the motor to do so
+     #+NAME: faulhaber-basic-fn-interface
+     #+BEGIN_SRC python
+       #################################################################
+       ## @brief   Ensures that the motor honor the user defined limits
+       #################################################################
+       def _set_respect_user_limits(self):
+           self.motor_ctrl.write("APL 1")
+     #+END_SRC
+- Set motor position range :: This function set the maximum and minimum position of the motor axis to prevent damage to the equipment. 
+   #+NAME: faulhaber-basic-fn-interface
+   #+BEGIN_SRC python
+     #################################################################
+     ## @brief   Set the maximum and minimum position for the motor axis
+     #################################################################
+     def _set_pos_range(self):
+         max_pos_str = "LL %d" % fh_const.max_pos
+         min_pos_str = "LL %d" % fh_const.min_pos
+         self.motor_ctrl.write(max_pos_str)
+         self.motor_ctrl.write(min_pos_str)
+    #+END_SRC
+- Set maximum speed :: This function defines the maximum speed for the motor.
+   #+NAME: faulhaber-basic-fn-interface
+     #+BEGIN_SRC python
+     #################################################################
+     ## @brief   Sets the maximum speed for the motor
+     #################################################################
+     def _set_max_speed(self):
+         max_speed_str = "SP %d" %fh_const.max_speed
+         self.motor_ctrl.write(max_speed_str)
+     #+END_SRC
+- Set maximum acceleration :: This function is used to set the maximum acceleration for the motor.
+   #+NAME: faulhaber-basic-fn-interface
+     #+BEGIN_SRC python
+     #################################################################
+     ## @brief   Sets the maximum acceleration for the motor
+     #################################################################
+     def _set_max_acceleration(self):
+         max_accel_str = "SP %d" %fh_const.max_accel
+         self.motor_ctrl.write(max_accel_str)
+     #+END_SRC
+- Set target speed :: This function is used to set a target speed for the continuous movement of the motor axis.
+   #+NAME: faulhaber-basic-fn-interface
+     #+BEGIN_SRC python
+     #################################################################
+     ## @brief   Sets the target speed of the motor
+     #################################################################
+     def _set_target_speed(self,speed):
+         target_speed_str = "v %d" %speed
+         self.motor_ctrl.write(target_speed_str)
+     #+END_SRC
+- Query axis position :: This function is used to determine the current axis position of the motor, which is used as a parameter to determine how much has the motor moved since the beginning of the execution.
+   #+NAME: faulhaber-basic-fn-interface
+     #+BEGIN_SRC python
+     #################################################################
+     ## @brief   Returns the current axis position
+     #################################################################
+     def _query_current_axis_position(self):
+         pos = self.motor_ctrl.query("pos")
+         try:
+             int(pos)
+         except:
+             self._set_target_speed(0)
+             sleep(0.1)
+             self._disable_motor()
+             print("Error, Returned position was not a valid int")
+             print(pos)
+             raise
+     #+END_SRC
 
+*** Faulhaber Program Interface
+
+** Faulhaber Utilities
 
 * Utility functions
 This section is for the interface with each measurement instrument.
