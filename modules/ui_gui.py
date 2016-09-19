@@ -10,7 +10,7 @@
 #################################################################
 from PyQt4 import QtGui
 from PyQt4 import QtCore
-import ui_config as conf
+import modules.ui_config
 import sys
 
 piezo_start_V = 0.0         # V
@@ -72,7 +72,7 @@ class ui_config_window(QtGui.QWidget):
     #           Also ensures the layout of the UI elements
     ############################################################
     def initUI(self):    #
-        self.ui_config = conf.UI_CONFIG() #
+        self.ui_config = modules.ui_config.UI_CONFIG() #
 
         buttons_layout = ui_create_buttons_layout(self) #
         config_layout  = ui_create_config_layout(self)  #
@@ -112,17 +112,17 @@ def ui_create_buttons_layout(widget):
     # Quit Button
     quit_button = QtGui.QPushButton("Quit")
     quit_button.clicked.connect(
-        lambda: widget.close_with_cmd(conf.UI_CMD.EXIT)) 
+        lambda: widget.close_with_cmd(modules.ui_config.UI_CMD.EXIT)) 
     quit_button.setToolTip("Terminates the program")
     # Break Button
     break_button = QtGui.QPushButton("Only break")
     break_button.clicked.connect(
-        lambda: widget.close_with_cmd(conf.UI_CMD.M_BREAK))
+        lambda: widget.close_with_cmd(modules.ui_config.UI_CMD.M_BREAK))
     break_button.setToolTip("Use the motor to create a break junction.")
     # Measure Button
     measure_button = QtGui.QPushButton("Full Measure")
     measure_button.clicked.connect(
-        lambda: widget.close_with_cmd(conf.UI_CMD.MEASURE))
+        lambda: widget.close_with_cmd(modules.ui_config.UI_CMD.MEASURE))
     measure_button.setToolTip(
         "Performs measurement using the motor and piezo")
 
@@ -235,12 +235,12 @@ class QValidator_num_param(QtGui.QValidator):
                 try:
                         num = float(text)
                 except ValueError:
-                        return (QtGui.QValidator.Invalid, pos)
+                        return (QtGui.QValidator.Invalid, text, pos)
 
                 if self.param.validate(num):
                         self.param.update(num)
-                        return (QtGui.QValidator.Acceptable, pos)
-                return (QtGui.QValidator.Invalid, pos)
+                        return (QtGui.QValidator.Acceptable, text,pos)
+                return (QtGui.QValidator.Invalid, text, pos)
 # src-qvalidator-num-param ends here
 
 # [[file:../Measure_samples.org::*Parameter%20labels][Parameter\ labels:1]]
