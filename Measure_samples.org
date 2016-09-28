@@ -1119,8 +1119,8 @@ The constants are:
 - Motor gearbox :: Defined in line [[(fh-const-gear)]], describes the gearbox multiplier of the motor, indicating how many full revolutions of the motor correspond to a given target angle.
 - Motor Maximum position :: Described in line [[(fh-const-max)]] Describes the maximum position allowed for the motor as to avoid damaging the equipment.
 - Motor Minimum position ::  Described in line [[(fh-const-min)]] Describes the minimum position allowed for the motor to avoid damaging the equipment
-- Motor Max Speed :: Described in line [[(fh-const-max-speed)]] Describes the maximum speed in *[rpm]* for the motor
-- Motor Maximum acceleration  :: Described in line [[(fh-const-accel)]] Describes the maximum acceleration required for the motor  in *[rpm/s]*
+- Motor Max Speed :: Described in line [[(fh-const-max-speed)]] Describes the maximum speed in \([rpm]\) for the motor
+- Motor Maximum acceleration  :: Described in line [[(fh-const-accel)]] Describes the maximum acceleration required for the motor  in \([\frac{rpm}{s}]\)
 
 #+CAPTION: Description of the basic constants used by the faulhaber motor driver
 #+NAME: src-faulhaber-constants
@@ -1142,6 +1142,58 @@ The constants are:
       max_speed = 800#in RPM(ref:fh-const-max-speed)
       max_accel = 40#in RPM/s(ref:fh-const-accel)
 #+END_SRC
+
+
+
+** Faulhaber Utilities
+The utilities are a set of functions that although related to the Faulhaber motor, are not really part of the interface to it. These function are used in the control interface to the motor.
+
+*** Conversion functions
+The interface to the Faulhaber motor is in \([rpm]\), however the magnitude has little meaning in the experiment, as the measured quantity is the displacement which is in \([\mu m]\), therefore conversion functions are used to move from one measurement to the other. Equation [[eq-conversion-rmp-ums]] shows the conversion formula using the motor *gearbox* and the *axis pitch*.
+
+#+name: eq-conversion-rpm-ums
+\begin{equation}
+V_{rpm} = 60 \cdot gearbox \cdot \left(\dfrac{V_{\mu m/s}}{pitch}\right) 
+\end{equation}
+
+#+BEGIN_SRC python
+  #################################################################
+  ## @brief   Converts motor speed from um/s to rpm
+  #################################################################
+  def faulhaber_convert_ums_to_rpm(ums):
+      rpm = 60 * gearbox * (ums / pitch)
+      return rpm
+
+  #################################################################
+  ## @brief   Converts motor speed from rpm to um/s
+  #################################################################
+  def faulhaber_convert_rpm_to_ums(rpm):
+      ums = (rpm * pitch)/( 60 * gearbox)
+      return ums
+#+END_SRC
+
+As an additional comment it can be pointed out that  \(1 [\mu m /s] \approx 100 [rpm]\), which means that at maximum acceleration (\(40 [rpm/s]\)) to reach the target speed it takes roughly \(2.5[s]\), which means that large displacements take very long times or that fine control is hard to achieve.
+
+*** Faulhaber State 
+The Faulhaber motor, can only operate at seconds rates, however the control loop runs in less time. In order to properly control the motor, it's necessary to add state variables to help with the control loop and avoid overcontroling the motor.
+#+BEGIN_SRC python
+  class faulhaber_state():
+      def __init__(self, start_pos, start_speed):
+          self.start_pos = start_pos
+          self.current_speed = start_speed
+          self.previous_pos = [start_pos,start_pos,start_pos]
+      def update_position(self, new_pos):
+          self.previous_pos.append(new_pos)
+          self.previous_pos.pop(0)
+      # Depends on numpy abs to work on array
+      def is_motor_stopped(self):
+          a = self.previous_pos
+          delta = sum(abs([a.(2) - a.(1),a.(1)-a.(0)]))
+          return delta==0
+      def update_current_speed(self, new_speed):
+          self.current_speed = new_speed
+#+END_SRC
+
 ** Faulhaber Driver Class
 The Faulhaber class defined in the code block [[faulhaber-class-def]], provides the interface for all operation related to the motor. The functionality is distributed in 3 groups.
 - Initialization function :: This function defined in line [[(fh-init-fn)]], ensures that the motor is prepared to excecute the instructions and defines the limits to it, in order to prevent damage to the motor. At the end of the initialization function the motor is disabled (turned off) to conserve power.
@@ -1169,6 +1221,7 @@ The Faulhaber class defined in the code block [[faulhaber-class-def]], provides 
           self._set_max_speed()
           self._set_max_acceleration()
           self._disable_motor()
+          self.state = self._init_state()
       <<faulhaber-basic-fn-interface>>
       <<faulhaber-real-interface>>
 #+END_SRC
@@ -1229,45 +1282,75 @@ As previously stated this section defines the basic functions of the Faulhaber m
 - Set maximum acceleration :: This function is used to set the maximum acceleration for the motor.
    #+NAME: faulhaber-basic-fn-interface
      #+BEGIN_SRC python
-     #################################################################
-     ## @brief   Sets the maximum acceleration for the motor
-     #################################################################
-     def _set_max_acceleration(self):
-         max_accel_str = "SP %d" %fh_const.max_accel
-         self.motor_ctrl.write(max_accel_str)
+       #################################################################
+       ## @brief   Sets the maximum acceleration for the motor
+       #################################################################
+       def _set_max_acceleration(self):
+           max_accel_str = "SP %d" %fh_const.max_accel
+           self.motor_ctrl.write(max_accel_str)
      #+END_SRC
 - Set target speed :: This function is used to set a target speed for the continuous movement of the motor axis.
-   #+NAME: faulhaber-basic-fn-interface
-     #+BEGIN_SRC python
-     #################################################################
-     ## @brief   Sets the target speed of the motor
-     #################################################################
-     def _set_target_speed(self,speed):
-         target_speed_str = "v %d" %speed
-         self.motor_ctrl.write(target_speed_str)
+ #+NAME: faulhaber-basic-fn-interface
+    #+BEGIN_SRC python
+      #################################################################
+      ## @brief   Sets the target speed of the motor
+      #################################################################
+      def _set_target_speed(self,speed):
+          target_speed_str = "v %d" %speed
+          self.state.update_speed(speed)
+          self.motor_ctrl.write(target_speed_str)
      #+END_SRC
-- Query axis position :: This function is used to determine the current axis position of the motor, which is used as a parameter to determine how much has the motor moved since the beginning of the execution.
+- Query axis position :: This function is used to determine the current axis position of the motor, which is used as a parameter to determine how much has the motor moved since the beginning of the execution. We define a motor the hardware query as =_query_current-axis_position=, and the real query to be used on the program as =_query_position=, which also updates the state
    #+NAME: faulhaber-basic-fn-interface
      #+BEGIN_SRC python
-     #################################################################
-     ## @brief   Returns the current axis position
-     #################################################################
-     def _query_current_axis_position(self):
-         pos = self.motor_ctrl.query("pos")
-         try:
-             int(pos)
-         except:
-             self._set_target_speed(0)
-             sleep(0.1)
-             self._disable_motor()
-             print("Error, Returned position was not a valid int")
-             print(pos)
-             raise
+       #################################################################
+       ## @brief   Returns the current axis position
+       #  @Note    Not to be used directly in other parts of the program
+       #################################################################
+       def _query_current_axis_position(self):
+           pos = self.motor_ctrl.query("pos")
+           try:
+               pos = int(pos)
+               return pos
+           except:
+               self._set_target_speed(0)
+               sleep(0.1)
+               self._disable_motor()
+               print("Error, Returned position was not a valid int")
+               print(pos)
+               raise
+
+       #################################################################
+       ## @brief   Returns the current axis position, updates the state
+       #################################################################
+       def _query_position(self):
+           pos = self._query_current_axis_position()
+           self.state.update_position(pos)
+           return pos
+     #+END_SRC
+- Initialize State :: This function sets the starting state of the faulhaber motor, by analyzing the starting position and setting the intial speed to 0.
+     #+NAME: faulhaber-basic-fn-interface
+     #+BEGIN_SRC python
+       #################################################################
+       ## @brief   Initializes the motor state
+       #################################################################
+       def _init_state(self):
+           start_pos = self._query_current_axis_position()
+           self.state = faulhaber_state(start_pos,0)
      #+END_SRC
 
 *** Faulhaber Program Interface
+    :PROPERTIES:
+    :tangle:   no
+    :END:
+The Faulhaber program interface is actually the control algorithm for the motor, this is, given a set of parameters, the control algorithm will set the new speed for the motor. 
 
-** Faulhaber Utilities
+*** Faulhaber Control Algorithm
+    :PROPERTIES:
+    :tangle:   no
+    :END:
+The most important
+
 
 * Utility functions
 This section is for the interface with each measurement instrument.
