@@ -1,4 +1,4 @@
-#+OPTIONS: ':nil *:t -:t ::t <:t H:5 \n:nil ^:t arch:headline author:t c:nil
+#+OPTIONS: ':nil *:t -:t ::t <:t H:8 \n:nil ^:nil arch:headline author:t c:nil
 #+OPTIONS: creator:nil d:(not "LOGBOOK") date:t e:t email:nil f:t inline:t
 #+OPTIONS: num:t p:nil pri:nil prop:nil stat:t tags:t tasks:t tex:t timestamp:t
 #+OPTIONS: title:t toc:t todo:nil |:t
@@ -1144,7 +1144,6 @@ The constants are:
 #+END_SRC
 
 
-
 ** Faulhaber Utilities
 The utilities are a set of functions that although related to the Faulhaber motor, are not really part of the interface to it. These function are used in the control interface to the motor.
 
@@ -1349,7 +1348,145 @@ The Faulhaber program interface is actually the control algorithm for the motor,
     :PROPERTIES:
     :tangle:   no
     :END:
-The most important
+In order to produce the most reliable measurements with the piezoelectric device, and with the least amount of noise for multiple measurements of the same samples, it's required to start the piezoelectric measurement *at the same data point* every time. Considering the characteristics of the experiment, there are only a few ways to ensure this.
+1. Always start the measurement at the same *Displacement* of the motor, and hence the sample.
+   To start the measurement at the same displacement is the ideal scenario, since the piezoelectric measurement could always produce an accurate *Conductance* over *Displacement* data, where the origin would allow for easy comparisons over different samples. Unfortunately it's not really possible to do this, since it would require very precise control of the motor, and handling of the sample. Also it would require uniform samples[fn:: In this context a sample is a gold device which may or may not have the molecule to study], and any variation of the sample thickness would require calibration, making this technique unfeasible
+2. Always start the measurement at the same *Conductance* of the sample.
+   This technique seems more feasible than the previous one as the experimental setup provides with a good mechanism to measure the conductance and the gold conductance is well studied so a target conductance can be set up in order to prepare the measurement. The disadvantage of this technique, is the need for an accurate control of the motor position and a more complex control loop in order to account for the possible oscillations and the slow response of the motor when compared to the computer speed.
+
+
+#+ATTR_LATEX: :width 0.75\textwidth
+#+CAPTION: High level view for the control algorithm of the Faulhaber motor
+#+NAME: fig:ctrl-algorithm-flow
+[[file:Doc/Dia/Motor_Control.png]]
+
+Considering the alternatives, it was decided that a conductance based algorithm is the best alternative, and the control algorithm for the motor can be seen in figure [[fig:ctrl-algorithm-flow]] in which
+- Break :: Corresponds to a parameter to the control algorithm to define if it should perform the breaking or release the sample
+- Motor Make :: Is a simple control algorithm that releases the sample
+- Motor Break :: Is a simple control algorithm that performs the breaking of the juncture
+- Break restore :: Is a control algorithm that ensures that the juncture was broken and then closes the breaking
+- Counter :: The counter is used to determine if there is need to perform the break-restore algorithm several times. Once the target number of runs is performed the control algorithm ends with the juncture restored up to a target *conductance*
+
+As a final note, each algorithm updates the data of the run, as defined in [[Section to be defined]], and returns it as shown in the corresponding code fragment [[src-fh-ctrl-main-loop]]
+
+# WARNING PROTOTYPE CODE. DO NOT RUN YET
+#+CAPTION: Faulhaber main control loop in python as described by figure [[fig:ctrl-algorithm-flow]]
+#+NAME: src-fh-ctrl-main-loop
+#+BEGIN_SRC python
+  #################################################################
+  ## @author  Joaquin Figueroa
+  #  @brief   Faulhaber Control Algorithm
+  #
+  #  @details The main control loop algorithm for the faulhaber
+  #           motor. The algorithm is set in 3 main blocks:
+  #           - Make: Releases the sample
+  #           - Break : Breaks the juncture
+  #           - Break-restore : Ensures the sample is broken
+  #                             to restore the junction.
+  #           interface.
+  #################################################################
+  def faulhaber_motor_control(self, break_junction, config):
+      data_set = create_data_set()
+      num_breakings = config.get_num_breakings()
+      if(break_junction):
+          counter = 0
+          restore_data = data_set 
+          while(counter < num_breakings):
+              break_data = self.motor_break(restore_data, config)
+              restore_data = self.break_restore(break_data, config)
+              counter = counter + 1
+          return restore_data
+      else:
+          after_release_data = self.motor_make(data_set, config)
+          return after_release_data
+      raise
+#+END_SRC
+
+**** Faulhaber control - Motor Make
+#+ATTR_LATEX: :width 0.75\textwidth
+#+CAPTION: Control algorithm of the Faulhaber motor for the release sample algorithm
+#+NAME: fig:ctrl-algorithm-motor-make
+[[file:Doc/Dia/Motor_Make.png]]
+
+# WARNING PROTOTYPE CODE. DO NOT RUN YET
+#+BEGIN_SRC python
+  ## Faulhaber control motor make
+  def motor_make(self, data_set, config):
+      G_target = config.get_target_make_conductance()
+      updated_data_set = self.measure(data_set, config)
+      G = updated_data_set.get_conductance()
+      self.set_make_speed()
+      while(G < G_target):
+          sleep(config.get_ctrl_delay())
+          updated_data_set = self.measure(updated_data_set, config)
+          G = updated_data_set.get_conductance()
+      make_data = self.stop_motor(updated_data_set, config)
+      return make_data
+#+END_SRC
+
+
+**** Faulhaber control - Motor Break
+#+ATTR_LATEX: :width 0.75\textwidth
+#+CAPTION: Control algorithm of the Faulhaber motor for the break juncture algorithm
+#+NAME: fig:ctrl-algorithm-motor-break
+[[file:Doc/Dia/Motor_Break.png]]
+
+# WARNING PROTOTYPE CODE. DO NOT RUN YET
+#+BEGIN_SRC python
+  ## Faulhaber control motor break
+  def motor_break(self, data_set, config):
+      G_target = config.get_target_break_conductance()
+      updated_data_set = self.measure(data_set, config)
+      G = updated_data_set.get_conductance()
+      self.set_break_speed()
+      while(G > G_target):
+          sleep(config.get_ctrl_delay())
+          updated_data_set = self.measure(data_set, config)
+          G = updated_data_set.get_conductance()
+      break_data = self.stop_motor(updated_data_set, config)
+      return break_data
+#+END_SRC
+
+
+**** Faulhaber control - Motor Break-Restore
+#+ATTR_LATEX: :width 0.75\textwidth
+#+CAPTION: Control algorithm of the Faulhaber motor for the break-restore algorithm
+#+NAME: fig:ctrl-algorithm-motor-break-restore
+[[file:Doc/Dia/Motor_Break_restore.png]]
+
+# WARNING PROTOTYPE CODE. DO NOT RUN YET
+#+BEGIN_SRC python
+  ## Faulhaber control motor break
+  def break_restore(self, data_set, config):
+      G_target = config.get_target_restore_conductance()
+      tolerance = config.get_break_restore_tolreance()
+      max_loop_counter = config.get_max_break_restore_loops()
+      loop_counter = 0
+      restore_loop = False
+      while(loop_counter < max_loop_counter):
+          data_set = self.measure(data_set, config)
+          G = data_set.get_conductance()
+          if(abs(G_target - G) < tolerance):
+              data_set = self.stop_motor(data_set,config)
+              G = data_set.get_conductance()
+              if(abs(G_target - G) < tolerance):
+                  break
+              else:
+                  continue
+          else if(G < G_target):
+              self.set_fine_make_speed()
+              sleep(config.get_ctrl_delay())
+              make_loop = True
+          else:
+              self.set_fine_break_speed()
+              sleep(config.get_ctrl_delay())
+              data_set = self.stop_motor(data_set,config)
+              if(make_loop):
+                  loop_counter = loop_counter +1
+                  make_loop = False
+#+END_SRC
+
+
 
 
 * Utility functions
