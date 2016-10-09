@@ -1143,7 +1143,6 @@ The constants are:
       max_accel = 40#in RPM/s(ref:fh-const-accel)
 #+END_SRC
 
-
 ** Faulhaber Utilities
 The utilities are a set of functions that although related to the Faulhaber motor, are not really part of the interface to it. These function are used in the control interface to the motor.
 
@@ -1408,9 +1407,20 @@ As a final note, each algorithm updates the data of the run, as defined in [[Sec
 #+NAME: fig:ctrl-algorithm-motor-make
 [[file:Doc/Dia/Motor_Make.png]]
 
-# WARNING PROTOTYPE CODE. DO NOT RUN YET
+
+The motor make algorithm as shown in figure [[fig:ctrl-algorithm-motor-make]] is excecuted to release set the motor back to a position in which the sample can be manipulated and removed from the equipment. 
+
 #+BEGIN_SRC python
-  ## Faulhaber control motor make
+  #################################################################
+  ## @author  Joaquin Figueroa
+  #  @brief   Moves the motor back to release the sample
+  #
+  #  @details Algorithm to release the sample from the equipment.
+  #           Moves the motor which increases the conductance of the
+  #           sample. If the conductance of the sample reaches a
+  #           target value, then the sample was released and the
+  #           motor is stopped.
+  #################################################################
   def motor_make(self, data_set, config):
       G_target = config.get_target_make_conductance()
       updated_data_set = self.measure(data_set, config)
@@ -1431,9 +1441,19 @@ As a final note, each algorithm updates the data of the run, as defined in [[Sec
 #+NAME: fig:ctrl-algorithm-motor-break
 [[file:Doc/Dia/Motor_Break.png]]
 
-# WARNING PROTOTYPE CODE. DO NOT RUN YET
+The motor break algorithm shown in figure [[fig:ctrl-algorithm-motor-break]] moves the motor reducing the conductance until the target has been reached, then the motor is stopped.
+
 #+BEGIN_SRC python
-  ## Faulhaber control motor break
+  #################################################################
+  ## @author  Joaquin Figueroa
+  #  @brief   Moves the motor to break the gold channel
+  #
+  #  @details Algorithm to break the gold channel.
+  #           Moves the motor which decreases the conductance of the
+  #           sample. If the conductance of the sample reaches a
+  #           target value, then the channel was broken and the
+  #           motor is stopped.
+  #################################################################
   def motor_break(self, data_set, config):
       G_target = config.get_target_break_conductance()
       updated_data_set = self.measure(data_set, config)
@@ -1454,9 +1474,22 @@ As a final note, each algorithm updates the data of the run, as defined in [[Sec
 #+NAME: fig:ctrl-algorithm-motor-break-restore
 [[file:Doc/Dia/Motor_Break_restore.png]]
 
-# WARNING PROTOTYPE CODE. DO NOT RUN YET
+The motor break-restore algorithm tries to set the conductance to a target value within a tolerance setting. The idea behind the algorithm shown in figure [[fig:ctrl-algorithm-motor-break-restore]] is to:
+1. If the motor was broken beyond the target value, restore the sample channel
+2. If the sample channel was restored beyond the target, perform a single breaking step
+3. Keep repeating until the target conductance is reached or a maximum number of oscillation were excecuted
+
 #+BEGIN_SRC python
-  ## Faulhaber control motor break
+  #################################################################
+  ## @author  Joaquin Figueroa
+  #  @brief   Moves the motor to drive the sample to a target G
+  #
+  #  @details Tries to ensure that the sample reaches a target
+  #           conductance by performing several break and make
+  #           steps, but for shorter times and smaller speeds.
+  #           If the Motor starts to oscilate, the algorithm is
+  #           stopped after a set number of steps
+  #################################################################
   def break_restore(self, data_set, config):
       G_target = config.get_target_restore_conductance()
       tolerance = config.get_break_restore_tolreance()
