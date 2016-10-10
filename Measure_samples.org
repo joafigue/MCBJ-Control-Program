@@ -1078,6 +1078,220 @@ For the measurements required in the break-junction experiment the following pro
 - Juncture Voltage Histogram :: This process uses some of the same sub-routines to measure the voltage and current on the juncture, but perform the same measurement several times as it also actuates on the piezoelectric actuator to perform the breaking and joining of the juncture.
       see [[file:basic_orig/piezo_histogram.bas]]
 
+Beyond the basic programs that perform the measurements, an interface to the actual program is shown in [[Adwin driver - program interface]]
+
+** Adwin measure I/V process
+   :PROPERTIES:
+   :tangle:   adwin_programs/iv_measurement_process.bas
+   :noweb:    tangle
+   :comments: noweb
+   :mkdirp:   yes
+   :END:
+#+ATTR_LATEX: :width 0.9\textwidth
+#+CAPTION: Measurement algorithm for the I/V at the ADwin
+#+NAME: fig:adwin-measure-iv
+[[file:Doc/Dia/Adwin_IV.png]]
+
+The Adwin measure process is a basic program described here for ease of access. The program is heavily based on the original, with some minor modification for clarity or robustness.
+
+The Adwin process is split in several blocks
+- Header :: This is a requirement of a proper ADwin program. See [[Adwin IV - measurement header]]
+- Variable Declaration :: For a proper program, the variables must be declared before the program blocks. See  [[Adwin IV - variable Declarations]]
+- Init block :: Is used to initialize the values of the variables defined. See [[Adwin IV - Init Block]]
+- Event Block :: The main part of the measurement algorithm. See [[Adwin IV - Event Block]]
+
+
+*** Adwin IV - measurement header
+As in many programs, a header is required. In the Adwin case, this is necessary  to set the process parameters, such as the process number and the compiler variables.
+
+ #+BEGIN_SRC basic
+   '<ADbasic Header, Headerversion 001.001>
+   ' Process_Number                 = 1
+   ' Initial_Processdelay           = 1000
+   ' Eventsource                    = Timer
+   ' Control_long_Delays_for_Stop   = No
+   ' Priority                       = High
+   ' Version                        = 1
+   ' ADbasic_Version                = 5.0.8
+   ' Optimize                       = Yes
+   ' Optimize_Level                 = 1
+   ' Info_Last_Save                 = TUD203025  TUD203025\LocalAdmin
+   '<Header End>
+
+   ' This program provides a continous measurement of the current at the sample
+   ' driven by the set voltage. In order to interface with the computer several
+   ' ADwin static variables are used
+
+#+END_SRC 
+
+#+BEGIN_SRC basic :exports none
+   '*******
+   ' Inputs: Set by external program
+   '*******
+   ' ---- Juncture Voltage Parameters ----
+   ' PAR_1 -> Initial juncture voltage (off)
+   ' PAR_2 -> Juncture voltage for measurement
+   ' PAR_3 -> Juncture voltage at end (off)
+   ' ---- Current Measurement ----
+   ' PAR_7 -> Number of loops to wait after reaching desired juncture
+   '          voltage before starting measuremnts
+   ' PAR_8 -> Number of data point to average for current measurement
+   ' ---- Measurement Modifiers ----
+   ' PAR_10 -> Maximum number of data points to gather
+   ' PAR_11 -> Set to 1 to finish the run early
+
+
+   '******
+   ' Outputs
+   '******
+   ' ---- Current Measurements ----
+   ' FPAR_1 -> Current measured in channel 1
+   ' FPAR_2 -> Current measured in channel 1 through Amplifier
+   ' FPAR_3 -> Current measured in channel 2
+   ' FPAR_4 -> Current measured in channel 2 through Amplifier
+   ' ---- Measurement end ----
+   ' PAR_12 -> Set to 2 when the measurement process is finished
+ #+END_SRC
+
+*** Adwin IV - variable Declarations
+In an Adwin program the local variables must be declared before the =INIT= block. This program defines several internal variables to deal with the state.
+#+CAPTION: Variable declarations
+#+NAME: src-adwin-iv-declarations
+#+BEGIN_SRC basic
+DIM measuflag as long
+DIM waitcounter, avgcounter, datacounter  as long
+DIM juncture_voltage as long
+DIM current1_acc, current2_acc as long
+DIM current1_ampl_acc, current2_ampl_acc as float
+' Set DATA_10 as amplifier array
+DIM DATA_10[65536] as float 
+#+END_SRC
+
+*** Adwin IV - Init Block
+In the ADwin =INIT= block the variables defined are set to their default values.
+#+CAPTION: Adwin I/V analysis =INIT= block
+#+NAME: src-adwin-iv-init
+#+BEGIN_SRC basic
+  measureflag = 0
+  waitcounter = 0
+  avgcounter = 0
+  datacounter = 0
+  current1_acc = 0
+  current2_acc = 0
+  current1_amp_acc = 0
+  current2_amp_acc = 0
+  ' Set juncture voltage at output and prepare measurement
+  juncture_voltage = PAR_1
+  DAC(1, juncture_voltage)
+  set_MUX(1010000000b) 'use MUX
+#+END_SRC
+
+*** Adwin IV - Event Block
+The =EVENT= block implements the measurement process. Since the =EVENT= block is excecuted perdiodically, at defined time intervals, the full algorithm must be implemented in a single =EVENT= block, which is managed by using state variables.
+
+The =Event= Block is separated in different functionalities
+- Set the juncture voltage :: Is necessary to perform the measurements. See [[Adwin IV - Event set juncture voltage]]
+- Wait for stabilization :: After the juncture voltage is set, the measurements are delayed to wait for the system to stabilize itself. See [[Adwin IV - Event stabilize system]]
+- Measure :: After the system has stabilized, at each run of the =EVENT= block, the system performs the measurement process by measuring a number of data points and averaging them. See [[Adwin IV - Event measure data]]
+- Reset juncture voltage :: After the measurements have ended, the juncture voltage is returned to the off value. See [[Adwin IV - Event reset juncture voltage]]
+
+#+CAPTION: Event loop
+#+NAME: src-adwin-iv-event
+#+BEGIN_SRC basic 
+  EVENT:
+
+    SELECTCASE measureflag
+      CASE 0 'output desired voltage on DAC1
+        <<src-adwin-iv-set-jv>>
+
+      CASE 1 ' Wait untill stabilization
+        <<src-adwin-iv-wait>>
+
+      CASE 2 ' Measure
+        <<src-adwin-iv-measure>>
+
+      CASE 3 'ramp down to end voltage
+        <<src-adwin-iv-reset-jv>>
+
+    ENDSELECT
+#+END_SRC
+
+**** Adwin IV - Event set juncture voltage
+     :PROPERTIES:
+     :tangle:   no
+     :END:
+#+CAPTION: <<src-adwin-iv-set-jv>> Code to set the juncture voltage  to the measurement required value
+#+NAME: src-adwin-iv-set-jv
+#+BEGIN_SRC basic
+  ' PAR_2 -> Target juncture voltage
+  IF(juncture_voltage < PAR_2) THEN INC(currentV)
+  IF(juncture_voltage > PAR_2) THEN DEC(currentV)
+  DAC(1,juncture_voltage)
+  IF  (juncture_voltage = PAR_2) THEN measureflag = 1
+  ' Mesureflag = 1 => we have to wait
+#+END_SRC
+
+**** Adwin IV - Event stabilize system
+     :PROPERTIES:
+     :tangle:   no
+     :END:
+#+CAPTION: <<src-adwin-iv-wait>> Code to wait for the system to stabilize before staring measurements
+#+NAME: src-adwin-iv-wait
+#+BEGIN_SRC basic
+  IF(waitcounter = PAR_7) THEN
+    measureflag = 2
+  ELSE
+    waitcounter = waitcounter + 1
+  ENDIF
+#+END_SRC
+**** Adwin IV - Event measure data
+     :PROPERTIES:
+     :tangle:   no
+     :END:
+#+CAPTION: <<src-adwin-iv-measure>> Code to measure the data 
+#+NAME: src-adwin-iv-measure
+#+BEGIN_SRC basic
+  START_CONV(00011b)
+  WAIT_EOC(00011b)
+  current1_acc = totalcurrent1 + READADC(1)
+  current2_acc = totalcurrent2 + READADC(2)
+  current1_ampl_acc = totalcurrent3 + DATA_10[READADC(1)+1]
+  current1_ampl_acc = totalcurrent4 + DATA_10[READADC(2)+1]
+  avgcounter = avgcounter + 1
+
+  IF(avgcounter = PAR_8) THEN
+    FPAR_1 = current1_acc / PAR_8
+    FPAR_3 = current2_acc / PAR_8
+    FPAR_2 = current1_ampl_acc / PAR_8
+    FPAR_4 = current2_ampl_acc / PAR_8
+    datacounter = datacounter + 1
+    avgcounter = 0
+    current1_acc = 0
+    current2_acc = 0
+    current1_amp_acc = 0
+    current2_amp_acc = 0
+  ENDIF
+
+  IF (datacounter = PAR_10) THEN measureflag = 3
+  IF (PAR_11 = 1) THEN measureflag =3
+#+END_SRC
+**** Adwin IV - Event reset juncture voltage
+     :PROPERTIES:
+     :tangle:   no
+     :END:
+#+CAPTION: <<src-adwin-iv-reset-jv>> Code to restore the juncture value  to off value
+#+NAME: src-adwin-iv-reset-jv
+#+BEGIN_SRC basic
+  IF(juncture_voltage < PAR_3 ) THEN INC(currentV)
+  IF(juncture_voltage > PAR_3) THEN DEC(currentV)
+  DAC(1,juncture_voltage)
+  IF  (juncture_voltage = PAR_3) THEN PAR_12 = 2 ' check for end measurement
+#+END_SRC
+
+** Adwin driver - program interface
+
+
+
 * Faulhaber Driver
   :PROPERTIES:
   :tangle:   modules/Faulhaber_driver.py
@@ -1368,7 +1582,7 @@ Considering the alternatives, it was decided that a conductance based algorithm 
 
 As a final note, each algorithm updates the data of the run, as defined in [[Section to be defined]], and returns it as shown in the corresponding code fragment [[src-fh-ctrl-main-loop]]
 
-# WARNING PROTOTYPE CODE. DO NOT RUN YET
+
 #+CAPTION: Faulhaber main control loop in python as described by figure [[fig:ctrl-algorithm-flow]]
 #+NAME: src-fh-ctrl-main-loop
 #+BEGIN_SRC python
@@ -1410,6 +1624,8 @@ As a final note, each algorithm updates the data of the run, as defined in [[Sec
 
 The motor make algorithm as shown in figure [[fig:ctrl-algorithm-motor-make]] is excecuted to release set the motor back to a position in which the sample can be manipulated and removed from the equipment. 
 
+#+NAME: src-fh-ctrl-motor-make
+#+CAPTION: Motor-make function
 #+BEGIN_SRC python
   #################################################################
   ## @author  Joaquin Figueroa
@@ -1443,6 +1659,8 @@ The motor make algorithm as shown in figure [[fig:ctrl-algorithm-motor-make]] is
 
 The motor break algorithm shown in figure [[fig:ctrl-algorithm-motor-break]] moves the motor reducing the conductance until the target has been reached, then the motor is stopped.
 
+#+NAME: src-fh-ctrl-motor-brak
+#+CAPTION: Motor-break function
 #+BEGIN_SRC python
   #################################################################
   ## @author  Joaquin Figueroa
@@ -1479,6 +1697,8 @@ The motor break-restore algorithm tries to set the conductance to a target value
 2. If the sample channel was restored beyond the target, perform a single breaking step
 3. Keep repeating until the target conductance is reached or a maximum number of oscillation were excecuted
 
+#+NAME: src-fh-ctrl-motor-break-restore
+#+CAPTION: Motor break-restore function
 #+BEGIN_SRC python
   #################################################################
   ## @author  Joaquin Figueroa
@@ -1545,8 +1765,6 @@ This section is for the interface with each measurement instrument.
 #+RESULTS:
 : t
 
-
-
 ** Basic-mode
 #+BEGIN_SRC emacs-lisp
   (defvar basic-events
@@ -1560,30 +1778,54 @@ This section is for the interface with each measurement instrument.
       "ENDSELECT"
       "IF"
       "THEN"
+      "ELSE"
       "ENDIF"
       "DIM"
+      "as"
+      ))
+
+  (defvar basic-comments "'.*")
+
+  (defvar basic-functions
+    '("INC"
+      "DEC"
+      "DAC"
+      "set_MUX"
+      "START_CONV"
+      "WAIT_EOC"
+      ))
+
+  (defvar basic-types
+    '("long"
+      "float"
       ))
 
   (defvar basic-font-lock-defaults
     `((
        ;; stuff between "
+       ( , basic-comments                 . font-lock-comment-face)
        ("\"\\.\\*\\?" . font-lock-string-face)
        ;; ; : , ; { } =>  @ $ = are all special elements
        (":\\|,\\|;\\|{\\|}\\|=>\\|@\\|$\\|=" . font-lock-constant-face)
-       ( ,(regexp-opt basic-keywords 'words) . font-lock-builtin-face)
-       ( ,(regexp-opt basic-events 'words) . font-lock-builtin-face)
+       ( ,(regexp-opt basic-keywords 'words) . font-lock-keyword-face)
+       ( ,(regexp-opt basic-events 'words) . font-lock-preprocessor-face)
+       ( ,(regexp-opt basic-types 'words) . font-lock-type-face)
+       ( ,(regexp-opt basic-functions 'words) . font-lock-function-name-face)
+       ( ,"\\(F?PAR\\|DATA\\)_[0-9]+" . font-lock-builtin-face)
        )))
 
   (define-derived-mode basic-mode prog-mode "Basic"
     "Major mode for editing basic files."
     ;"Got it from https://www.emacswiki.org/emacs/DerivedMode"
     (setq-local comment-start "'")
-    (setq-local comment-start-skip "'+[\t]*")
+    (setq-local comment-start-skip "'.*")
     (setq font-lock-defaults basic-font-lock-defaults)
     )
   (provide 'basic-mode)
+  
+  (add-to-list 'auto-mode-alist '("\\.bas\\'" . basic-mode))
 #+END_SRC
 
 #+RESULTS:
-: basic-mode
+: ((\.bas\' . basic-mode) (\.hva\' . latex-mode) (\.drv\' . latex-mode) (/git-rebase-todo\' . git-rebase-mode) (\.gpg\(~\|\.~[0-9]+~\)?\' nil epa-file) (\.\(?:3fr\|a\(?:r[tw]\|vs\)\|bmp[23]?\|c\(?:als?\|myka?\|r[2w]\|u[rt]\)\|d\(?:c[mrx]\|ds\|ng\|px\)\|f\(?:ax\|its\)\|gif\(?:87\)?\|hrz\|ic\(?:on\|[bo]\)\|j\(?:\(?:pe\|[np]\)g\)\|k\(?:25\|dc\)\|m\(?:iff\|ng\|rw\|s\(?:l\|vg\)\|tv\)\|nef\|o\(?:rf\|tb\)\|p\(?:bm\|c\(?:ds\|[dltx]\)\|db\|ef\|gm\|i\(?:ct\|x\)\|jpeg\|n\(?:g\(?:24\|32\|8\)\|[gm]\)\|pm\|sd\|tif\|wp\)\|r\(?:a[fs]\|gb[ao]?\|l[ae]\)\|s\(?:c[rt]\|fw\|gi\|r[2f]\|un\|vgz?\)\|t\(?:ga\|i\(?:ff\(?:64\)?\|le\|m\)\|tf\)\|uyvy\|v\(?:da\|i\(?:car\|d\|ff\)\|st\)\|w\(?:bmp\|pg\)\|x\(?:3f\|bm\|cf\|pm\|wd\|[cv]\)\|y\(?:cbcra?\|uv\)\)\' . image-mode) (\.elc\' . elisp-byte-code-mode) (\.dz\' nil jka-compr) (\.xz\' nil jka-compr) (\.lzma\' nil jka-compr) (\.lz\' nil jka-compr) (\.g?z\' nil jka-compr) (\.bz2\' nil jka-compr) (\.Z\' nil jka-compr) (\.vr[hi]?\' . vera-mode) (\(?:\.\(?:rbw?\|ru\|rake\|thor\|jbuilder\|rabl\|gemspec\|podspec\)\|/\(?:Gem\|Rake\|Cap\|Thor\|Puppet\|Berks\|Vagrant\|Guard\|Pod\)file\)\' . ruby-mode) (\.re?st\' . rst-mode) (\.pyw?\' . python-mode) (\.scss\' . scss-mode) (\.awk\' . awk-mode) (\.\(u?lpc\|pike\|pmod\(\.in\)?\)\' . pike-mode) (\.idl\' . idl-mode) (\.java\' . java-mode) (\.m\' . objc-mode) (\.ii\' . c++-mode) (\.i\' . c-mode) (\.lex\' . c-mode) (\.y\(acc\)?\' . c-mode) (\.[ch]\' . c-mode) (\.\(CC?\|HH?\)\' . c++-mode) (\.[ch]\(pp\|xx\|\+\+\)\' . c++-mode) (\.\(cc\|hh\)\' . c++-mode) (\.\(bat\|cmd\)\' . bat-mode) (\.[sx]?html?\(\.[a-zA-Z_]+\)?\' . html-mode) (\.svgz?\' . image-mode) (\.svgz?\' . xml-mode) (\.x[bp]m\' . image-mode) (\.x[bp]m\' . c-mode) (\.p[bpgn]m\' . image-mode) (\.tiff?\' . image-mode) (\.gif\' . image-mode) (\.png\' . image-mode) (\.jpe?g\' . image-mode) (\.te?xt\' . text-mode) (\.[tT]e[xX]\' . tex-mode) (\.ins\' . tex-mode) (\.ltx\' . latex-mode) (\.dtx\' . doctex-mode) (\.org\' . org-mode) (\.el\' . emacs-lisp-mode) (Project\.ede\' . emacs-lisp-mode) (\.\(scm\|stk\|ss\|sch\)\' . scheme-mode) (\.l\' . lisp-mode) (\.li?sp\' . lisp-mode) (\.[fF]\' . fortran-mode) (\.for\' . fortran-mode) (\.p\' . pascal-mode) (\.pas\' . pascal-mode) (\.\(dpr\|DPR\)\' . delphi-mode) (\.ad[abs]\' . ada-mode) (\.ad[bs].dg\' . ada-mode) (\.\([pP]\([Llm]\|erl\|od\)\|al\)\' . perl-mode) (Imakefile\' . makefile-imake-mode) (Makeppfile\(?:\.mk\)?\' . makefile-makepp-mode) (\.makepp\' . makefile-makepp-mode) (\.mk\' . makefile-gmake-mode) (\.make\' . makefile-gmake-mode) ([Mm]akefile\' . makefile-gmake-mode) (\.am\' . makefile-automake-mode) (\.texinfo\' . texinfo-mode) (\.te?xi\' . texinfo-mode) (\.[sS]\' . asm-mode) (\.asm\' . asm-mode) (\.css\' . css-mode) (\.mixal\' . mixal-mode) (\.gcov\' . compilation-mode) (/\.[a-z0-9-]*gdbinit . gdb-script-mode) (-gdb\.gdb . gdb-script-mode) ([cC]hange\.?[lL]og?\' . change-log-mode) ([cC]hange[lL]og[-.][0-9]+\' . change-log-mode) (\$CHANGE_LOG\$\.TXT . change-log-mode) (\.scm\.[0-9]*\' . scheme-mode) (\.[ckz]?sh\'\|\.shar\'\|/\.z?profile\' . sh-mode) (\.bash\' . sh-mode) (\(/\|\`\)\.\(bash_\(profile\|history\|log\(in\|out\)\)\|z?log\(in\|out\)\)\' . sh-mode) (\(/\|\`\)\.\(shrc\|[kz]shrc\|bashrc\|t?cshrc\|esrc\)\' . sh-mode) (\(/\|\`\)\.\([kz]shenv\|xinitrc\|startxrc\|xsession\)\' . sh-mode) (\.m?spec\' . sh-mode) (\.m[mes]\' . nroff-mode) (\.man\' . nroff-mode) (\.sty\' . latex-mode) (\.cl[so]\' . latex-mode) (\.bbl\' . latex-mode) (\.bib\' . bibtex-mode) (\.bst\' . bibtex-style-mode) (\.sql\' . sql-mode) (\.m[4c]\' . m4-mode) (\.mf\' . metafont-mode) (\.mp\' . metapost-mode) (\.vhdl?\' . vhdl-mode) (\.article\' . text-mode) (\.letter\' . text-mode) (\.i?tcl\' . tcl-mode) (\.exp\' . tcl-mode) (\.itk\' . tcl-mode) (\.icn\' . icon-mode) (\.sim\' . simula-mode) (\.mss\' . scribe-mode) (\.f9[05]\' . f90-mode) (\.f0[38]\' . f90-mode) (\.indent\.pro\' . fundamental-mode) (\.\(pro\|PRO\)\' . idlwave-mode) (\.srt\' . srecode-template-mode) (\.prolog\' . prolog-mode) (\.tar\' . tar-mode) (\.\(arc\|zip\|lzh\|lha\|zoo\|[jew]ar\|xpi\|rar\|7z\|ARC\|ZIP\|LZH\|LHA\|ZOO\|[JEW]AR\|XPI\|RAR\|7Z\)\' . archive-mode) (\.oxt\' . archive-mode) (\.\(deb\|[oi]pk\)\' . archive-mode) (\`/tmp/Re . text-mode) (/Message[0-9]*\' . text-mode) (\`/tmp/fol/ . text-mode) (\.oak\' . scheme-mode) (\.sgml?\' . sgml-mode) (\.x[ms]l\' . xml-mode) (\.dbk\' . xml-mode) (\.dtd\' . sgml-mode) (\.ds\(ss\)?l\' . dsssl-mode) (\.jsm?\' . javascript-mode) (\.json\' . javascript-mode) (\.[ds]?vh?\' . verilog-mode) (\.by\' . bovine-grammar-mode) (\.wy\' . wisent-grammar-mode) ([:/\]\..*\(emacs\|gnus\|viper\)\' . emacs-lisp-mode) (\`\..*emacs\' . emacs-lisp-mode) ([:/]_emacs\' . emacs-lisp-mode) (/crontab\.X*[0-9]+\' . shell-script-mode) (\.ml\' . lisp-mode) (\.ld[si]?\' . ld-script-mode) (ld\.?script\' . ld-script-mode) (\.xs\' . c-mode) (\.x[abdsru]?[cnw]?\' . ld-script-mode) (\.zone\' . dns-mode) (\.soa\' . dns-mode) (\.asd\' . lisp-mode) (\.\(asn\|mib\|smi\)\' . snmp-mode) (\.\(as\|mi\|sm\)2\' . snmpv2-mode) (\.\(diffs?\|patch\|rej\)\' . diff-mode) (\.\(dif\|pat\)\' . diff-mode) (\.[eE]?[pP][sS]\' . ps-mode) (\.\(?:PDF\|DVI\|OD[FGPST]\|DOCX?\|XLSX?\|PPTX?\|pdf\|djvu\|dvi\|od[fgpst]\|docx?\|xlsx?\|pptx?\)\' . doc-view-mode-maybe) (configure\.\(ac\|in\)\' . autoconf-mode) (\.s\(v\|iv\|ieve\)\' . sieve-mode) (BROWSE\' . ebrowse-tree-mode) (\.ebrowse\' . ebrowse-tree-mode) (#\*mail\* . mail-mode) (\.g\' . antlr-mode) (\.mod\' . m2-mode) (\.ses\' . ses-mode) (\.docbook\' . sgml-mode) (\.com\' . dcl-mode) (/config\.\(?:bat\|log\)\' . fundamental-mode) (\.\(?:[iI][nN][iI]\|[lL][sS][tT]\|[rR][eE][gG]\|[sS][yY][sS]\)\' . conf-mode) (\.\(?:desktop\|la\)\' . conf-unix-mode) (\.ppd\' . conf-ppd-mode) (java.+\.conf\' . conf-javaprop-mode) (\.properties\(?:\.[a-zA-Z0-9._-]+\)?\' . conf-javaprop-mode) (\`/etc/\(?:DIR_COLORS\|ethers\|.?fstab\|.*hosts\|lesskey\|login\.?de\(?:fs\|vperm\)\|magic\|mtab\|pam\.d/.*\|permissions\(?:\.d/.+\)?\|protocols\|rpc\|services\)\' . conf-space-mode) (\`/etc/\(?:acpid?/.+\|aliases\(?:\.d/.+\)?\|default/.+\|group-?\|hosts\..+\|inittab\|ksysguarddrc\|opera6rc\|passwd-?\|shadow-?\|sysconfig/.+\)\' . conf-mode) ([cC]hange[lL]og[-.][-0-9a-z]+\' . change-log-mode) (/\.?\(?:gitconfig\|gnokiirc\|hgrc\|kde.*rc\|mime\.types\|wgetrc\)\' . conf-mode) (/\.\(?:enigma\|gltron\|gtk\|hxplayer\|net\|neverball\|qt/.+\|realplayer\|scummvm\|sversion\|sylpheed/.+\|xmp\)rc\' . conf-mode) (/\.\(?:gdbtkinit\|grip\|orbital/.+txt\|rhosts\|tuxracer/options\)\' . conf-mode) (/\.?X\(?:default\|resource\|re\)s\> . conf-xdefaults-mode) (/X11.+app-defaults/\|\.ad\' . conf-xdefaults-mode) (/X11.+locale/.+/Compose\' . conf-colon-mode) (/X11.+locale/compose\.dir\' . conf-javaprop-mode) (\.~?[0-9]+\.[0-9][-.0-9]*~?\' nil t) (\.\(?:orig\|in\|[bB][aA][kK]\)\' nil t) ([/.]c\(?:on\)?f\(?:i?g\)?\(?:\.[a-zA-Z0-9._-]+\)?\' . conf-mode-maybe) (\.[1-9]\' . nroff-mode) (\.tgz\' . tar-mode) (\.tbz2?\' . tar-mode) (\.txz\' . tar-mode))
 
