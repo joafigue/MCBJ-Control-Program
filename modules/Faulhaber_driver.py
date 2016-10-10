@@ -35,6 +35,40 @@ class fh_const:
     max_accel = 40#in RPM/s
 # src-faulhaber-constants ends here
 
+# [[file:../Measure_samples.org::*Conversion%20functions][Conversion\ functions:1]]
+#################################################################
+## @brief   Converts motor speed from um/s to rpm
+#################################################################
+def faulhaber_convert_ums_to_rpm(ums):
+    rpm = 60 * gearbox * (ums / pitch)
+    return rpm
+
+#################################################################
+## @brief   Converts motor speed from rpm to um/s
+#################################################################
+def faulhaber_convert_rpm_to_ums(rpm):
+    ums = (rpm * pitch)/( 60 * gearbox)
+    return ums
+# Conversion\ functions:1 ends here
+
+# [[file:../Measure_samples.org::*Faulhaber%20State][Faulhaber\ State:1]]
+class faulhaber_state():
+    def __init__(self, start_pos, start_speed):
+        self.start_pos = start_pos
+        self.current_speed = start_speed
+        self.previous_pos = [start_pos,start_pos,start_pos]
+    def update_position(self, new_pos):
+        self.previous_pos.append(new_pos)
+        self.previous_pos.pop(0)
+    # Depends on numpy abs to work on array
+    def is_motor_stopped(self):
+        a = self.previous_pos
+        delta = sum(abs([a.(2) - a.(1),a.(1)-a.(0)]))
+        return delta==0
+    def update_current_speed(self, new_speed):
+        self.current_speed = new_speed
+# Faulhaber\ State:1 ends here
+
 # [[file:../Measure_samples.org::faulhaber-class-def][faulhaber-class-def]]
 #################################################################
 ## @author  Joaquin Figueroa
@@ -55,6 +89,7 @@ class Faulhaber_motor:
         self._set_max_speed()
         self._set_max_acceleration()
         self._disable_motor()
+        self.state = self._init_state()
     #################################################################
     ## @brief   Enables the motor
     #################################################################
@@ -95,14 +130,17 @@ class Faulhaber_motor:
     #################################################################
     def _set_target_speed(self,speed):
         target_speed_str = "v %d" %speed
+        self.state.update_speed(speed)
         self.motor_ctrl.write(target_speed_str)
     #################################################################
     ## @brief   Returns the current axis position
+    #  @Note    Not to be used directly in other parts of the program
     #################################################################
     def _query_current_axis_position(self):
         pos = self.motor_ctrl.query("pos")
         try:
-            int(pos)
+            pos = int(pos)
+            return pos
         except:
             self._set_target_speed(0)
             sleep(0.1)
@@ -110,4 +148,18 @@ class Faulhaber_motor:
             print("Error, Returned position was not a valid int")
             print(pos)
             raise
+    
+    #################################################################
+    ## @brief   Returns the current axis position, updates the state
+    #################################################################
+    def _query_position(self):
+        pos = self._query_current_axis_position()
+        self.state.update_position(pos)
+        return pos
+    #################################################################
+    ## @brief   Initializes the motor state
+    #################################################################
+    def _init_state(self):
+        start_pos = self._query_current_axis_position()
+        self.state = faulhaber_state(start_pos,0)
 # faulhaber-class-def ends here
