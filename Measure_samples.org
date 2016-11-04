@@ -12,6 +12,9 @@
 #+CREATOR: Emacs 24.5.1 (Org mode 8.3.4)
 
 
+
+
+
 * Introduction
 This file is a try to document and enhance the program in python to measure the samples through the mechanism of of break-junction in gold samples for the study of molecular properties.
 The reason for this is that the current program, while functional is underdocumented and the full how-to is preserved through *oral tradition* which is regrettable for an investigation lab, and since the author of this document has a bit of experience in software development and documentation, this file was born.
@@ -57,8 +60,8 @@ Obviously there is a series of additional modules which provide the interface to
 
 ** DONE Main Loop
    :PROPERTIES:
-   :tangle:   main.py
-   :comments: link
+   :header-args:  :tangle   main.py
+   :header-args:  :comments link
    :END:
 #+BEGIN_SRC python :exports none
   #################################################################
@@ -162,8 +165,8 @@ Finally the main loop is executed indefinitely until the user terminates the pro
 
 ** TODO User Interface
    :PROPERTIES:
-   :noweb:    tangle
-   :comments: link
+   :header-args:  :noweb    tangle
+   :header-args:  :comments link
    :END:
 The user interface has 2 requirements.
 1. It should allow the user to run the experiment
@@ -175,7 +178,7 @@ Now there is an additional requirement for the UI, which is the interface by its
 
 *** TODO UI - Program Interface
    :PROPERTIES:
-   :tangle:   modules/ui_config.py
+   :header-args:  :tangle   modules/ui_config.py
    :END:
 # As with any module there is a section for the imports and the file headers, but these are unninteresting for any reader, thus they are put in comments and not exported to a PDF/HTML result
 #+BEGIN_SRC python :exports none
@@ -694,7 +697,7 @@ todoDATA_DIRECTORY_DFTL = "./Data"
 
 *** TODO UI - GUI
    :PROPERTIES:
-   :tangle:   modules/ui_gui.py
+   :header-args:  :tangle   modules/ui_gui.py
    :END:
 # As with any module there is a section for the imports and the file headers, but these are unninteresting for any reader, thus they are put in comments and not exported to a PDF/HTML result
 #+BEGIN_SRC python :exports none
@@ -1012,7 +1015,7 @@ To provide the GUI for a parameter, a label and a text-box are needed, however f
 
 ** TODO Motor break junction 
    :PROPERTIES:
-   :tangle:   modules/motor_break.py
+   :header-args:  :tangle   modules/motor_break.py
    :END:
 #+BEGIN_SRC python
   def motor_break_juncture():
@@ -1022,7 +1025,7 @@ To provide the GUI for a parameter, a label and a text-box are needed, however f
 
 ** TODO Measurement with Piezo
    :PROPERTIES:
-   :tangle:   modules/piezo_measure.py
+   :header-args:  :tangle   modules/piezo_measure.py
    :END:
    
 #+BEGIN_SRC python
@@ -1033,9 +1036,9 @@ To provide the GUI for a parameter, a label and a text-box are needed, however f
 
 ** TODO General purpose Utilities
    :PROPERTIES:
-   :tangle:   modules/utilities.py
-   :noweb:    tangle
-   :comments: link
+   :header-args:  :tangle   modules/utilities.py
+   :header-args:  :noweb    tangle
+   :header-args:  :comments link
    :END:
 As with many programs, there are some general purpose functionalities that do not fit cleanly in other sections or files. This section is for these types of utilities.
 #+BEGIN_SRC python :exports none
@@ -1080,12 +1083,12 @@ For the measurements required in the break-junction experiment the following pro
 
 Beyond the basic programs that perform the measurements, an interface to the actual program is shown in [[Adwin driver - program interface]]
 
-** Adwin measure I/V process
+** Adwin Measure IV process
    :PROPERTIES:
-   :tangle:   adwin_programs/iv_measurement_process.bas
-   :noweb:    tangle
-   :comments: noweb
-   :mkdirp:   yes
+   :header-args:  :tangle   adwin_programs/iv_measurement_process.bas
+   :header-args:  :noweb    tangle
+   :header-args:  :comments noweb
+   :header-args:  :mkdirp   yes
    :END:
 #+ATTR_LATEX: :width 0.9\textwidth
 #+CAPTION: Measurement algorithm for the I/V at the ADwin
@@ -1099,7 +1102,6 @@ The Adwin process is split in several blocks
 - Variable Declaration :: For a proper program, the variables must be declared before the program blocks. See  [[Adwin IV - variable Declarations]]
 - Init block :: Is used to initialize the values of the variables defined. See [[Adwin IV - Init Block]]
 - Event Block :: The main part of the measurement algorithm. See [[Adwin IV - Event Block]]
-
 
 *** Adwin IV - measurement header
 As in many programs, a header is required. In the Adwin case, this is necessary  to set the process parameters, such as the process number and the compiler variables.
@@ -1125,32 +1127,45 @@ As in many programs, a header is required. In the Adwin case, this is necessary 
 #+END_SRC 
 
 #+BEGIN_SRC basic :exports none
-   '*******
-   ' Inputs: Set by external program
-   '*******
-   ' ---- Juncture Voltage Parameters ----
-   ' PAR_1 -> Initial juncture voltage (off)
-   ' PAR_2 -> Juncture voltage for measurement
-   ' PAR_3 -> Juncture voltage at end (off)
-   ' ---- Current Measurement ----
-   ' PAR_7 -> Number of loops to wait after reaching desired juncture
-   '          voltage before starting measuremnts
-   ' PAR_8 -> Number of data point to average for current measurement
-   ' ---- Measurement Modifiers ----
-   ' PAR_10 -> Maximum number of data points to gather
-   ' PAR_11 -> Set to 1 to finish the run early
+  '*******
+  ' Inputs: Set by external program
+  '*******
+  ' ---- Juncture Voltage Parameters ----
+  ' PAR_1 -> Initial juncture voltage (off)
+  ' PAR_2 -> Juncture voltage for measurement
+  ' PAR_3 -> Juncture voltage at end (off)
+  ' ---- Current Measurement ----
+  ' PAR_7 -> Number of loops to wait after reaching desired juncture
+  '          voltage before starting measuremnts
+  ' PAR_8 -> Number of data point to average for current measurement
+  ' ---- Measurement Modifiers ----
+  ' PAR_10 -> Maximum number of data points to gather
+  ' PAR_11 -> Set to 1 to finish the run early
+  ' ---- Logaritmic amplifier ----
+  ' DATA_10 -> The calibration data for the logaritmic amplifier
+
+  '******
+  ' Outputs
+  '******
+  ' ---- Current Measurements ----
+  ' FPAR_1 -> Current measured in channel 1
+  ' FPAR_2 -> Current measured in channel 1 through Amplifier
+  ' FPAR_3 -> Current measured in channel 2
+  ' FPAR_4 -> Current measured in channel 2 through Amplifier
+  ' ---- Measurement end ----
+  ' PAR_12 -> Set to 2 when the measurement process is finished
 
 
-   '******
-   ' Outputs
-   '******
-   ' ---- Current Measurements ----
-   ' FPAR_1 -> Current measured in channel 1
-   ' FPAR_2 -> Current measured in channel 1 through Amplifier
-   ' FPAR_3 -> Current measured in channel 2
-   ' FPAR_4 -> Current measured in channel 2 through Amplifier
-   ' ---- Measurement end ----
-   ' PAR_12 -> Set to 2 when the measurement process is finished
+  '******
+  ' Aux variables
+  '******
+  ' measureflag -> Used to select the measurement process
+  ' waitcounter -> Used to wait for stabilization before measuring (JV)
+  ' avgcounter -> Used to select how many points will be averaged
+  ' datacounter -> Used to count how many data points will be stored in total
+  ' juncture_voltage -> Corrent juncture voultage at DAC
+  ' current_acc -> Variables to store the accumulated value for averaging
+  ' current_ampl_acc -> Same as before, but measured through log-amplifier
  #+END_SRC
 
 *** Adwin IV - variable Declarations
@@ -1187,6 +1202,7 @@ In the ADwin =INIT= block the variables defined are set to their default values.
 #+END_SRC
 
 *** Adwin IV - Event Block
+
 The =EVENT= block implements the measurement process. Since the =EVENT= block is excecuted perdiodically, at defined time intervals, the full algorithm must be implemented in a single =EVENT= block, which is managed by using state variables.
 
 The =Event= Block is separated in different functionalities
@@ -1218,7 +1234,7 @@ The =Event= Block is separated in different functionalities
 
 **** Adwin IV - Event set juncture voltage
      :PROPERTIES:
-     :tangle:   no
+     :header-args:  :tangle   no
      :END:
 #+CAPTION: <<src-adwin-iv-set-jv>> Code to set the juncture voltage  to the measurement required value
 #+NAME: src-adwin-iv-set-jv
@@ -1233,7 +1249,7 @@ The =Event= Block is separated in different functionalities
 
 **** Adwin IV - Event stabilize system
      :PROPERTIES:
-     :tangle:   no
+     :header-args:  :tangle   no
      :END:
 #+CAPTION: <<src-adwin-iv-wait>> Code to wait for the system to stabilize before staring measurements
 #+NAME: src-adwin-iv-wait
@@ -1246,17 +1262,17 @@ The =Event= Block is separated in different functionalities
 #+END_SRC
 **** Adwin IV - Event measure data
      :PROPERTIES:
-     :tangle:   no
+     :header-args:  :tangle   no
      :END:
 #+CAPTION: <<src-adwin-iv-measure>> Code to measure the data 
 #+NAME: src-adwin-iv-measure
 #+BEGIN_SRC basic
   START_CONV(00011b)
   WAIT_EOC(00011b)
-  current1_acc = totalcurrent1 + READADC(1)
-  current2_acc = totalcurrent2 + READADC(2)
-  current1_ampl_acc = totalcurrent3 + DATA_10[READADC(1)+1]
-  current1_ampl_acc = totalcurrent4 + DATA_10[READADC(2)+1]
+  current1_acc = current1_acc + READADC(1)
+  current2_acc = current2_acc + READADC(2)
+  current1_ampl_acc = current1_ampl_acc + DATA_10[READADC(1)+1]
+  current2_ampl_acc = current2_ampl_acc + DATA_10[READADC(2)+1]
   avgcounter = avgcounter + 1
 
   IF(avgcounter = PAR_8) THEN
@@ -1277,7 +1293,7 @@ The =Event= Block is separated in different functionalities
 #+END_SRC
 **** Adwin IV - Event reset juncture voltage
      :PROPERTIES:
-     :tangle:   no
+     :header-args:  :tangle   no
      :END:
 #+CAPTION: <<src-adwin-iv-reset-jv>> Code to restore the juncture value  to off value
 #+NAME: src-adwin-iv-reset-jv
@@ -1288,15 +1304,287 @@ The =Event= Block is separated in different functionalities
   IF  (juncture_voltage = PAR_3) THEN PAR_12 = 2 ' check for end measurement
 #+END_SRC
 
+** Adwin Measure - Generate piezo histogram
+   :PROPERTIES:
+   :header-args:  :tangle   adwin_programs/piezo_histogram.bas
+   :header-args:  :noweb    tangle
+   :header-args:  :comments noweb
+   :END:
+Since the Adwin controls the piezoelectric device and take measurements, it makes sense  to provide a single program that operates the piezoelectric device , and then takes the corresponding measurements for each setting. After all the measurements are taken, the data is stored for analysis in the external program. The histogram program is split in several groups, similarly as the ones shown in [[Adwin Measure IV process]].
+ 
+- Header :: This is a requirement of a proper ADwin program. See [[Adwin histogram - measurement header]]
+- Variable Declaration :: For a proper program, the variables must be declared before the program blocks. See  [[Adwin histogram - variable Declarations]]
+- Init block :: Is used to initialize the values of the variables defined. See [[Adwin histogram - Init Block]]
+- Event Block :: The main part of the measurement algorithm. See [[Adwin histogram - Event Block]]
+     
+*** Adwin histogram - measurement header
+As in many programs, a header is required. In the Adwin case, this is necessary  to set the process parameters, such as the process number and the compiler variables.
+
+ #+BEGIN_SRC basic
+   '<ADbasic Header, Headerversion 001.001>
+   ' Process_Number                 = 2
+   ' Initial_Processdelay           = 1000
+   ' Eventsource                    = Timer
+   ' Control_long_Delays_for_Stop   = No
+   ' Priority                       = High
+   ' Version                        = 1
+   ' ADbasic_Version                = 5.0.8
+   ' Optimize                       = Yes
+   ' Optimize_Level                 = 1
+   ' Info_Last_Save                 = TUD205822  TUD205822\LocalAdmin
+   '<Header End>
+#+END_SRC 
+
+#+BEGIN_SRC basic :exports none
+  '*******
+  ' Inputs: Set by external program
+  '*******
+  ' ---- Juncture Voltage Parameters ----
+  ' PAR_1 -> Initial juncture voltage (off)
+  ' PAR_2 -> Juncture voltage for measurement
+  ' PAR_3 -> Juncture voltage at end (off)
+  ' ---- Current Measurement ----
+  ' PAR_7 -> Stabilizing time for breaking
+  ' PAR_8 -> Stabilizing time for making
+  ' PAR_9 -> Number of data point to average for each measurement
+  ' ---- Measurement Modifiers ----
+  ' FPAR_10 -> Minimum current to abort measurement - Breaking
+  ' FPAR_11 -> Maximum current to abort measurement - Making
+  ' ---- Amplifier -----
+  ' DATA_10 -> Amplifier table for calibration
+
+  '******
+  ' Outputs
+  '******
+  ' ---- Measurement end ----
+  ' PAR_12 -> Set to 2 when the measurement process is finished
+  ' ---- Current Measurements ----
+  ' DATA_1 -> Array of measured currents for each data point
+  ' DATA_2 -> Array of set Piezo voltage for each data point
+  ' PAR_20 -> Final data point in  break histogram
+  ' PAR_21 -> Final data point in  make histogram
+
+  '******
+  ' Aux Variables
+  '******
+  ' state -> Determines which process of the histogram is being used
+  ' breakwait -> Used to wait for stabilization during breaking
+  ' makewait -> Used to wait for stabilization during making
+  ' avgcounter -> Used to count the measurements to average for a data point
+  ' avgcurrent -> Auxiliar variable for average current
+  ' juncture_voltage -> Current juncture_voltage at the DAC
+  ' break_acc -> Accumulator for measurements during breaking
+  ' make_acc -> Accumulator for measurements during making
+  ' piezo_min -> Minimum voltage to set in the piezo
+  ' piezo_max -> Maximum voltage to set in the piezo
+ #+END_SRC
+
+*** Adwin histogram - variable Declarations
+In an Adwin program the local variables must be declared before the =INIT= block. This program defines several internal variables to deal with the state.
+#+CAPTION: Variable declarations
+#+NAME: src-adwin-hist-declarations
+#+BEGIN_SRC basic
+  DIM state as long
+  DIM breakwait, makewait as long
+  DIM avgcounter  as long
+  DIM juncture_voltage as long
+  DIM break_acc, make_acc  as long
+  DIM piezo_min, piezo_max as long
+  DIM avgcurrent as float
+  ' Output histogram
+  DIM histoindex_make histoindex_break as long
+  DIM DATA_1[1048576] as float  'Break histogram
+  DIM DATA_2[1048576] as float  'Break histogram
+  DIM DATA_3[1048576] as float  'Make  histogram
+  DIM DATA_4[1048576] as float  'Make  histogram
+  ' Set DATA_10 as amplifier array
+  DIM DATA_10[65536] as float
+#+END_SRC
+
+*** Adwin histogram - Init Block
+In the ADwin =INIT= block the variables defined are set to their default values.
+#+CAPTION: Adwin histogram analysis =INIT= block
+#+NAME: src-adwin-hist-init
+#+BEGIN_SRC basic
+  state = 0
+  breakwait = 0
+  makewait = 0
+  avgcounter = 0
+  avgcurrent = 0
+  break_acc = 0
+  make_acc = 0
+  piezo_min = 32771
+  piezo_max = 65533
+  ' Set juncture voltage at output and prepare measurement
+  juncture_voltage = PAR_1
+  DAC(1, juncture_voltage)
+  set_MUX(1010000000b) 'use MUX
+#+END_SRC
+
+*** Adwin histogram - Event Block
+#+ATTR_LATEX: :width 0.9\textwidth
+#+CAPTION: Top level view of the measurement algorithm to generate the histogram with the ADwin
+#+NAME: fig:adwin-histogram-top
+[[file:Doc/Dia/Adwin_histogram_top.png]]
+
+The =EVENT= block implements the measurement process. Since the =EVENT= block is excecuted perdiodically, at defined time intervals, the full algorithm must be implemented in a single =EVENT= block, which is managed by using state variables as shown in figure [[fig:adwin-histogram-top]]
+
+The =Event= Block is separated in different functionalities
+- Set the juncture voltage :: Is necessary to perform the measurements. See [[Adwin histogram - Event set juncture voltage]]
+- Break Histogram :: After the juncture voltage is set, the Adwin perform the measurements breaking the juncture through the piezoelectric device in order to  create the break histogram. See [[Adwin histogram - Event break histogram]]
+- Make Histogra :: After the juncture has been broken, The Adwin manipulates the piezoelectric backwards, reversing the broken juncture using it to create the make histogram. See [[Adwin histogram - Event make histogram]]
+- Reset juncture voltage :: After the measurements have ended, the juncture voltage is returned to the off value. See [[Adwin histogram - Event reset juncture voltage]]
+
+#+CAPTION: Event loop
+#+NAME: src-adwin-histogram-event
+#+BEGIN_SRC basic 
+  EVENT:
+
+    SELECTCASE state
+      CASE 0 'output desired voltage on DAC1
+        <<src-adwin-hist-set-jv>>
+
+      CASE 1 ' generate break histogram
+        <<src-adwin-hist-break>>
+
+      CASE 2 ' generate make histogram
+        <<src-adwin-hist-make>>
+
+      CASE 3 'ramp down to end voltage
+        <<src-adwin-hist-reset-jv>>
+
+    ENDSELECT
+#+END_SRC
+
+**** Adwin histogram - Event set juncture voltage
+     :PROPERTIES:
+     :header-args:  :tangle   no
+     :END:
+The algorithm to set the juncture voltage is the same as the one used for the IV measurement. See [[Adwin IV - Event set juncture voltage]]
+#+CAPTION: <<src-adwin-hist-set-jv>> Code to set the juncture voltage  to the measurement required value
+#+NAME: src-adwin-hist-set-jv
+#+BEGIN_SRC basic :exports none
+  <<src-adwin-iv-set-jv>>
+#+END_SRC
+
+**** Adwin histogram - Event break histogram 
+     :PROPERTIES:
+     :header-args:  :tangle   no
+     :END:     
+This section describes the algorithm used to store the break histogram shown in the code fragment [[src-adwin-hist-break]]. The algorithm is broken in 4 steps.
+- Move the piezo :: Starting on line [[(adw-brk-pz)]] this is the first step  of the algorithm. 
+  - Increases the voltage on the piezo actuator in order to increase the "distance" between the the ends of the junction.
+  - Since it's the first step of the algorithm is also used to cleanup the variables used during the histogram analysis.
+  - Finally should the piezo voltage exceed a maximum voltage, then the histogram measurement is aborted  and the histogram proceeds to measuring the make histogram
+- Wait for stabilization ::  Starting on line [[(adw-brk-wt)]] this step, only counts until a certain number of cycles have passed since the last modification of the piezo-voltage as to ensure the system is stable before measurement
+- Measure data :: Starting on line [[(adw-brk-msr)]] this step performs several measurements of the current circulating through the junction storing the accumulated value. After a certain number of measurements have been made the process goues to the next step
+- Store the Data :: Starting on line [[(adw-brk-store)]] this step takes the average of the accumulated value and stores it in the array. This process also:
+  - Ensures that the current has not gone below a certain threshold in which case, the measurement stops  and the algorithm proceeds to the make histogram measurement
+  - Updates the index so no values are overwritten
+
+#+CAPTION: <<src-adwin-hist-break>> Code to generate the breaking histogram 
+#+NAME: src-adwin-hist-break
+#+BEGIN_SRC basic -n -r
+  SELECTCASE break_hist_flag
+    CASE 0 ' Move piezo to new point (ref:adw-brk-pz)
+      breakwait = 0
+      avgcounter = 0
+      break_acc = 0
+      inc(PAR_1)
+      IF (PAR_1 >= piezo_max) THEN
+        state = 2 ' Go to make histogram
+      ENDIF
+      DAC(2,PAR_1)
+      break_hist_flag = 1 ' Go to next stage
+
+    CASE 1  ' Wait for stabilization (ref:adw-brk-wt)
+      breakwait = breakwait + 1
+      IF (breakwait >= PAR_7) THEN
+        break_hist_flag = 2 ' Go to next stage
+      ENDIF
+
+    CASE 2  ' Measure data (ref:adw-brk-msr)
+      START_CONV(00011b)
+      WAIT_EOC(00011b)
+      break_acc = break_acc + DATA_10[READADC(1)+1]
+      avgcounter = avgcounter + 1
+      IF (avgcounter  >= PAR_9) THEN
+        break_hist_flag = 3 ' Go to next stage
+      ENDIF
+
+    CASE 3  ' Store average in array (ref:adw-brk-store)
+      avgcurrent = totalcurrent1 / PAR_9
+      DATA_1[PAR_20] = avgcurrent
+      PAR_20 = PAR_20 + 1
+      break_hist_flag = 0
+      IF (avgcurrent <= FPAR_10) THEN
+        state = 2 ' Go to make histogram
+      ENDIF
+#+END_SRC
+
+**** Adwin histogram - Event make histogram
+     :PROPERTIES:
+     :header-args:  :tangle   no
+     :END:
+#+CAPTION: <<src-adwin-hist-make>> Code to build the break histogram
+#+NAME: src-adwin-hist-make
+#+BEGIN_SRC basic
+  SELECTCASE make_hist_flag
+    CASE 0 ' Move piezo to new point
+      makewait = 0
+      avgcounter = 0
+      make_acc = 0
+      dec(PAR_1)
+      IF (PAR_1 <= piezo_min) THEN
+        state = 3 ' Go to end process
+      ENDIF
+      DAC(2,PAR_1)
+      make_hist_flag = 1 ' Go to next stage
+
+    CASE 1  ' Wait for stabilization
+      makewait = makewait + 1
+      IF (makewait >= PAR_8) THEN
+        make_hist_flag = 2 ' Go to next stage
+      ENDIF
+
+    CASE 2  ' Measure data
+      START_CONV(00011b)
+      WAIT_EOC(00011b)
+      make_acc = make_acc + DATA_10[READADC(1)+1]
+      avgcounter = avgcounter + 1
+      IF (avgcounter  >= PAR_9) THEN
+        make_hist_flag = 3 ' Go to next stage
+      ENDIF
+
+    CASE 3  ' Store average in array
+      avgcurrent = make_acc / PAR_9
+      DATA_2[PAR_21] = avgcurrent
+      PAR_21 = PAR_21 + 1
+      make_hist_flag = 0
+      IF (avgcurrent <= FPAR_11) THEN
+        state = 3 ' Go to end process
+      ENDIF
+#+END_SRC
+**** Adwin histogram - Event reset juncture voltage
+     :PROPERTIES:
+     :header-args:  :tangle   no
+     :END:
+The algorithm to reset the juncture voltage is the same as the one used for the IV measurement. See  [[Adwin IV - Event reset juncture voltage]]
+#+CAPTION: <<src-adwin-hist-reset-jv>> Code to restore the juncture value  to off value
+#+NAME: src-adwin-hist-reset-jv
+#+BEGIN_SRC basic :exports none
+  <<src-adwin-iv-reset-jv>>
+#+END_SRC
+
+
+
 ** Adwin driver - program interface
-
-
 
 * Faulhaber Driver
   :PROPERTIES:
-  :tangle:   modules/Faulhaber_driver.py
-  :noweb:    tangle
-  :comments: link
+  :header-args:  :tangle   modules/Faulhaber_driver.py
+  :header-args:  :noweb    tangle
+  :header-args:  :comments link
   :END:
 The Faulhaber motor is used to perform the initial breaking of the juncture as it has a far larger dynamic range than possible with a single piezoelectric actuator. The driver class defines an interface for the rest of the program 
 
@@ -1361,7 +1649,7 @@ The constants are:
 The utilities are a set of functions that although related to the Faulhaber motor, are not really part of the interface to it. These function are used in the control interface to the motor.
 
 *** Conversion functions
-The interface to the Faulhaber motor is in \([rpm]\), however the magnitude has little meaning in the experiment, as the measured quantity is the displacement which is in \([\mu m]\), therefore conversion functions are used to move from one measurement to the other. Equation [[eq-conversion-rmp-ums]] shows the conversion formula using the motor *gearbox* and the *axis pitch*.
+The interface to the Faulhaber motor is in \([rpm]\), however the magnitude has little meaning in the experiment, as the measured quantity is the displacement which is in \([\mu m]\), therefore conversion functions are used to move from one measurement to the other. Equation [[eq-conversion-rpm-ums]] shows the conversion formula using the motor *gearbox* and the *axis pitch*.
 
 #+name: eq-conversion-rpm-ums
 \begin{equation}
@@ -1439,7 +1727,7 @@ The Faulhaber class defined in the code block [[faulhaber-class-def]], provides 
 #+END_SRC
 *** Faulhaber Basic Functions
     :PROPERTIES:
-    :tangle:   no
+    :header-args:  :tangle   no
     :END:
 As previously stated this section defines the basic functions of the Faulhaber motor.
 - Enable Motor :: This function enables the motor to allow it to move.
@@ -1553,13 +1841,13 @@ As previously stated this section defines the basic functions of the Faulhaber m
 
 *** Faulhaber Program Interface
     :PROPERTIES:
-    :tangle:   no
+    :header-args:  :tangle   no
     :END:
 The Faulhaber program interface is actually the control algorithm for the motor, this is, given a set of parameters, the control algorithm will set the new speed for the motor. 
 
 *** Faulhaber Control Algorithm
     :PROPERTIES:
-    :tangle:   no
+    :header-args:  :tangle   no
     :END:
 In order to produce the most reliable measurements with the piezoelectric device, and with the least amount of noise for multiple measurements of the same samples, it's required to start the piezoelectric measurement *at the same data point* every time. Considering the characteristics of the experiment, there are only a few ways to ensure this.
 1. Always start the measurement at the same *Displacement* of the motor, and hence the sample.
@@ -1741,19 +2029,18 @@ The motor break-restore algorithm tries to set the conductance to a target value
 
 
 
-
 * Utility functions
 This section is for the interface with each measurement instrument.
 
 
 * Settings                                                         :noexport:
 #+BEGIN_SRC emacs-lisp :export none :results none
-(setq org-babel-use-quick-and-dirty-noweb-expansion t)
-(org-babel-do-load-languages
- 'org-babel-load-languages
- '((python . t)
-   ))
-(setq org-babel-python-command "/bin/python2")
+  (setq org-babel-use-quick-and-dirty-noweb-expansion t)
+  (org-babel-do-load-languages
+   'org-babel-load-languages
+   '((python . t)
+     ))
+  (setq org-babel-python-command "/bin/python2")
 #+END_SRC
 
 ** colorize
@@ -1827,5 +2114,4 @@ This section is for the interface with each measurement instrument.
 #+END_SRC
 
 #+RESULTS:
-: ((\.bas\' . basic-mode) (\.hva\' . latex-mode) (\.drv\' . latex-mode) (/git-rebase-todo\' . git-rebase-mode) (\.gpg\(~\|\.~[0-9]+~\)?\' nil epa-file) (\.\(?:3fr\|a\(?:r[tw]\|vs\)\|bmp[23]?\|c\(?:als?\|myka?\|r[2w]\|u[rt]\)\|d\(?:c[mrx]\|ds\|ng\|px\)\|f\(?:ax\|its\)\|gif\(?:87\)?\|hrz\|ic\(?:on\|[bo]\)\|j\(?:\(?:pe\|[np]\)g\)\|k\(?:25\|dc\)\|m\(?:iff\|ng\|rw\|s\(?:l\|vg\)\|tv\)\|nef\|o\(?:rf\|tb\)\|p\(?:bm\|c\(?:ds\|[dltx]\)\|db\|ef\|gm\|i\(?:ct\|x\)\|jpeg\|n\(?:g\(?:24\|32\|8\)\|[gm]\)\|pm\|sd\|tif\|wp\)\|r\(?:a[fs]\|gb[ao]?\|l[ae]\)\|s\(?:c[rt]\|fw\|gi\|r[2f]\|un\|vgz?\)\|t\(?:ga\|i\(?:ff\(?:64\)?\|le\|m\)\|tf\)\|uyvy\|v\(?:da\|i\(?:car\|d\|ff\)\|st\)\|w\(?:bmp\|pg\)\|x\(?:3f\|bm\|cf\|pm\|wd\|[cv]\)\|y\(?:cbcra?\|uv\)\)\' . image-mode) (\.elc\' . elisp-byte-code-mode) (\.dz\' nil jka-compr) (\.xz\' nil jka-compr) (\.lzma\' nil jka-compr) (\.lz\' nil jka-compr) (\.g?z\' nil jka-compr) (\.bz2\' nil jka-compr) (\.Z\' nil jka-compr) (\.vr[hi]?\' . vera-mode) (\(?:\.\(?:rbw?\|ru\|rake\|thor\|jbuilder\|rabl\|gemspec\|podspec\)\|/\(?:Gem\|Rake\|Cap\|Thor\|Puppet\|Berks\|Vagrant\|Guard\|Pod\)file\)\' . ruby-mode) (\.re?st\' . rst-mode) (\.pyw?\' . python-mode) (\.scss\' . scss-mode) (\.awk\' . awk-mode) (\.\(u?lpc\|pike\|pmod\(\.in\)?\)\' . pike-mode) (\.idl\' . idl-mode) (\.java\' . java-mode) (\.m\' . objc-mode) (\.ii\' . c++-mode) (\.i\' . c-mode) (\.lex\' . c-mode) (\.y\(acc\)?\' . c-mode) (\.[ch]\' . c-mode) (\.\(CC?\|HH?\)\' . c++-mode) (\.[ch]\(pp\|xx\|\+\+\)\' . c++-mode) (\.\(cc\|hh\)\' . c++-mode) (\.\(bat\|cmd\)\' . bat-mode) (\.[sx]?html?\(\.[a-zA-Z_]+\)?\' . html-mode) (\.svgz?\' . image-mode) (\.svgz?\' . xml-mode) (\.x[bp]m\' . image-mode) (\.x[bp]m\' . c-mode) (\.p[bpgn]m\' . image-mode) (\.tiff?\' . image-mode) (\.gif\' . image-mode) (\.png\' . image-mode) (\.jpe?g\' . image-mode) (\.te?xt\' . text-mode) (\.[tT]e[xX]\' . tex-mode) (\.ins\' . tex-mode) (\.ltx\' . latex-mode) (\.dtx\' . doctex-mode) (\.org\' . org-mode) (\.el\' . emacs-lisp-mode) (Project\.ede\' . emacs-lisp-mode) (\.\(scm\|stk\|ss\|sch\)\' . scheme-mode) (\.l\' . lisp-mode) (\.li?sp\' . lisp-mode) (\.[fF]\' . fortran-mode) (\.for\' . fortran-mode) (\.p\' . pascal-mode) (\.pas\' . pascal-mode) (\.\(dpr\|DPR\)\' . delphi-mode) (\.ad[abs]\' . ada-mode) (\.ad[bs].dg\' . ada-mode) (\.\([pP]\([Llm]\|erl\|od\)\|al\)\' . perl-mode) (Imakefile\' . makefile-imake-mode) (Makeppfile\(?:\.mk\)?\' . makefile-makepp-mode) (\.makepp\' . makefile-makepp-mode) (\.mk\' . makefile-gmake-mode) (\.make\' . makefile-gmake-mode) ([Mm]akefile\' . makefile-gmake-mode) (\.am\' . makefile-automake-mode) (\.texinfo\' . texinfo-mode) (\.te?xi\' . texinfo-mode) (\.[sS]\' . asm-mode) (\.asm\' . asm-mode) (\.css\' . css-mode) (\.mixal\' . mixal-mode) (\.gcov\' . compilation-mode) (/\.[a-z0-9-]*gdbinit . gdb-script-mode) (-gdb\.gdb . gdb-script-mode) ([cC]hange\.?[lL]og?\' . change-log-mode) ([cC]hange[lL]og[-.][0-9]+\' . change-log-mode) (\$CHANGE_LOG\$\.TXT . change-log-mode) (\.scm\.[0-9]*\' . scheme-mode) (\.[ckz]?sh\'\|\.shar\'\|/\.z?profile\' . sh-mode) (\.bash\' . sh-mode) (\(/\|\`\)\.\(bash_\(profile\|history\|log\(in\|out\)\)\|z?log\(in\|out\)\)\' . sh-mode) (\(/\|\`\)\.\(shrc\|[kz]shrc\|bashrc\|t?cshrc\|esrc\)\' . sh-mode) (\(/\|\`\)\.\([kz]shenv\|xinitrc\|startxrc\|xsession\)\' . sh-mode) (\.m?spec\' . sh-mode) (\.m[mes]\' . nroff-mode) (\.man\' . nroff-mode) (\.sty\' . latex-mode) (\.cl[so]\' . latex-mode) (\.bbl\' . latex-mode) (\.bib\' . bibtex-mode) (\.bst\' . bibtex-style-mode) (\.sql\' . sql-mode) (\.m[4c]\' . m4-mode) (\.mf\' . metafont-mode) (\.mp\' . metapost-mode) (\.vhdl?\' . vhdl-mode) (\.article\' . text-mode) (\.letter\' . text-mode) (\.i?tcl\' . tcl-mode) (\.exp\' . tcl-mode) (\.itk\' . tcl-mode) (\.icn\' . icon-mode) (\.sim\' . simula-mode) (\.mss\' . scribe-mode) (\.f9[05]\' . f90-mode) (\.f0[38]\' . f90-mode) (\.indent\.pro\' . fundamental-mode) (\.\(pro\|PRO\)\' . idlwave-mode) (\.srt\' . srecode-template-mode) (\.prolog\' . prolog-mode) (\.tar\' . tar-mode) (\.\(arc\|zip\|lzh\|lha\|zoo\|[jew]ar\|xpi\|rar\|7z\|ARC\|ZIP\|LZH\|LHA\|ZOO\|[JEW]AR\|XPI\|RAR\|7Z\)\' . archive-mode) (\.oxt\' . archive-mode) (\.\(deb\|[oi]pk\)\' . archive-mode) (\`/tmp/Re . text-mode) (/Message[0-9]*\' . text-mode) (\`/tmp/fol/ . text-mode) (\.oak\' . scheme-mode) (\.sgml?\' . sgml-mode) (\.x[ms]l\' . xml-mode) (\.dbk\' . xml-mode) (\.dtd\' . sgml-mode) (\.ds\(ss\)?l\' . dsssl-mode) (\.jsm?\' . javascript-mode) (\.json\' . javascript-mode) (\.[ds]?vh?\' . verilog-mode) (\.by\' . bovine-grammar-mode) (\.wy\' . wisent-grammar-mode) ([:/\]\..*\(emacs\|gnus\|viper\)\' . emacs-lisp-mode) (\`\..*emacs\' . emacs-lisp-mode) ([:/]_emacs\' . emacs-lisp-mode) (/crontab\.X*[0-9]+\' . shell-script-mode) (\.ml\' . lisp-mode) (\.ld[si]?\' . ld-script-mode) (ld\.?script\' . ld-script-mode) (\.xs\' . c-mode) (\.x[abdsru]?[cnw]?\' . ld-script-mode) (\.zone\' . dns-mode) (\.soa\' . dns-mode) (\.asd\' . lisp-mode) (\.\(asn\|mib\|smi\)\' . snmp-mode) (\.\(as\|mi\|sm\)2\' . snmpv2-mode) (\.\(diffs?\|patch\|rej\)\' . diff-mode) (\.\(dif\|pat\)\' . diff-mode) (\.[eE]?[pP][sS]\' . ps-mode) (\.\(?:PDF\|DVI\|OD[FGPST]\|DOCX?\|XLSX?\|PPTX?\|pdf\|djvu\|dvi\|od[fgpst]\|docx?\|xlsx?\|pptx?\)\' . doc-view-mode-maybe) (configure\.\(ac\|in\)\' . autoconf-mode) (\.s\(v\|iv\|ieve\)\' . sieve-mode) (BROWSE\' . ebrowse-tree-mode) (\.ebrowse\' . ebrowse-tree-mode) (#\*mail\* . mail-mode) (\.g\' . antlr-mode) (\.mod\' . m2-mode) (\.ses\' . ses-mode) (\.docbook\' . sgml-mode) (\.com\' . dcl-mode) (/config\.\(?:bat\|log\)\' . fundamental-mode) (\.\(?:[iI][nN][iI]\|[lL][sS][tT]\|[rR][eE][gG]\|[sS][yY][sS]\)\' . conf-mode) (\.\(?:desktop\|la\)\' . conf-unix-mode) (\.ppd\' . conf-ppd-mode) (java.+\.conf\' . conf-javaprop-mode) (\.properties\(?:\.[a-zA-Z0-9._-]+\)?\' . conf-javaprop-mode) (\`/etc/\(?:DIR_COLORS\|ethers\|.?fstab\|.*hosts\|lesskey\|login\.?de\(?:fs\|vperm\)\|magic\|mtab\|pam\.d/.*\|permissions\(?:\.d/.+\)?\|protocols\|rpc\|services\)\' . conf-space-mode) (\`/etc/\(?:acpid?/.+\|aliases\(?:\.d/.+\)?\|default/.+\|group-?\|hosts\..+\|inittab\|ksysguarddrc\|opera6rc\|passwd-?\|shadow-?\|sysconfig/.+\)\' . conf-mode) ([cC]hange[lL]og[-.][-0-9a-z]+\' . change-log-mode) (/\.?\(?:gitconfig\|gnokiirc\|hgrc\|kde.*rc\|mime\.types\|wgetrc\)\' . conf-mode) (/\.\(?:enigma\|gltron\|gtk\|hxplayer\|net\|neverball\|qt/.+\|realplayer\|scummvm\|sversion\|sylpheed/.+\|xmp\)rc\' . conf-mode) (/\.\(?:gdbtkinit\|grip\|orbital/.+txt\|rhosts\|tuxracer/options\)\' . conf-mode) (/\.?X\(?:default\|resource\|re\)s\> . conf-xdefaults-mode) (/X11.+app-defaults/\|\.ad\' . conf-xdefaults-mode) (/X11.+locale/.+/Compose\' . conf-colon-mode) (/X11.+locale/compose\.dir\' . conf-javaprop-mode) (\.~?[0-9]+\.[0-9][-.0-9]*~?\' nil t) (\.\(?:orig\|in\|[bB][aA][kK]\)\' nil t) ([/.]c\(?:on\)?f\(?:i?g\)?\(?:\.[a-zA-Z0-9._-]+\)?\' . conf-mode-maybe) (\.[1-9]\' . nroff-mode) (\.tgz\' . tar-mode) (\.tbz2?\' . tar-mode) (\.txz\' . tar-mode))
 
