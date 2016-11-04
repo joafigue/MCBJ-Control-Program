@@ -61,7 +61,7 @@ Obviously there is a series of additional modules which provide the interface to
 ** DONE Main Loop
    :PROPERTIES:
    :header-args:  :tangle   main.py
-   :header-args:  :comments link
+   :header-args+:  :comments link
    :END:
 #+BEGIN_SRC python :exports none
   #################################################################
@@ -166,7 +166,7 @@ Finally the main loop is executed indefinitely until the user terminates the pro
 ** TODO User Interface
    :PROPERTIES:
    :header-args:  :noweb    tangle
-   :header-args:  :comments link
+   :header-args+:  :comments link
    :END:
 The user interface has 2 requirements.
 1. It should allow the user to run the experiment
@@ -1037,8 +1037,8 @@ To provide the GUI for a parameter, a label and a text-box are needed, however f
 ** TODO General purpose Utilities
    :PROPERTIES:
    :header-args:  :tangle   modules/utilities.py
-   :header-args:  :noweb    tangle
-   :header-args:  :comments link
+   :header-args+:  :noweb    tangle
+   :header-args+:  :comments link
    :END:
 As with many programs, there are some general purpose functionalities that do not fit cleanly in other sections or files. This section is for these types of utilities.
 #+BEGIN_SRC python :exports none
@@ -1072,23 +1072,21 @@ Although Python already provides with a good interface to interface with the fil
       script_root_path = os.path.dirname(module_path)
       return script_root_path
 #+END_SRC 
-* ADwin Driver
+* TODO ADwin Driver
 The Adwin instrument is capable of controlling the piezo actuator and to take measurements by using its several hardware interfaces. Thus is the ADwin which actually performs the measurements by using different *process* or sub-routines, written in basic, and then handing the data back to the main program. These sub-routines must be compiled and then loaded into the instrument, so any program that process the data, is reduced to query the results of the measurements.
 
 For the measurements required in the break-junction experiment the following process have been identified:
-- Juncture Voltage Measurement :: This process is used to measure the voltage  and current on the juncture, periodically for a given time
-      see [[file:basic_orig/Gt_MUX12.bas]]
-- Juncture Voltage Histogram :: This process uses some of the same sub-routines to measure the voltage and current on the juncture, but perform the same measurement several times as it also actuates on the piezoelectric actuator to perform the breaking and joining of the juncture.
-      see [[file:basic_orig/piezo_histogram.bas]]
+- Juncture Voltage Measurement :: This process is used to measure the voltage  and current on the juncture, periodically for a given time. See [[Adwin%20Measure%20IV%20process][Adwin Measure IV process]]
+- Juncture Voltage Histogram :: This process uses some of the same sub-routines to measure the voltage and current on the juncture, but perform the same measurement several times as it also actuates on the piezoelectric actuator to perform the breaking and joining of the juncture. See [[Adwin%20Measure%20-%20Generate%20piezo%20histogram][Adwin Measure - Generate piezo histogram]]
 
 Beyond the basic programs that perform the measurements, an interface to the actual program is shown in [[Adwin driver - program interface]]
 
-** Adwin Measure IV process
+** DONE Adwin Measure IV process
    :PROPERTIES:
    :header-args:  :tangle   adwin_programs/iv_measurement_process.bas
-   :header-args:  :noweb    tangle
-   :header-args:  :comments noweb
-   :header-args:  :mkdirp   yes
+   :header-args+:  :noweb    tangle
+   :header-args+:  :comments noweb
+   :header-args+:  :mkdirp   yes
    :END:
 #+ATTR_LATEX: :width 0.9\textwidth
 #+CAPTION: Measurement algorithm for the I/V at the ADwin
@@ -1103,7 +1101,7 @@ The Adwin process is split in several blocks
 - Init block :: Is used to initialize the values of the variables defined. See [[Adwin IV - Init Block]]
 - Event Block :: The main part of the measurement algorithm. See [[Adwin IV - Event Block]]
 
-*** Adwin IV - measurement header
+*** DONE Adwin IV - measurement header
 As in many programs, a header is required. In the Adwin case, this is necessary  to set the process parameters, such as the process number and the compiler variables.
 
  #+BEGIN_SRC basic
@@ -1168,7 +1166,7 @@ As in many programs, a header is required. In the Adwin case, this is necessary 
   ' current_ampl_acc -> Same as before, but measured through log-amplifier
  #+END_SRC
 
-*** Adwin IV - variable Declarations
+*** DONE Adwin IV - variable Declarations
 In an Adwin program the local variables must be declared before the =INIT= block. This program defines several internal variables to deal with the state.
 #+CAPTION: Variable declarations
 #+NAME: src-adwin-iv-declarations
@@ -1182,7 +1180,7 @@ DIM current1_ampl_acc, current2_ampl_acc as float
 DIM DATA_10[65536] as float 
 #+END_SRC
 
-*** Adwin IV - Init Block
+*** DONE Adwin IV - Init Block
 In the ADwin =INIT= block the variables defined are set to their default values.
 #+CAPTION: Adwin I/V analysis =INIT= block
 #+NAME: src-adwin-iv-init
@@ -1201,7 +1199,7 @@ In the ADwin =INIT= block the variables defined are set to their default values.
   set_MUX(1010000000b) 'use MUX
 #+END_SRC
 
-*** Adwin IV - Event Block
+*** DONE Adwin IV - Event Block
 
 The =EVENT= block implements the measurement process. Since the =EVENT= block is excecuted perdiodically, at defined time intervals, the full algorithm must be implemented in a single =EVENT= block, which is managed by using state variables.
 
@@ -1232,7 +1230,7 @@ The =Event= Block is separated in different functionalities
     ENDSELECT
 #+END_SRC
 
-**** Adwin IV - Event set juncture voltage
+**** DONE Adwin IV - Event set juncture voltage
      :PROPERTIES:
      :header-args:  :tangle   no
      :END:
@@ -1247,7 +1245,7 @@ The =Event= Block is separated in different functionalities
   ' Mesureflag = 1 => we have to wait
 #+END_SRC
 
-**** Adwin IV - Event stabilize system
+**** DONE Adwin IV - Event stabilize system
      :PROPERTIES:
      :header-args:  :tangle   no
      :END:
@@ -1260,7 +1258,7 @@ The =Event= Block is separated in different functionalities
     waitcounter = waitcounter + 1
   ENDIF
 #+END_SRC
-**** Adwin IV - Event measure data
+**** DONE Adwin IV - Event measure data
      :PROPERTIES:
      :header-args:  :tangle   no
      :END:
@@ -1291,7 +1289,7 @@ The =Event= Block is separated in different functionalities
   IF (datacounter = PAR_10) THEN measureflag = 3
   IF (PAR_11 = 1) THEN measureflag =3
 #+END_SRC
-**** Adwin IV - Event reset juncture voltage
+**** DONE Adwin IV - Event reset juncture voltage
      :PROPERTIES:
      :header-args:  :tangle   no
      :END:
@@ -1304,11 +1302,11 @@ The =Event= Block is separated in different functionalities
   IF  (juncture_voltage = PAR_3) THEN PAR_12 = 2 ' check for end measurement
 #+END_SRC
 
-** Adwin Measure - Generate piezo histogram
+** DONE Adwin Measure - Generate piezo histogram
    :PROPERTIES:
    :header-args:  :tangle   adwin_programs/piezo_histogram.bas
-   :header-args:  :noweb    tangle
-   :header-args:  :comments noweb
+   :header-args+:  :noweb    tangle
+   :header-args+:  :comments noweb
    :END:
 Since the Adwin controls the piezoelectric device and take measurements, it makes sense  to provide a single program that operates the piezoelectric device , and then takes the corresponding measurements for each setting. After all the measurements are taken, the data is stored for analysis in the external program. The histogram program is split in several groups, similarly as the ones shown in [[Adwin Measure IV process]].
  
@@ -1317,7 +1315,7 @@ Since the Adwin controls the piezoelectric device and take measurements, it make
 - Init block :: Is used to initialize the values of the variables defined. See [[Adwin histogram - Init Block]]
 - Event Block :: The main part of the measurement algorithm. See [[Adwin histogram - Event Block]]
      
-*** Adwin histogram - measurement header
+*** DONE Adwin histogram - measurement header
 As in many programs, a header is required. In the Adwin case, this is necessary  to set the process parameters, such as the process number and the compiler variables.
 
  #+BEGIN_SRC basic
@@ -1379,7 +1377,7 @@ As in many programs, a header is required. In the Adwin case, this is necessary 
   ' piezo_max -> Maximum voltage to set in the piezo
  #+END_SRC
 
-*** Adwin histogram - variable Declarations
+*** DONE Adwin histogram - variable Declarations
 In an Adwin program the local variables must be declared before the =INIT= block. This program defines several internal variables to deal with the state.
 #+CAPTION: Variable declarations
 #+NAME: src-adwin-hist-declarations
@@ -1401,7 +1399,7 @@ In an Adwin program the local variables must be declared before the =INIT= block
   DIM DATA_10[65536] as float
 #+END_SRC
 
-*** Adwin histogram - Init Block
+*** DONE Adwin histogram - Init Block
 In the ADwin =INIT= block the variables defined are set to their default values.
 #+CAPTION: Adwin histogram analysis =INIT= block
 #+NAME: src-adwin-hist-init
@@ -1421,7 +1419,7 @@ In the ADwin =INIT= block the variables defined are set to their default values.
   set_MUX(1010000000b) 'use MUX
 #+END_SRC
 
-*** Adwin histogram - Event Block
+*** DONE Adwin histogram - Event Block
 #+ATTR_LATEX: :width 0.9\textwidth
 #+CAPTION: Top level view of the measurement algorithm to generate the histogram with the ADwin
 #+NAME: fig:adwin-histogram-top
@@ -1456,7 +1454,7 @@ The =Event= Block is separated in different functionalities
     ENDSELECT
 #+END_SRC
 
-**** Adwin histogram - Event set juncture voltage
+**** DONE Adwin histogram - Event set juncture voltage
      :PROPERTIES:
      :header-args:  :tangle   no
      :END:
@@ -1467,7 +1465,7 @@ The algorithm to set the juncture voltage is the same as the one used for the IV
   <<src-adwin-iv-set-jv>>
 #+END_SRC
 
-**** Adwin histogram - Event break histogram 
+**** DONE Adwin histogram - Event break histogram 
      :PROPERTIES:
      :header-args:  :tangle   no
      :END:     
@@ -1522,10 +1520,21 @@ This section describes the algorithm used to store the break histogram shown in 
       ENDIF
 #+END_SRC
 
-**** Adwin histogram - Event make histogram
+**** DONE Adwin histogram - Event make histogram
      :PROPERTIES:
      :header-args:  :tangle   no
      :END:
+This section describes the algorithm used to store the make histogram shown in the code fragment [[src-adwin-hist-break]]. The algorithm is broken in 4 steps, in a similar fashion as done in [[Adwin histogram - Event break histogram]]
+- Move the piezo :: Starting on line [[(adw-mk-pz)]] this is the first step  of the algorithm. 
+  - Decreases the voltage on the piezo actuator in order to reduce the "distance" between the the ends of the junction.
+  - Since it's the first step of the algorithm is also used to cleanup the variables used during the histogram analysis.
+  - Finally should the piezo voltage fall below a minimum voltage, then the make histogram measurement is aborted  and the algorithm proceeds to terminate the measurements
+- Wait for stabilization ::  Starting on line [[(adw-mk-wt)]] this step, only counts until a certain number of cycles have passed since the last modification of the piezo-voltage as to ensure the system is stable before measurement
+- Measure data :: Starting on line [[(adw-mk-msr)]] this step performs several measurements of the current circulating through the junction storing the accumulated value. After a certain number of measurements have been made the process goues to the next step
+- Store the Data :: Starting on line [[(adw-mk-store)]] this step takes the average of the accumulated value and stores it in the array. This process also:
+  - Ensures that the current has not gone above a certain threshold in which case, the measurement stops  and the algorithm proceeds to end the measurement
+  - Updates the index so no values are overwritten
+
 #+CAPTION: <<src-adwin-hist-make>> Code to build the break histogram
 #+NAME: src-adwin-hist-make
 #+BEGIN_SRC basic
@@ -1565,7 +1574,7 @@ This section describes the algorithm used to store the break histogram shown in 
         state = 3 ' Go to end process
       ENDIF
 #+END_SRC
-**** Adwin histogram - Event reset juncture voltage
+**** DONE Adwin histogram - Event reset juncture voltage
      :PROPERTIES:
      :header-args:  :tangle   no
      :END:
@@ -1577,14 +1586,15 @@ The algorithm to reset the juncture voltage is the same as the one used for the 
 #+END_SRC
 
 
-
-** Adwin driver - program interface
+** TODO Adwin driver - program interface
+The adwin driver is mostly a convenience layer between the ADwin and the Python program which uses it. Still this program provides with enough functionality to justify its existence, plus the addition of some test commands.
+The Adwin 
 
 * Faulhaber Driver
   :PROPERTIES:
   :header-args:  :tangle   modules/Faulhaber_driver.py
-  :header-args:  :noweb    tangle
-  :header-args:  :comments link
+  :header-args+:  :noweb    tangle
+  :header-args+:  :comments link
   :END:
 The Faulhaber motor is used to perform the initial breaking of the juncture as it has a far larger dynamic range than possible with a single piezoelectric actuator. The driver class defines an interface for the rest of the program 
 
@@ -2109,7 +2119,7 @@ This section is for the interface with each measurement instrument.
     (setq font-lock-defaults basic-font-lock-defaults)
     )
   (provide 'basic-mode)
-  
+
   (add-to-list 'auto-mode-alist '("\\.bas\\'" . basic-mode))
 #+END_SRC
 
