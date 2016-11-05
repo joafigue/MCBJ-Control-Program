@@ -61,7 +61,7 @@ Obviously there is a series of additional modules which provide the interface to
 ** DONE Main Loop
    :PROPERTIES:
    :header-args:  :tangle   main.py
-   :header-args+:  :comments link
+   :header-args+:  :comments noweb
    :END:
 #+BEGIN_SRC python :exports none
   #################################################################
@@ -166,7 +166,7 @@ Finally the main loop is executed indefinitely until the user terminates the pro
 ** TODO User Interface
    :PROPERTIES:
    :header-args:  :noweb    tangle
-   :header-args+:  :comments link
+   :header-args+:  :comments noweb
    :END:
 The user interface has 2 requirements.
 1. It should allow the user to run the experiment
@@ -1038,7 +1038,7 @@ To provide the GUI for a parameter, a label and a text-box are needed, however f
    :PROPERTIES:
    :header-args:  :tangle   modules/utilities.py
    :header-args+:  :noweb    tangle
-   :header-args+:  :comments link
+   :header-args+:  :comments noweb
    :END:
 As with many programs, there are some general purpose functionalities that do not fit cleanly in other sections or files. This section is for these types of utilities.
 #+BEGIN_SRC python :exports none
@@ -1342,9 +1342,9 @@ As in many programs, a header is required. In the Adwin case, this is necessary 
   ' PAR_2 -> Juncture voltage for measurement
   ' PAR_3 -> Juncture voltage at end (off)
   ' ---- Current Measurement ----
-  ' PAR_7 -> Stabilizing time for breaking
-  ' PAR_8 -> Stabilizing time for making
-  ' PAR_9 -> Number of data point to average for each measurement
+  ' PAR_17 -> Stabilizing time for breaking
+  ' PAR_18 -> Stabilizing time for making
+  ' PAR_19 -> Number of data point to average for each measurement
   ' ---- Measurement Modifiers ----
   ' FPAR_10 -> Minimum current to abort measurement - Breaking
   ' FPAR_11 -> Maximum current to abort measurement - Making
@@ -1497,7 +1497,7 @@ This section describes the algorithm used to store the break histogram shown in 
 
     CASE 1  ' Wait for stabilization (ref:adw-brk-wt)
       breakwait = breakwait + 1
-      IF (breakwait >= PAR_7) THEN
+      IF (breakwait >= PAR_17) THEN
         break_hist_flag = 2 ' Go to next stage
       ENDIF
 
@@ -1506,12 +1506,12 @@ This section describes the algorithm used to store the break histogram shown in 
       WAIT_EOC(00011b)
       break_acc = break_acc + DATA_10[READADC(1)+1]
       avgcounter = avgcounter + 1
-      IF (avgcounter  >= PAR_9) THEN
+      IF (avgcounter  >= PAR_19) THEN
         break_hist_flag = 3 ' Go to next stage
       ENDIF
 
     CASE 3  ' Store average in array (ref:adw-brk-store)
-      avgcurrent = totalcurrent1 / PAR_9
+      avgcurrent = totalcurrent1 / PAR_19
       DATA_1[PAR_20] = avgcurrent
       PAR_20 = PAR_20 + 1
       break_hist_flag = 0
@@ -1539,7 +1539,7 @@ This section describes the algorithm used to store the make histogram shown in t
 #+NAME: src-adwin-hist-make
 #+BEGIN_SRC basic
   SELECTCASE make_hist_flag
-    CASE 0 ' Move piezo to new point
+    CASE 0 ' Move piezo to new point (ref:adw-mk-pz)
       makewait = 0
       avgcounter = 0
       make_acc = 0
@@ -1550,23 +1550,23 @@ This section describes the algorithm used to store the make histogram shown in t
       DAC(2,PAR_1)
       make_hist_flag = 1 ' Go to next stage
 
-    CASE 1  ' Wait for stabilization
+    CASE 1  ' Wait for stabilization (ref:adw-mk-wt)
       makewait = makewait + 1
-      IF (makewait >= PAR_8) THEN
+      IF (makewait >= PAR_18) THEN
         make_hist_flag = 2 ' Go to next stage
       ENDIF
 
-    CASE 2  ' Measure data
+    CASE 2  ' Measure data (ref:adw-mk-msr)
       START_CONV(00011b)
       WAIT_EOC(00011b)
       make_acc = make_acc + DATA_10[READADC(1)+1]
       avgcounter = avgcounter + 1
-      IF (avgcounter  >= PAR_9) THEN
+      IF (avgcounter  >= PAR_19) THEN
         make_hist_flag = 3 ' Go to next stage
       ENDIF
 
-    CASE 3  ' Store average in array
-      avgcurrent = make_acc / PAR_9
+    CASE 3  ' Store average in array  (ref:adw-mk-store)
+      avgcurrent = make_acc / PAR_19
       DATA_2[PAR_21] = avgcurrent
       PAR_21 = PAR_21 + 1
       make_hist_flag = 0
@@ -1587,14 +1587,305 @@ The algorithm to reset the juncture voltage is the same as the one used for the 
 
 
 ** TODO Adwin driver - program interface
+   :PROPERTIES:
+   :header-args: :tangle mudules/adwin_driver.py
+   :header-args+: :noweb yes
+   :header-args+: :comments noweb
+   :END:
 The adwin driver is mostly a convenience layer between the ADwin and the Python program which uses it. Still this program provides with enough functionality to justify its existence, plus the addition of some test commands.
-The Adwin 
+The Adwin driver is split in sections:
+
+- Header :: As with many files a necessity. See [[Adwin driver - header]]
+- Parameters :: This defines a set of constants to be used by the driver, such as the exchange variables with the ADwin. See  [[Adwin driver - parameters]]
+- ADwin Class :: The Driver definition. See [[Adwin driver - interface]]
+*** DONE Adwin driver - header
+#+BEGIN_SRC python
+  #################################################################
+  ## @file    adwin_driver.py
+  #  @author  Joaquin Figueroa
+  #  @date    Fri Nov 4, 2016
+  #  @brief   Provides the interfaces for the Adwin 
+  #
+  #  @details This file provides  the Adwin interface,
+  #           which defines high and low level functionalities.
+  #           The user should use onlythe high level functionality
+  #           if possible.
+  #################################################################
+  import ADwin
+#+END_SRC
+*** TODO Adwin driver - parameters
+The ADwin has several internal variables which can be used for communication between the instrument and the program. In order to make the code more  understandable, these variables are encoded with meaningful names. The parameters are classified in several groups.
+
+- Global parameters :: These are parameters that are always used by the ADwin in order to function. See [[Adwin driver - global parameters]]
+- IV Parameters :: These are parameters used in the conductance (I/V) measurements [[Adwin driver - IV parameters]]
+- Histogram Parameters :: These parameters are used during the histogram measurements [[Adwin driver - histogram parameters]]
+
+**** TODO Adwin driver - global parameters
+As previously stated the global parameters hold information necessary for the ADwin instrument to work
+
+#+BEGIN_SRC python
+  ############################################################
+  ## @class  ADW_GPARAM
+  #  @brief  Parameters for Adwin instrument
+  ############################################################
+  class ADW_GPARAM:
+      ADDRESS = 0x150
+      BOOT_SCRIPT_DFLT = 'C:\ADwin\ADwin9.btl'
+      IV_PROCESS       =  1 
+      HIST_PROCESS     =  2
+#+END_SRC
+
+**** DONE Adwin driver - IV parameters
+The Adwin has several internal variables that can be used for communication between external programs and its internal process. The parameters are classified in 3 groups.
+
+- Int variables :: shown in code fragment [[src-adwin-iv-param]] These correspond to the indices for the integer variables.
+- Float variables :: shown in code fragment [[src-adwin-iv-fparam]] These correspond to the indices for the float variables.
+- Array variables :: shown in code fragment [[src-adwin-iv-aparam]] These correspond to the indices for the array variables.
+
+#+CAPTION: Adwin parameter indices used for communicating the int variables with the instrument for IV parameter measurements
+#+NAME: src-adwin-iv-param
+#+BEGIN_SRC python
+  ###########################################################################
+  ## @class  ADW_IV_PARAM
+  #  @brief  Parameters for int vars with ADwin for IV measurements
+  #
+  #  @details This structure defines the parameter indices
+  #           for the ADwin interface with the program. This structure only
+  #           defines the indices for integer variables for measuring the
+  #           IV parameters at the sample
+  #           the parameters defined are:
+  #           ------------------ inputs  ------------------------------
+  #           START_JV    -> Initial juncture voltage (off)
+  #           MEASURE_JV  -> Juncture voltage set during measurements
+  #           END_JV      -> Juncture voltage at end
+  #           WAIT        -> Number of cycles to wait before measuring after
+  #                            reaching the desired juncture voltage
+  #           MAX_DATA    -> Maximum data points to measure. Abort afterwards
+  #           ABORT       -> Used to abort measurements early
+  #           ------------------ outputs ------------------------------
+  #           END_STATUS  -> Used to communicate that measurements have ended
+  ###########################################################################
+  class ADW_IV_PARAM:
+      # Inputs for the ADWIN IV measurement
+      START_JV    = 1
+      MEASURE_JV  = 2
+      END_JV      = 3
+      WAIT        = 7
+      AVG         = 8
+      MAX_DATA    = 10
+      ABORT       = 11
+      # outputs for the ADWIN IV measurement
+      END_STATUS  = 12
+#+END_SRC
+
+
+#+CAPTION: Adwin parameter indices used for communicating the float variables with the instrument for IV parameter measurements
+#+NAME: src-adwin-iv-fparam
+#+BEGIN_SRC python
+  ###########################################################################
+  ## @class  ADW_IV_FPARAM
+  #  @brief  Parameters for communicating float vars with Adwin instrument
+  #
+  #  @details This structure defines the parameter indices
+  #           for the ADwin interface with the program. This structure only
+  #           defines the indices for float variables for measuring the
+  #           IV parameters of the sample
+  #           the parameters defined are:
+  #           ------------------ outputs ------------------------------
+  #           I_CH1      -> Current measured in channel 1
+  #           I_CH1_AMPL -> Current measured in channel 1 with log amplifier
+  #           I_CH2      -> Current measured in channel 1
+  #           I_CH2_AMPL -> Current measured in channel 1 with log amplifier
+  ###########################################################################
+  class ADW_IV_FPARAM:
+      # outputs for the ADWIN IV measurement
+      I_CH1       = 1
+      I_CH1_AMPL  = 2
+      I_CH2       = 3
+      I_CH2_AMPL  = 4
+#+END_SRC
+
+#+CAPTION: Adwin parameter indices used for communicating the array variables with the instrument for IV parameter measurements
+#+NAME: src-adwin-iv-aparam
+#+BEGIN_SRC python
+  ###########################################################################
+  ## @class  adw_iv_aparam
+  #  @brief  Parameters for communicating array vars with Adwin instrument
+  #
+  #  @details This structure defines the parameter indices
+  #           for the ADwin interface with the program. This structure only
+  #           defines the indices for array variables used for measuring
+  #           the IV parameters of the sample
+  #           the parameters defined are:
+  #           ------------------ inputs  ------------------------------
+  #           LOG_AMP  -> Used define the logarithmic amplifier calibration
+  ###########################################################################
+  class ADW_IV_APARAM:
+      # Inputs for the ADWIN IV measurement
+      LOG_AMPL  = 1
+#+END_SRC
+
+**** DONE Adwin driver - histogram parameters
+In a similar way as shown in [[Adwin driver - IV parameters]] the parameters are grouped in 3 categories
+
+- Int variables :: shown in code fragment [[src-adwin-hist-param]] These correspond to the indices for the integer variables.
+- Float variables :: shown in code fragment [[src-adwin-hist-fparam]] These correspond to the indices for the float variables.
+- Array variables :: shown in code fragment [[src-adwin-hist-aparam]] These correspond to the indices for the array variables.
+
+
+#+CAPTION: Adwin parameter indices used for communicating the int variables with the instrument for the histogram measurements
+#+NAME: src-adwin-hist-param
+#+BEGIN_SRC python
+  ###########################################################################
+  ## @class  ADW_HIST_PARAM
+  #  @brief  Parameters for int vars with ADwin for IV measurements
+  #
+  #  @details This structure defines the parameter indices
+  #           for the ADwin interface with the program. This structure only
+  #           defines the indices for integer variables used for histogram
+  #           measurements
+  #           the parameters defined are:
+  #           ------------------ inputs  ------------------------------
+  #           START_JV    -> Initial juncture voltage (off)
+  #           MEASURE_JV  -> Juncture voltage set during measurements
+  #           END_JV      -> Juncture voltage at end
+  #           BREAK_WAIT  -> Number of cycles to wait before measuring after
+  #                            modifying the piezo position for breaking
+  #           MAKE_WAIT   -> Number of cycles to wait before measuring after
+  #                            modifying the piezo position for making
+  #           AVG         -> Number of measurements to average for data point
+  #           ------------------ outputs ------------------------------
+  #           BREAK_IDX  -> Final index data point stored in the break array
+  #           MAKE_IDX   -> Final index data point stored in the make array 
+  ###########################################################################
+  class ADW_HIST_PARAM:
+      # Inputs for the ADWIN histogram measurement
+      START_JV    = ADW_IV_PARAM.START_JV
+      MEASURE_JV  = ADW_IV_PARAM.MEASURE_JV
+      END_JV      = ADW_IV_PARAM.END_JV
+      BREAK_WAIT  = 17
+      MAKE_WAIT   = 18
+      AVG         = 19
+      # outputs for the ADWIN histogram measurement
+      BREAK_IDX   = 20
+      MAKE_IDX    = 21
+#+END_SRC
+
+
+#+CAPTION: Adwin parameter indices used for communicating the float variables with the instrument for the histogram measurements
+#+NAME: src-adwin-hist-fparam
+#+BEGIN_SRC python
+  ###########################################################################
+  ## @class  ADW_IV_FPARAM
+  #  @brief  Parameters for communicating float vars with Adwin instrument
+  #
+  #  @details This structure defines the parameter indices
+  #           for the ADwin interface with the program. This structure only
+  #           defines the indices for float variables used for histogram
+  #           measurements
+  #           the parameters defined are:
+  #           ------------------ inputs ------------------------------
+  #           I_MIN_BRK  -> Minimum expected current during breaking
+  #           I_MAX_MK   -> Maximum expected current during making
+  ###########################################################################
+  class ADW_IV_FPARAM:
+      # inputs for the ADWIN histogram measurement
+      I_MIN_BRK  = 10
+      I_MAX_MK   = 11
+#+END_SRC
+
+#+CAPTION: Adwin parameter indices used for communicating the array variables with the instrument for histogram measurements
+#+NAME: src-adwin-iv-aparam
+#+BEGIN_SRC python
+  ###########################################################################
+  ## @class  adw_iv_aparam
+  #  @brief  Parameters for communicating array vars with Adwin instrument
+  #
+  #  @details This structure defines the parameter indices
+  #           for the ADwin interface with the program. This structure only
+  #           defines the indices for array variables used for histogram
+  #           measurements
+  #           the parameters defined are:
+  #           ------------------ inputs  ------------------------------
+  #           LOG_AMP  -> Used define the logarithmic amplifier calibration
+  ###########################################################################
+  class ADW_HIST_APARAM:
+      # Inputs for the ADWIN histogram measurement
+      LOG_AMPL  = 1
+      # Outputs for the ADWIN histogram measurement
+      BRK_HIST  = 1
+      MK_HIST   = 2    
+#+END_SRC
+
+*** TODO Adwin driver - interface
+The Adwin driver interface provides every functionality needed to interact with the ADwin instrument. 
+
+
+#+BEGIN_SRC python
+  ############################################################
+  ## @class   adwin_driver
+  #  @details This class stores all configuration values to be
+  #           used for the measurements.
+  ############################################################
+  class adwin_driver:
+      def __init__(self):
+          self._programs_subdir="adwin_programs"
+          self.adw = ADwin.ADwin(ADW_GPARAM.ADDRESS,1)
+          self.adw.Boot(ADW_GPARAM.BOOT_SCRIPT_DFLT)
+          self.load_iv_process()
+          self.load_histogram_process()
+          self.configure_iv_process()
+          self.configure_hist_process()        
+      def load_iv_process(self):
+          root_path = utl.get_script_root_path()
+          program_path = os.path.join(root_path,self._programs_subdir)
+          iv_filename = "iv_measurement_process.T%d" % ADW_GPARAM.IV_PROCESS
+          iv_process_file = os.path.join(program_path,iv_filename)
+          if os.path.isfile(iv_process_file):
+              self.adw.Load_Process(iv_process_file)
+          else :
+              raise Exception("Bad file, check %s" %iv_process_file)
+      def load_histogram_process(self):
+          root_path = utl.get_script_root_path()
+          program_path = os.path.join(root_path,self._programs_subdir)
+          hist_filename = "hist_measurement_process.T%d" % ADW_GPARAM.HIST_PROCESS
+          hist_process_file = os.path.join(program_path,iv_filename)
+          if os.path.isfile(hist_process_file):
+              self.adw.Load_Process(hist_process_file)
+          else :
+              raise Exception("Bad file, check %s" %hist_process_file)
+      def configure_iv_process(self):
+          self.adw.Set_Processdelay(ADW_GPARAM.IV_PROCESS, process_delay)
+          self.adw.SetDataFloat(log_array, ADW_APARAM.LOG_AMPL,1,len(log_array))
+          self.adw.Set_Par(ADW_IV_PARAM.START_JV, start_jv)
+          self.adw.Set_Par(ADW_IV_PARAM.MEASURE_JV, start_jv)
+          self.adw.Set_Par(ADW_IV_PARAM.END_JV, start_jv)
+          self.adw.Set_Par(ADW_IV_PARAM.WAIT, start_jv)
+          self.adw.Set_Par(ADW_IV_PARAM.AVG, start_jv)
+          self.adw.Set_Par(ADW_IV_PARAM.MAX_DATA, start_jv)        
+      def configure_hist_process(self):
+          self.adw.Set_Processdelay(ADW_GPARAM.HIST_PROCESS, process_delay)
+          self.adw.SetDataFloat(log_array, ADW_APARAM.LOG_AMPL,1,len(log_array))
+          self.adw.Set_Par(ADW_HIST_PARAM.START_JV, start_jv)
+          self.adw.Set_Par(ADW_HIST_PARAM.MEASURE_JV, start_jv)
+          self.adw.Set_Par(ADW_HIST_PARAM.END_JV, start_jv)
+          self.adw.Set_Par(ADW_HIST_PARAM.BREAK_WAIT, start_jv)
+          self.adw.Set_Par(ADW_HIST_PARAM.MAKE_WAIT, start_jv)
+          self.adw.Set_Par(ADW_HIST_PARAM.AVG, start_jv)
+          self.adw.Set_Par(ADW_HIST_PARAM.I_MIN_BRK, start_jv)
+          self.adw.Set_Par(ADW_HIST_PARAM.I_MAX_BRK, start_jv)
+#+END_SRC
+
+
+
+
+
 
 * Faulhaber Driver
   :PROPERTIES:
   :header-args:  :tangle   modules/Faulhaber_driver.py
   :header-args+:  :noweb    tangle
-  :header-args+:  :comments link
+  :header-args+:  :comments noweb
   :END:
 The Faulhaber motor is used to perform the initial breaking of the juncture as it has a far larger dynamic range than possible with a single piezoelectric actuator. The driver class defines an interface for the rest of the program 
 
