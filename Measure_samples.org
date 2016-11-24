@@ -1598,7 +1598,9 @@ The Adwin driver is split in sections:
 - Header :: As with many files a necessity. See [[Adwin driver - header]]
 - Parameters :: This defines a set of constants to be used by the driver, such as the exchange variables with the ADwin. See  [[Adwin driver - parameters]]
 - ADwin Class :: The Driver definition. See [[Adwin driver - interface]]
-*** DONE Adwin driver - header
+- Utility functions :: Functionality directly tied to the ADwin, but which is not part of the interface with the instrument. See  [[Adwin driver - utilities]]
+
+*** TODO Adwin driver - header
 #+BEGIN_SRC python
   #################################################################
   ## @file    adwin_driver.py
@@ -1612,6 +1614,8 @@ The Adwin driver is split in sections:
   #           if possible.
   #################################################################
   import ADwin
+  import os
+  import modules.utilities as utl
 #+END_SRC
 *** TODO Adwin driver - parameters
 The ADwin has several internal variables which can be used for communication between the instrument and the program. In order to make the code more  understandable, these variables are encoded with meaningful names. The parameters are classified in several groups.
@@ -1621,18 +1625,47 @@ The ADwin has several internal variables which can be used for communication bet
 - Histogram Parameters :: These parameters are used during the histogram measurements [[Adwin driver - histogram parameters]]
 
 **** TODO Adwin driver - global parameters
-As previously stated the global parameters hold information necessary for the ADwin instrument to work
+As previously stated the global parameters hold information necessary for the ADwin instrument to work and some of the instrument characterization constants. The parameters are:
+- ADDRESS :: The addres is the associated to the port used to communicate with the instrument.
+- BOOT_SCRIPT_DFLT :: This parameter has the location of the boot script used to load the operative system of the ADwin instrument.
+- PROGRAM_DIR :: This parameter has the name of the subdirectory where all the ADwin specific files, including ADwin programs are stored,
+- HIGH_PERIOD :: According to the manual the ADwin has a minimum time resolution of the clock period depending on the type of process involved. For high priority process  is \(25 [ns] \) 
+- OUTPUT_RANGE :: The output of the analog output is limited to \(\pm 10 [V]\), hence the range is \(10\).
+- RESOLUTION :: The ADwin uses \(16\) bits to represent the values of the analog inputs and outputs, hence the resolution is \(16\)
+- IV_PROCESS ::  The program to measure the IV charactersitics of the sample is stored in the process 1
+- HIST_PROCESS :: The program to generate the piezoelectric histogram is stored in the slot 2
+- PROCESS_DELAY :: The process delay, is a parameter that counts how many periods of the instrument are considered between different steps of a process. Considering the period for a high priority process, it was decided to perform an operation with the instrument only once every  \(10 [\mu s]\), hence the process delay is set to \(400\)
 
 #+BEGIN_SRC python
-  ############################################################
+  ###########################################################################
   ## @class  ADW_GPARAM
   #  @brief  Parameters for Adwin instrument
-  ############################################################
+  #
+  #  @details This is the list of parameters used by the ADwin
+  #           ADDRESS -> Communication addres with the ADwin
+  #           BOOT_SCRIPT_DFLT -> Where is the operative system
+  #           PROGRAM_DIR -> The directory where all adwin files are stored
+  #           HIGH_PERIOD -> high priority process clock period (25 ns)
+  #           OUTPUT_RANGE -> Output voltage in volts (+- 10 v)
+  #           RESOLUTION -> 16 bits of representation for continous values
+  #           IV_PROCESS -> IV measurements program stored in slot 1
+  #           HIST_PROCESS -> Histogram program stored in slot 2
+  #           PROCESS_DELAY -> number of ADwin clock between each operation
+  #                            set to 400, in order to operate every 10 us
+  ###########################################################################
   class ADW_GPARAM:
+      # Interface with computer
       ADDRESS = 0x150
       BOOT_SCRIPT_DFLT = 'C:\ADwin\ADwin9.btl'
+      PROGRAM_DIR = "adwin_programs"
+      # Adwin instrument characterization
+      HIGH_PERIOD      = 25e-9
+      OUTPUT_RANGE     = 10.0
+      RESOLUTION       = 16.0
+      # Program Constants
       IV_PROCESS       =  1 
       HIST_PROCESS     =  2
+      PROCESS_DELAY    = 400
 #+END_SRC
 
 **** DONE Adwin driver - IV parameters
@@ -1829,33 +1862,31 @@ The Adwin driver interface provides every functionality needed to interact with 
   ############################################################
   class adwin_driver:
       def __init__(self):
-          self._programs_subdir="adwin_programs"
+          self._adwin_subdir= ADW_GPARAM.PROGRAM_DIR
           self.adw = ADwin.ADwin(ADW_GPARAM.ADDRESS,1)
           self.adw.Boot(ADW_GPARAM.BOOT_SCRIPT_DFLT)
           self.load_iv_process()
           self.load_histogram_process()
           self.configure_iv_process()
           self.configure_hist_process()        
+      def load_process(self, filename):
+          root_path = utl.get_script_root_path()
+          program_path = os.path.join(root_path,self._adwin_subdir)
+          process_file = os.path.join(program_path,filename)
+          if (os.path.isfile(process_file)):
+              self.adw.Load_Process(process_file)
+          else :
+              raise Exception("Bad file, check %s" %process_file)
       def load_iv_process(self):
-          root_path = utl.get_script_root_path()
-          program_path = os.path.join(root_path,self._programs_subdir)
           iv_filename = "iv_measurement_process.T%d" % ADW_GPARAM.IV_PROCESS
-          iv_process_file = os.path.join(program_path,iv_filename)
-          if os.path.isfile(iv_process_file):
-              self.adw.Load_Process(iv_process_file)
-          else :
-              raise Exception("Bad file, check %s" %iv_process_file)
+          self.load_process(iv_filename)
       def load_histogram_process(self):
-          root_path = utl.get_script_root_path()
-          program_path = os.path.join(root_path,self._programs_subdir)
           hist_filename = "hist_measurement_process.T%d" % ADW_GPARAM.HIST_PROCESS
-          hist_process_file = os.path.join(program_path,iv_filename)
-          if os.path.isfile(hist_process_file):
-              self.adw.Load_Process(hist_process_file)
-          else :
-              raise Exception("Bad file, check %s" %hist_process_file)
+          self.load_process(hist_filename)
+      # Prepare IV measurements
       def configure_iv_process(self):
-          self.adw.Set_Processdelay(ADW_GPARAM.IV_PROCESS, process_delay)
+          self.adw.Set_Processdelay(ADW_GPARAM.IV_PROCESS,
+                                    ADW_GPARAM.PROCES_DELAY )
           self.adw.SetDataFloat(log_array, ADW_APARAM.LOG_AMPL,1,len(log_array))
           self.adw.Set_Par(ADW_IV_PARAM.START_JV, start_jv)
           self.adw.Set_Par(ADW_IV_PARAM.MEASURE_JV, start_jv)
@@ -1863,8 +1894,10 @@ The Adwin driver interface provides every functionality needed to interact with 
           self.adw.Set_Par(ADW_IV_PARAM.WAIT, start_jv)
           self.adw.Set_Par(ADW_IV_PARAM.AVG, start_jv)
           self.adw.Set_Par(ADW_IV_PARAM.MAX_DATA, start_jv)        
+      # Prepare the histogram
       def configure_hist_process(self):
-          self.adw.Set_Processdelay(ADW_GPARAM.HIST_PROCESS, process_delay)
+          self.adw.Set_Processdelay(ADW_GPARAM.HIST_PROCESS,
+                                    ADW_GPARAM.PROCES_DELAY )
           self.adw.SetDataFloat(log_array, ADW_APARAM.LOG_AMPL,1,len(log_array))
           self.adw.Set_Par(ADW_HIST_PARAM.START_JV, start_jv)
           self.adw.Set_Par(ADW_HIST_PARAM.MEASURE_JV, start_jv)
@@ -1874,9 +1907,89 @@ The Adwin driver interface provides every functionality needed to interact with 
           self.adw.Set_Par(ADW_HIST_PARAM.AVG, start_jv)
           self.adw.Set_Par(ADW_HIST_PARAM.I_MIN_BRK, start_jv)
           self.adw.Set_Par(ADW_HIST_PARAM.I_MAX_BRK, start_jv)
+      # Print debug messages
+      def analyze(self):
+          version = self.adw.Test_Version()
+          processor = self.adw.Processor_Type()
+          iv_status = self.Process_Status(ADW_GPARAM.IV_PROCESS)
+          hist_status = self.Process_Status(ADW_GPARAM.HIST_PROCESS)
+          print("Version %s " % name)
+          print("Processor type: %s " % name)
+          print_status(iv_status, ADW_GPARAM.IV_PROCESS)
+          print_status(hist_status, ADW_GPARAM.HIST_PROCESS)
+      #asdf, probably util
+      def print_status(status, process_number):
+          if (status == 0):
+              print("Process %1.0f is not running" % process_number)
+          if status == 1:
+              print("Process %1.0f is running" % process_number)
+          if status < 0:
+              print("Process %1.0f is stopped" % process_number)
 #+END_SRC
 
+*** Adwin driver - utilities
+There are several functionalities that are tied to the ADwin intrument but do not belong to it.
 
+**** Logaritmic amplifier calibration
+ #+CAPTION: log amplifier 
+ #+BEGIN_SRC python
+   class adwin_log_aplifier:
+       def __init__(self):
+           calibration_dir = ADW_GPARAM.PROGRAM_DIR
+           root_path = utl.get_script_root_path()
+           program_path = os.path.join(root_path,self._adwin_subdir)
+           filename = "calibration.txt"
+           calibration_file = os.path.join(program_path,filename)
+           if (os.path.isfile(calibration_file)):
+               read_data_file(calibration_file)
+           else:
+               raise Exception("Bad file, check %s" %calibration_file)
+       def read_data_file(self, filename):
+           # reads matrix from data file. As optional input a column can be specified
+           data=[]
+           file =open(filename)
+           for line in file:
+               line_list = [float(x) for x in line.split()]
+           data.append(line_list)
+           self.data = data
+       def get_calibration(self):
+           return self.data
+ #+END_SRC
+
+**** converter
+Converter from "regular numbers" to adwin parameters
+
+#+BEGIN_SRC python
+  def convert_bin_to_V(N_bin):
+      # converts ADC/DAC bins to voltage, given the voltage range and the resolution (in bits)
+      step = 2 * ADW_GPARAM.OUTPUT_RANGE / (2**ADW_GPARAM.RESOLUTION-1)
+      voltage = arange(-ADW_GPARAM.OUTPUT_RANGE, ADW_GPARAM.OUTPUT_RANGE+step, step)
+      try:
+          N_bin = int(N_bin)
+          data = voltage[N_bin]
+      except:
+          data=zeros(len(N_bin))
+          for i in range(0,len(N_bin)):
+             data[i]=voltage[N_bin[i]]
+
+      return data
+
+  def convert_V_to_bin(V):
+      # converts ADC/DAC voltage to bin number, given the voltage range and the ADW_GPARAM.RESOLUTION (in bits)
+      step=2*ADW_GPARAM.OUTPUT_RANGE/(2**ADW_GPARAM.RESOLUTION-1)
+      voltage=arange(-ADW_GPARAM.OUTPUT_RANGE, ADW_GPARAM.OUTPUT_RANGE+step, step)
+      try:
+          l = len(V)
+          N_bin = zeros(l)
+          for i in range(0,len(V)):
+              diff = abs(voltage-V[i])
+              N_bin[i] = diff.argmin()
+      except:
+          diff = abs(voltage - V)
+          N_bin = diff.argmin()
+
+      return N_bin, convert_bin_to_V(N_bin, ADW_GPARAM.OUTPUT_RANGE, ADW_GPARAM.RESOLUTION)
+#+END_SRC
 
 
 
@@ -2342,6 +2455,7 @@ This section is for the interface with each measurement instrument.
    '((python . t)
      ))
   (setq org-babel-python-command "/bin/python2")
+  (setq org-export-with-broken-links 'mark)
 #+END_SRC
 
 ** colorize
@@ -2415,4 +2529,5 @@ This section is for the interface with each measurement instrument.
 #+END_SRC
 
 #+RESULTS:
+: ((\.bas\' . basic-mode) (\.hva\' . latex-mode) (\.drv\' . latex-mode) (\.pgn\' . chess-pgn-mode) (/git-rebase-todo\' . git-rebase-mode) (\.gpg\(~\|\.~[0-9]+~\)?\' nil epa-file) (\.\(?:3fr\|a\(?:r[tw]\|vs\)\|bmp[23]?\|c\(?:als?\|myka?\|r[2w]\|u[rt]\)\|d\(?:c[mrx]\|ds\|ng\|px\)\|f\(?:ax\|its\)\|gif\(?:87\)?\|hrz\|ic\(?:on\|[bo]\)\|j\(?:\(?:pe\|[np]\)g\)\|k\(?:25\|dc\)\|m\(?:iff\|ng\|rw\|s\(?:l\|vg\)\|tv\)\|nef\|o\(?:rf\|tb\)\|p\(?:bm\|c\(?:ds\|[dltx]\)\|db\|ef\|gm\|i\(?:ct\|x\)\|jpeg\|n\(?:g\(?:24\|32\|8\)\|[gm]\)\|pm\|sd\|tif\|wp\)\|r\(?:a[fs]\|gb[ao]?\|l[ae]\)\|s\(?:c[rt]\|fw\|gi\|r[2f]\|un\|vgz?\)\|t\(?:ga\|i\(?:ff\(?:64\)?\|le\|m\)\|tf\)\|uyvy\|v\(?:da\|i\(?:car\|d\|ff\)\|st\)\|w\(?:bmp\|pg\)\|x\(?:3f\|bm\|cf\|pm\|wd\|[cv]\)\|y\(?:cbcra?\|uv\)\)\' . image-mode) (\.elc\' . elisp-byte-code-mode) (\.dz\' nil jka-compr) (\.xz\' nil jka-compr) (\.lzma\' nil jka-compr) (\.lz\' nil jka-compr) (\.g?z\' nil jka-compr) (\.bz2\' nil jka-compr) (\.Z\' nil jka-compr) (\.vr[hi]?\' . vera-mode) (\(?:\.\(?:rbw?\|ru\|rake\|thor\|jbuilder\|rabl\|gemspec\|podspec\)\|/\(?:Gem\|Rake\|Cap\|Thor\|Puppet\|Berks\|Vagrant\|Guard\|Pod\)file\)\' . ruby-mode) (\.re?st\' . rst-mode) (\.pyw?\' . python-mode) (\.scss\' . scss-mode) (\.awk\' . awk-mode) (\.\(u?lpc\|pike\|pmod\(\.in\)?\)\' . pike-mode) (\.idl\' . idl-mode) (\.java\' . java-mode) (\.m\' . objc-mode) (\.ii\' . c++-mode) (\.i\' . c-mode) (\.lex\' . c-mode) (\.y\(acc\)?\' . c-mode) (\.[ch]\' . c-mode) (\.\(CC?\|HH?\)\' . c++-mode) (\.[ch]\(pp\|xx\|\+\+\)\' . c++-mode) (\.\(cc\|hh\)\' . c++-mode) (\.\(bat\|cmd\)\' . bat-mode) (\.[sx]?html?\(\.[a-zA-Z_]+\)?\' . html-mode) (\.svgz?\' . image-mode) (\.svgz?\' . xml-mode) (\.x[bp]m\' . image-mode) (\.x[bp]m\' . c-mode) (\.p[bpgn]m\' . image-mode) (\.tiff?\' . image-mode) (\.gif\' . image-mode) (\.png\' . image-mode) (\.jpe?g\' . image-mode) (\.te?xt\' . text-mode) (\.[tT]e[xX]\' . tex-mode) (\.ins\' . tex-mode) (\.ltx\' . latex-mode) (\.dtx\' . doctex-mode) (\.org\' . org-mode) (\.el\' . emacs-lisp-mode) (Project\.ede\' . emacs-lisp-mode) (\.\(scm\|stk\|ss\|sch\)\' . scheme-mode) (\.l\' . lisp-mode) (\.li?sp\' . lisp-mode) (\.[fF]\' . fortran-mode) (\.for\' . fortran-mode) (\.p\' . pascal-mode) (\.pas\' . pascal-mode) (\.\(dpr\|DPR\)\' . delphi-mode) (\.ad[abs]\' . ada-mode) (\.ad[bs].dg\' . ada-mode) (\.\([pP]\([Llm]\|erl\|od\)\|al\)\' . perl-mode) (Imakefile\' . makefile-imake-mode) (Makeppfile\(?:\.mk\)?\' . makefile-makepp-mode) (\.makepp\' . makefile-makepp-mode) (\.mk\' . makefile-gmake-mode) (\.make\' . makefile-gmake-mode) ([Mm]akefile\' . makefile-gmake-mode) (\.am\' . makefile-automake-mode) (\.texinfo\' . texinfo-mode) (\.te?xi\' . texinfo-mode) (\.[sS]\' . asm-mode) (\.asm\' . asm-mode) (\.css\' . css-mode) (\.mixal\' . mixal-mode) (\.gcov\' . compilation-mode) (/\.[a-z0-9-]*gdbinit . gdb-script-mode) (-gdb\.gdb . gdb-script-mode) ([cC]hange\.?[lL]og?\' . change-log-mode) ([cC]hange[lL]og[-.][0-9]+\' . change-log-mode) (\$CHANGE_LOG\$\.TXT . change-log-mode) (\.scm\.[0-9]*\' . scheme-mode) (\.[ckz]?sh\'\|\.shar\'\|/\.z?profile\' . sh-mode) (\.bash\' . sh-mode) (\(/\|\`\)\.\(bash_\(profile\|history\|log\(in\|out\)\)\|z?log\(in\|out\)\)\' . sh-mode) (\(/\|\`\)\.\(shrc\|[kz]shrc\|bashrc\|t?cshrc\|esrc\)\' . sh-mode) (\(/\|\`\)\.\([kz]shenv\|xinitrc\|startxrc\|xsession\)\' . sh-mode) (\.m?spec\' . sh-mode) (\.m[mes]\' . nroff-mode) (\.man\' . nroff-mode) (\.sty\' . latex-mode) (\.cl[so]\' . latex-mode) (\.bbl\' . latex-mode) (\.bib\' . bibtex-mode) (\.bst\' . bibtex-style-mode) (\.sql\' . sql-mode) (\.m[4c]\' . m4-mode) (\.mf\' . metafont-mode) (\.mp\' . metapost-mode) (\.vhdl?\' . vhdl-mode) (\.article\' . text-mode) (\.letter\' . text-mode) (\.i?tcl\' . tcl-mode) (\.exp\' . tcl-mode) (\.itk\' . tcl-mode) (\.icn\' . icon-mode) (\.sim\' . simula-mode) (\.mss\' . scribe-mode) (\.f9[05]\' . f90-mode) (\.f0[38]\' . f90-mode) (\.indent\.pro\' . fundamental-mode) (\.\(pro\|PRO\)\' . idlwave-mode) (\.srt\' . srecode-template-mode) (\.prolog\' . prolog-mode) (\.tar\' . tar-mode) (\.\(arc\|zip\|lzh\|lha\|zoo\|[jew]ar\|xpi\|rar\|7z\|ARC\|ZIP\|LZH\|LHA\|ZOO\|[JEW]AR\|XPI\|RAR\|7Z\)\' . archive-mode) (\.oxt\' . archive-mode) (\.\(deb\|[oi]pk\)\' . archive-mode) (\`/tmp/Re . text-mode) (/Message[0-9]*\' . text-mode) (\`/tmp/fol/ . text-mode) (\.oak\' . scheme-mode) (\.sgml?\' . sgml-mode) (\.x[ms]l\' . xml-mode) (\.dbk\' . xml-mode) (\.dtd\' . sgml-mode) (\.ds\(ss\)?l\' . dsssl-mode) (\.jsm?\' . javascript-mode) (\.json\' . javascript-mode) (\.[ds]?vh?\' . verilog-mode) (\.by\' . bovine-grammar-mode) (\.wy\' . wisent-grammar-mode) ([:/\]\..*\(emacs\|gnus\|viper\)\' . emacs-lisp-mode) (\`\..*emacs\' . emacs-lisp-mode) ([:/]_emacs\' . emacs-lisp-mode) (/crontab\.X*[0-9]+\' . shell-script-mode) (\.ml\' . lisp-mode) (\.ld[si]?\' . ld-script-mode) (ld\.?script\' . ld-script-mode) (\.xs\' . c-mode) (\.x[abdsru]?[cnw]?\' . ld-script-mode) (\.zone\' . dns-mode) (\.soa\' . dns-mode) (\.asd\' . lisp-mode) (\.\(asn\|mib\|smi\)\' . snmp-mode) (\.\(as\|mi\|sm\)2\' . snmpv2-mode) (\.\(diffs?\|patch\|rej\)\' . diff-mode) (\.\(dif\|pat\)\' . diff-mode) (\.[eE]?[pP][sS]\' . ps-mode) (\.\(?:PDF\|DVI\|OD[FGPST]\|DOCX?\|XLSX?\|PPTX?\|pdf\|djvu\|dvi\|od[fgpst]\|docx?\|xlsx?\|pptx?\)\' . doc-view-mode-maybe) (configure\.\(ac\|in\)\' . autoconf-mode) (\.s\(v\|iv\|ieve\)\' . sieve-mode) (BROWSE\' . ebrowse-tree-mode) (\.ebrowse\' . ebrowse-tree-mode) (#\*mail\* . mail-mode) (\.g\' . antlr-mode) (\.mod\' . m2-mode) (\.ses\' . ses-mode) (\.docbook\' . sgml-mode) (\.com\' . dcl-mode) (/config\.\(?:bat\|log\)\' . fundamental-mode) (\.\(?:[iI][nN][iI]\|[lL][sS][tT]\|[rR][eE][gG]\|[sS][yY][sS]\)\' . conf-mode) (\.\(?:desktop\|la\)\' . conf-unix-mode) (\.ppd\' . conf-ppd-mode) (java.+\.conf\' . conf-javaprop-mode) (\.properties\(?:\.[a-zA-Z0-9._-]+\)?\' . conf-javaprop-mode) (\`/etc/\(?:DIR_COLORS\|ethers\|.?fstab\|.*hosts\|lesskey\|login\.?de\(?:fs\|vperm\)\|magic\|mtab\|pam\.d/.*\|permissions\(?:\.d/.+\)?\|protocols\|rpc\|services\)\' . conf-space-mode) (\`/etc/\(?:acpid?/.+\|aliases\(?:\.d/.+\)?\|default/.+\|group-?\|hosts\..+\|inittab\|ksysguarddrc\|opera6rc\|passwd-?\|shadow-?\|sysconfig/.+\)\' . conf-mode) ([cC]hange[lL]og[-.][-0-9a-z]+\' . change-log-mode) (/\.?\(?:gitconfig\|gnokiirc\|hgrc\|kde.*rc\|mime\.types\|wgetrc\)\' . conf-mode) (/\.\(?:enigma\|gltron\|gtk\|hxplayer\|net\|neverball\|qt/.+\|realplayer\|scummvm\|sversion\|sylpheed/.+\|xmp\)rc\' . conf-mode) (/\.\(?:gdbtkinit\|grip\|orbital/.+txt\|rhosts\|tuxracer/options\)\' . conf-mode) (/\.?X\(?:default\|resource\|re\)s\> . conf-xdefaults-mode) (/X11.+app-defaults/\|\.ad\' . conf-xdefaults-mode) (/X11.+locale/.+/Compose\' . conf-colon-mode) (/X11.+locale/compose\.dir\' . conf-javaprop-mode) (\.~?[0-9]+\.[0-9][-.0-9]*~?\' nil t) (\.\(?:orig\|in\|[bB][aA][kK]\)\' nil t) ([/.]c\(?:on\)?f\(?:i?g\)?\(?:\.[a-zA-Z0-9._-]+\)?\' . conf-mode-maybe) (\.[1-9]\' . nroff-mode) (\.tgz\' . tar-mode) (\.tbz2?\' . tar-mode) (\.txz\' . tar-mode))
 
