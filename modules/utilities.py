@@ -1,4 +1,4 @@
-# [[file:../Measure_samples.org::*General%20purpose%20Utilities][General\ purpose\ Utilities:1]]
+# [[file:../Measure_samples.org::*General%20purpose%20Utilities][General purpose Utilities:1]]
 #################################################################
 ## @file    utilities.py
 #  @author  Joaquin Figueroa
@@ -11,9 +11,9 @@
 #################################################################
 import os
 import inspect
-# General\ purpose\ Utilities:1 ends here
+# General purpose Utilities:1 ends here
 
-# [[file:../Measure_samples.org::*Path%20utilities.][Path\ utilities\.:1]]
+# [[file:../Measure_samples.org::*Path%20utilities.][Path utilities.:1]]
 #############################################################
 ## @brief   Returns the path to the main.py directory
 #  @details Uses the inspect functionality to determine
@@ -26,4 +26,4 @@ def get_script_root_path():
     module_path = os.path.dirname(os.path.abspath(fname))
     script_root_path = os.path.dirname(module_path)
     return script_root_path
-# Path\ utilities\.:1 ends here
+# Path utilities.:1 ends here

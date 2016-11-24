@@ -1,4 +1,6 @@
-# [[file:../Measure_samples.org::*Faulhaber%20Driver][Faulhaber\ Driver:1]]
+
+# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::*Faulhaber%20Driver][Faulhaber\ Driver:1]]
+
 #################################################################
 ## @file    Faulhaber_driver.py
 #  @author  Joaquin Figueroa
@@ -14,9 +16,11 @@
 #           class.
 #################################################################
 import visa
+
 # Faulhaber\ Driver:1 ends here
 
-# [[file:../Measure_samples.org::src-faulhaber-constants][src-faulhaber-constants]]
+# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::*Faulhaber%20Constants][src-faulhaber-constants]]
+
 #################################################################
 ## @author  Joaquin Figueroa
 #  @brief   Constants used for the faulhaber interface
@@ -33,9 +37,11 @@ class fh_const:
     min_pos = -7000000#
     max_speed = 800#in RPM
     max_accel = 40#in RPM/s
+
 # src-faulhaber-constants ends here
 
-# [[file:../Measure_samples.org::*Conversion%20functions][Conversion\ functions:1]]
+# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::*Conversion%20functions][Conversion\ functions:1]]
+
 #################################################################
 ## @brief   Converts motor speed from um/s to rpm
 #################################################################
@@ -49,9 +55,11 @@ def faulhaber_convert_ums_to_rpm(ums):
 def faulhaber_convert_rpm_to_ums(rpm):
     ums = (rpm * pitch)/( 60 * gearbox)
     return ums
+
 # Conversion\ functions:1 ends here
 
-# [[file:../Measure_samples.org::*Faulhaber%20State][Faulhaber\ State:1]]
+# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::*Faulhaber%20State][Faulhaber\ State:1]]
+
 class faulhaber_state():
     def __init__(self, start_pos, start_speed):
         self.start_pos = start_pos
@@ -67,9 +75,11 @@ class faulhaber_state():
         return delta==0
     def update_current_speed(self, new_speed):
         self.current_speed = new_speed
+
 # Faulhaber\ State:1 ends here
 
-# [[file:../Measure_samples.org::faulhaber-class-def][faulhaber-class-def]]
+# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::*Faulhaber%20Driver%20Class][faulhaber-class-def]]
+
 #################################################################
 ## @author  Joaquin Figueroa
 #  @brief   Faulhaber class interface
@@ -162,4 +172,5 @@ class Faulhaber_motor:
     def _init_state(self):
         start_pos = self._query_current_axis_position()
         self.state = faulhaber_state(start_pos,0)
+
 # faulhaber-class-def ends here

@@ -1,4 +1,3 @@
-# [[file:../Measure_samples.org::*UI%20-%20GUI][UI\ -\ GUI:1]]
 #################################################################
 ## @file    ui_gui.py
 #  @author  Joaquin Figueroa
@@ -12,28 +11,10 @@ from PyQt4 import QtGui
 from PyQt4 import QtCore
 import ui_config as conf
 import sys
+<<ui-basic-params-defaults>>
+<<ui-advanced-params-defaults>>
+<<ui-presentation-params-defaults>>
 
-piezo_start_V = 0.0         # V
-high_G = 30.0              # G0
-inter_G = 20.0              # G0
-low_G = 10.0              # G0
-piezo_speed_breaking1 = 300.0        # V/s
-piezo_speed_breaking2 = 300.0        # V/s (30 to 300) Este es el que se puede cambiar
-piezo_speed_making = 500.0        # V/s
-#post_breaking_voltage = 230.0       #
-post_breaking_voltage = 300.0       # cambia cuanto abro despues de que rompo
-nGbins = 251
-nDbins = 161
-xmin = -0.5 # nm
-xmax = 2    # nm
-Gmin = 1e-7 # G0
-Gmax = 10   # G0
-todoJUNCTURE_VOLTAGE_DFLT = 0  #[V]
-todoPIEZO_SPEED_DFLT = 0       #[V/S]
-todoDATA_DIRECTORY_DFTL = "./Data"
-# UI\ -\ GUI:1 ends here
-
-# [[file:../Measure_samples.org::*UI%20-%20GUI][UI\ -\ GUI:2]]
 ############################################################
 ## @brief   Runs the GUI for the program
 ############################################################
@@ -42,9 +23,7 @@ def run_gui():
     config_window = ui_config_window() # Instantiate widget
     app.exec_()                        # Execute appliaction
     return config_window.ui_config
-# UI\ -\ GUI:2 ends here
 
-# [[file:../Measure_samples.org::gui-config-window][gui-config-window]]
 ############################################################
 ## @class   ui_config_window
 #  @brief   Provides The UI window for the program
@@ -93,9 +72,7 @@ class ui_config_window(QtGui.QWidget):
     def close_with_cmd(self, cmd): #
         self.ui_config.update_cmd(cmd)
         QtCore.QCoreApplication.instance().quit()
-# gui-config-window ends here
 
-# [[file:../Measure_samples.org::*Buttons%20Layout][Buttons\ Layout:1]]
 ############################################################
 ## @brief   Creates buttons layout and returns it
 #
@@ -137,9 +114,7 @@ def ui_create_buttons_layout(widget):
     vbox.addStretch(1)
     vbox.addLayout(hbox)
     return vbox
-# Buttons\ Layout:1 ends here
 
-# [[file:../Measure_samples.org::config-param-layout][config-param-layout]]
 ############################################################
 ## @brief   Describes the configuration parameters layout
 #
@@ -170,9 +145,7 @@ def ui_create_config_layout(ui_config_window):
     vbox.addWidget(presentation_label)
     vbox.addLayout(presentation_param_layout)
     return vbox
-# config-param-layout ends here
 
-# [[file:../Measure_samples.org::*Basic%20parameters%20layout][Basic\ parameters\ layout:1]]
 def ui_basic_param_layout(window):
     basic_params = window.ui_config.config._b_params ## Fix this
     # Num parameters fields
@@ -200,17 +173,13 @@ def ui_basic_param_layout(window):
     grid.addWidget(dir_btn,4,1)
 
     return grid
-# Basic\ parameters\ layout:1 ends here
 
-# [[file:../Measure_samples.org::*Presentation%20parameters%20layout][Presentation\ parameters\ layout:1]]
 def ui_adv_param_layout(window):
     return ui_basic_param_layout(window)
 
 def ui_presentation_param_layout(window):
     return ui_basic_param_layout(window)
-# Presentation\ parameters\ layout:1 ends here
 
-# [[file:../Measure_samples.org::src-qvalidator-num-param][src-qvalidator-num-param]]
 #############################################################
 ## @class   QValidator_num_param
 #  @brief   Validator for numerical parameters
@@ -241,9 +210,7 @@ class QValidator_num_param(QtGui.QValidator):
                         self.param.update(num)
                         return (QtGui.QValidator.Acceptable, pos)
                 return (QtGui.QValidator.Invalid, pos)
-# src-qvalidator-num-param ends here
 
-# [[file:../Measure_samples.org::*Parameter%20labels][Parameter\ labels:1]]
 #############################################################
 ## @brief   Creates a label and textbox for a numerical
 #           parameter.
@@ -255,9 +222,7 @@ def num_param_label_textbox(parameter):
     textbox.setValidator(param_validator)
     textbox.setText(str(parameter.value))
     return (label, textbox)
-# Parameter\ labels:1 ends here
 
-# [[file:../Measure_samples.org::*Change%20directory%20dialog][Change\ directory\ dialog:1]]
 def showDialog(window,dir_label):
     data_dir = window.ui_config.config._b_params.data_dir
     fname = QtGui.QFileDialog.getExistingDirectory(window, 'Open file',
@@ -266,4 +231,3 @@ def showDialog(window,dir_label):
         data_dir.update(fname)
         dir_label.setText(data_dir.path)
         print(data_dir.path)
-# Change\ directory\ dialog:1 ends here
