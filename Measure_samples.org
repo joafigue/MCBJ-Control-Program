@@ -1,16 +1,44 @@
-#+OPTIONS: ':nil *:t -:t ::t <:t H:8 \n:nil ^:nil arch:headline author:t c:nil
-#+OPTIONS: creator:nil d:(not "LOGBOOK") date:t e:t email:nil f:t inline:t
-#+OPTIONS: num:t p:nil pri:nil prop:nil stat:t tags:t tasks:t tex:t timestamp:t
-#+OPTIONS: title:t toc:t todo:nil |:t
+#+OPTIONS: ':nil *:t -:t ::t <:t H:8 \n:nil ^:nil arch:headline
+#+OPTIONS: author:t broken-links:mark c:nil creator:nil
+#+OPTIONS: d:(not "LOGBOOK") date:t e:t email:nil f:t inline:t num:t
+#+OPTIONS: p:nil pri:nil prop:nil stat:t tags:t tasks:t tex:t
+#+OPTIONS: timestamp:t title:t toc:t todo:nil |:t
 #+TITLE: Measure_samples
-#+DATE: <2016-08-10 Wed>
+#+DATE: <2017-01-03 Tue>
 #+AUTHOR:
 #+EMAIL: joaquin@joaquin_laptop
 #+LANGUAGE: en
 #+SELECT_TAGS: export
 #+EXCLUDE_TAGS: noexport
-#+CREATOR: Emacs 24.5.1 (Org mode 8.3.4)
+#+CREATOR: Emacs 25.1.1 (Org mode 9.0.3)
 
+
+
+#+LATEX_CLASS: book
+#+LATEX_CLASS_OPTIONS:
+#+LATEX_HEADER:
+#+LATEX_HEADER_EXTRA:
+#+DESCRIPTION:
+#+KEYWORDS:
+#+SUBTITLE:
+#+LATEX_COMPILER: pdflatex
+
+#+OPTIONS: html-link-use-abs-url:nil html-postamble:auto
+#+OPTIONS: html-preamble:t html-scripts:t html-style:t
+#+OPTIONS: html5-fancy:nil tex:t
+#+HTML_DOCTYPE: xhtml-strict
+#+HTML_CONTAINER: div
+#+DESCRIPTION:
+#+KEYWORDS:
+#+HTML_LINK_HOME:
+#+HTML_LINK_UP:
+#+HTML_MATHJAX:
+#+HTML_HEAD:
+#+HTML_HEAD_EXTRA:
+#+SUBTITLE:
+#+INFOJS_OPT:
+#+CREATOR: <a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.1.1 (<a href="http://orgmode.org">Org</a> mode 9.0.3)
+#+LATEX_HEADER:
 
 
 
@@ -86,7 +114,7 @@ As with many considerable programs this one stars importing the necesary files. 
   from modules.ui_config import *
   from modules.motor_break import *
   from modules.piezo_measure import *
-#+END_SRC 
+#+END_SRC
 
 The main loop is indeed a loop. It is intended to work in the following way.
 - First the UI is presented to the user, so the user can modify the configuration of the experiment. As a result from the UI execution there are 3 possible outcomes:
@@ -179,6 +207,8 @@ Now there is an additional requirement for the UI, which is the interface by its
 *** TODO UI - Program Interface
    :PROPERTIES:
    :header-args:  :tangle   modules/ui_config.py
+   :header-args+:  :noweb    tangle
+   :header-args+:  :comments noweb
    :END:
 # As with any module there is a section for the imports and the file headers, but these are unninteresting for any reader, thus they are put in comments and not exported to a PDF/HTML result
 #+BEGIN_SRC python :exports none
@@ -229,7 +259,7 @@ Therefore the output of the UI execution is a class of 2 values with one value b
        def update_config(self, new_config):
            self.config = new_config
  #+END_SRC
- 
+
 **** DONE UI command
   Now the command to be executed has only a few possible values, which are used to, as previously explained, to terminate the program, or execute one of the routines.
   #+BEGIN_SRC python
@@ -242,7 +272,7 @@ Therefore the output of the UI execution is a class of 2 values with one value b
         EXIT    = 0
         M_BREAK = 1
         MEASURE = 2
-  #+END_SRC 
+  #+END_SRC
 
 **** TODO UI Configuration Parameters
 The UI configuration is a list of variables which are used through the measurements for configuring the experiments or for controlling the presentation of the results, for simplicity the variables are classified in groups
@@ -284,7 +314,7 @@ The numerical parameters are defined in [[src-config-num-param-class]], which pr
   - Default Value :: Is the value that the parameter takes by default, such as the voltage for the juncture.
   - Minimum value :: The minimum value acceptable for the parameter. With the maximum value defines the range of admissible values
   - Maximum value :: The maximum value acceptable for the parameter. With the minimum value defines the range of admissible values
-  - Name :: The name defines a name for the parameter, which is useful to print information about it. 
+  - Name :: The name defines a name for the parameter, which is useful to print information about it.
 - Reset function :: Defined in line  [[(src-np-reset)]], provides a mechanism to restore the parameter value to its default.
 - Validation function ::  Defined in line [[(src-np-validation)]] returns a boolean determining if the new value is within the range of accepted values
 - Update function :: Defined in line  [[(src-np-update)]] updates the juncture voltage to a new value defined by the user, only if the value is within the accepted range, but if not it leaves the value unchanged
@@ -400,7 +430,7 @@ There is also a requirement to treat some numerical parameters as integers, ther
  | True | True | True | True | True | True | True | True | True |
 
 ***** TODO UI - Basic parameters
-The basic parameters used to configure the measurement are parameters that are the most likely to be modified by the used, and whose side effects are better understood. These parameters usually deal with the speed and number of data points. 
+The basic parameters used to configure the measurement are parameters that are the most likely to be modified by the used, and whose side effects are better understood. These parameters usually deal with the speed and number of data points.
 In a more traditional object oriented paradigm, each parameter is controlled by its own class, which defines their default values, range, validation functions and how each parameter is updated.
 
 The basic parameters are:
@@ -588,7 +618,7 @@ The number of traces defined in [[src-config-traces-class]] is the parameter tha
 The program provides the user with the ability to store the Data in a directory of his choice, which is stored as a string.
 The data directory parameter is defined in [[src-config-data-dir-class]], which provides the full interface for the data directory.
 
-- Initialization Function :: Defined at [[(src-dd-init)]]. This function uses the "reset" function 
+- Initialization Function :: Defined at [[(src-dd-init)]]. This function uses the "reset" function
 - Reset function :: Defined at [[(src-dd-reset)]], this function restores the default data directory,  is chosen to be a "data" subdirectory of the program root directory.
 - Validation Function :: Defined at [[(src-dd-validation)]], this function returns true if the chosen path is a directory as recognyzed by the operative system.
 - Update functionality :: Defined at [[(src-dd-update)]], this function is used to change the data directory to a new chosen path in the computer.
@@ -642,7 +672,7 @@ The data directory parameter is defined in [[src-config-data-dir-class]], which 
 
 #+NAME: ui-config-bp-interface
 #+BEGIN_SRC python
-
+## asdf
 #+END_SRC
 
 ***** TODO UI - Advanced parameters
@@ -698,6 +728,8 @@ todoDATA_DIRECTORY_DFTL = "./Data"
 *** TODO UI - GUI
    :PROPERTIES:
    :header-args:  :tangle   modules/ui_gui.py
+   :header-args+:  :noweb    tangle
+   :header-args+:  :comments noweb
    :END:
 # As with any module there is a section for the imports and the file headers, but these are unninteresting for any reader, thus they are put in comments and not exported to a PDF/HTML result
 #+BEGIN_SRC python :exports none
@@ -736,7 +768,7 @@ This program uses [[https://wiki.python.org/moin/PyQt][PyQt4]] as a GUI framewor
 
 **** TODO Configuration Window
 
-The configuration window, shown in [[gui-config-window]] is a python widget which represents the user interface of the program. As usual with user interfaces they require an large amount of code only to initialize it where is difficult to separate the functionality. 
+The configuration window, shown in [[gui-config-window]] is a python widget which represents the user interface of the program. As usual with user interfaces they require an large amount of code only to initialize it where is difficult to separate the functionality.
 
 The standard procedure in python to build a widget is to delegate the initialization code to the parent class, and the UI elements specific to it, such as the buttons are defined in an internal initialization function of the class, commonly named =initUI= in line [[(fn-initUI)]]
 
@@ -1013,7 +1045,7 @@ To provide the GUI for a parameter, a label and a text-box are needed, however f
           print(data_dir.path)
 #+END_SRC
 
-** TODO Motor break junction 
+** TODO Motor break junction
    :PROPERTIES:
    :header-args:  :tangle   modules/motor_break.py
    :END:
@@ -1027,7 +1059,7 @@ To provide the GUI for a parameter, a label and a text-box are needed, however f
    :PROPERTIES:
    :header-args:  :tangle   modules/piezo_measure.py
    :END:
-   
+
 #+BEGIN_SRC python
   def measure_sample():
       print("Picked measure sample")
@@ -1071,7 +1103,7 @@ Although Python already provides with a good interface to interface with the fil
       module_path = os.path.dirname(os.path.abspath(fname))
       script_root_path = os.path.dirname(module_path)
       return script_root_path
-#+END_SRC 
+#+END_SRC
 * TODO ADwin Driver
 The Adwin instrument is capable of controlling the piezo actuator and to take measurements by using its several hardware interfaces. Thus is the ADwin which actually performs the measurements by using different *process* or sub-routines, written in basic, and then handing the data back to the main program. These sub-routines must be compiled and then loaded into the instrument, so any program that process the data, is reduced to query the results of the measurements.
 
@@ -1122,7 +1154,7 @@ As in many programs, a header is required. In the Adwin case, this is necessary 
    ' driven by the set voltage. In order to interface with the computer several
    ' ADwin static variables are used
 
-#+END_SRC 
+#+END_SRC
 
 #+BEGIN_SRC basic :exports none
   '*******
@@ -1177,7 +1209,7 @@ DIM juncture_voltage as long
 DIM current1_acc, current2_acc as long
 DIM current1_ampl_acc, current2_ampl_acc as float
 ' Set DATA_10 as amplifier array
-DIM DATA_10[65536] as float 
+DIM DATA_10[65536] as float
 #+END_SRC
 
 *** DONE Adwin IV - Init Block
@@ -1211,7 +1243,7 @@ The =Event= Block is separated in different functionalities
 
 #+CAPTION: Event loop
 #+NAME: src-adwin-iv-event
-#+BEGIN_SRC basic 
+#+BEGIN_SRC basic
   EVENT:
 
     SELECTCASE measureflag
@@ -1262,7 +1294,7 @@ The =Event= Block is separated in different functionalities
      :PROPERTIES:
      :header-args:  :tangle   no
      :END:
-#+CAPTION: <<src-adwin-iv-measure>> Code to measure the data 
+#+CAPTION: <<src-adwin-iv-measure>> Code to measure the data
 #+NAME: src-adwin-iv-measure
 #+BEGIN_SRC basic
   START_CONV(00011b)
@@ -1309,12 +1341,12 @@ The =Event= Block is separated in different functionalities
    :header-args+:  :comments noweb
    :END:
 Since the Adwin controls the piezoelectric device and take measurements, it makes sense  to provide a single program that operates the piezoelectric device , and then takes the corresponding measurements for each setting. After all the measurements are taken, the data is stored for analysis in the external program. The histogram program is split in several groups, similarly as the ones shown in [[Adwin Measure IV process]].
- 
+
 - Header :: This is a requirement of a proper ADwin program. See [[Adwin histogram - measurement header]]
 - Variable Declaration :: For a proper program, the variables must be declared before the program blocks. See  [[Adwin histogram - variable Declarations]]
 - Init block :: Is used to initialize the values of the variables defined. See [[Adwin histogram - Init Block]]
 - Event Block :: The main part of the measurement algorithm. See [[Adwin histogram - Event Block]]
-     
+
 *** DONE Adwin histogram - measurement header
 As in many programs, a header is required. In the Adwin case, this is necessary  to set the process parameters, such as the process number and the compiler variables.
 
@@ -1331,7 +1363,7 @@ As in many programs, a header is required. In the Adwin case, this is necessary 
    ' Optimize_Level                 = 1
    ' Info_Last_Save                 = TUD205822  TUD205822\LocalAdmin
    '<Header End>
-#+END_SRC 
+#+END_SRC
 
 #+BEGIN_SRC basic :exports none
   '*******
@@ -1435,7 +1467,7 @@ The =Event= Block is separated in different functionalities
 
 #+CAPTION: Event loop
 #+NAME: src-adwin-histogram-event
-#+BEGIN_SRC basic 
+#+BEGIN_SRC basic
   EVENT:
 
     SELECTCASE state
@@ -1465,12 +1497,12 @@ The algorithm to set the juncture voltage is the same as the one used for the IV
   <<src-adwin-iv-set-jv>>
 #+END_SRC
 
-**** DONE Adwin histogram - Event break histogram 
+**** DONE Adwin histogram - Event break histogram
      :PROPERTIES:
      :header-args:  :tangle   no
-     :END:     
+     :END:
 This section describes the algorithm used to store the break histogram shown in the code fragment [[src-adwin-hist-break]]. The algorithm is broken in 4 steps.
-- Move the piezo :: Starting on line [[(adw-brk-pz)]] this is the first step  of the algorithm. 
+- Move the piezo :: Starting on line [[(adw-brk-pz)]] this is the first step  of the algorithm.
   - Increases the voltage on the piezo actuator in order to increase the "distance" between the the ends of the junction.
   - Since it's the first step of the algorithm is also used to cleanup the variables used during the histogram analysis.
   - Finally should the piezo voltage exceed a maximum voltage, then the histogram measurement is aborted  and the histogram proceeds to measuring the make histogram
@@ -1480,7 +1512,7 @@ This section describes the algorithm used to store the break histogram shown in 
   - Ensures that the current has not gone below a certain threshold in which case, the measurement stops  and the algorithm proceeds to the make histogram measurement
   - Updates the index so no values are overwritten
 
-#+CAPTION: <<src-adwin-hist-break>> Code to generate the breaking histogram 
+#+CAPTION: <<src-adwin-hist-break>> Code to generate the breaking histogram
 #+NAME: src-adwin-hist-break
 #+BEGIN_SRC basic -n -r
   SELECTCASE break_hist_flag
@@ -1525,7 +1557,7 @@ This section describes the algorithm used to store the break histogram shown in 
      :header-args:  :tangle   no
      :END:
 This section describes the algorithm used to store the make histogram shown in the code fragment [[src-adwin-hist-break]]. The algorithm is broken in 4 steps, in a similar fashion as done in [[Adwin histogram - Event break histogram]]
-- Move the piezo :: Starting on line [[(adw-mk-pz)]] this is the first step  of the algorithm. 
+- Move the piezo :: Starting on line [[(adw-mk-pz)]] this is the first step  of the algorithm.
   - Decreases the voltage on the piezo actuator in order to reduce the "distance" between the the ends of the junction.
   - Since it's the first step of the algorithm is also used to cleanup the variables used during the histogram analysis.
   - Finally should the piezo voltage fall below a minimum voltage, then the make histogram measurement is aborted  and the algorithm proceeds to terminate the measurements
@@ -1585,10 +1617,9 @@ The algorithm to reset the juncture voltage is the same as the one used for the 
   <<src-adwin-iv-reset-jv>>
 #+END_SRC
 
-
 ** TODO Adwin driver - program interface
    :PROPERTIES:
-   :header-args: :tangle mudules/adwin_driver.py
+   :header-args: :tangle modules/adwin_driver.py
    :header-args+: :noweb yes
    :header-args+: :comments noweb
    :END:
@@ -1606,7 +1637,7 @@ The Adwin driver is split in sections:
   ## @file    adwin_driver.py
   #  @author  Joaquin Figueroa
   #  @date    Fri Nov 4, 2016
-  #  @brief   Provides the interfaces for the Adwin 
+  #  @brief   Provides the interfaces for the Adwin
   #
   #  @details This file provides  the Adwin interface,
   #           which defines high and low level functionalities.
@@ -1625,11 +1656,13 @@ The ADwin has several internal variables which can be used for communication bet
 - Histogram Parameters :: These parameters are used during the histogram measurements [[Adwin driver - histogram parameters]]
 
 **** TODO Adwin driver - global parameters
+     - Note taken on [2017-01-01 Sun 21:20] \\
+       Move IV_process and hist_process values to corresponding parameters to each driver.
 As previously stated the global parameters hold information necessary for the ADwin instrument to work and some of the instrument characterization constants. The parameters are:
-- ADDRESS :: The addres is the associated to the port used to communicate with the instrument.
+- ADDRESS :: The address is the associated to the port used to communicate with the instrument.
 - BOOT_SCRIPT_DFLT :: This parameter has the location of the boot script used to load the operative system of the ADwin instrument.
 - PROGRAM_DIR :: This parameter has the name of the subdirectory where all the ADwin specific files, including ADwin programs are stored,
-- HIGH_PERIOD :: According to the manual the ADwin has a minimum time resolution of the clock period depending on the type of process involved. For high priority process  is \(25 [ns] \) 
+- HIGH_PERIOD :: According to the manual the ADwin has a minimum time resolution of the clock period depending on the type of process involved. For high priority process  is \(25 [ns] \)
 - OUTPUT_RANGE :: The output of the analog output is limited to \(\pm 10 [V]\), hence the range is \(10\).
 - RESOLUTION :: The ADwin uses \(16\) bits to represent the values of the analog inputs and outputs, hence the resolution is \(16\)
 - IV_PROCESS ::  The program to measure the IV charactersitics of the sample is stored in the process 1
@@ -1663,7 +1696,7 @@ As previously stated the global parameters hold information necessary for the AD
       OUTPUT_RANGE     = 10.0
       RESOLUTION       = 16.0
       # Program Constants
-      IV_PROCESS       =  1 
+      IV_PROCESS       =  1
       HIST_PROCESS     =  2
       PROCESS_DELAY    = 400
 #+END_SRC
@@ -1789,7 +1822,7 @@ In a similar way as shown in [[Adwin driver - IV parameters]] the parameters are
   #           AVG         -> Number of measurements to average for data point
   #           ------------------ outputs ------------------------------
   #           BREAK_IDX  -> Final index data point stored in the break array
-  #           MAKE_IDX   -> Final index data point stored in the make array 
+  #           MAKE_IDX   -> Final index data point stored in the make array
   ###########################################################################
   class ADW_HIST_PARAM:
       # Inputs for the ADWIN histogram measurement
@@ -1847,28 +1880,38 @@ In a similar way as shown in [[Adwin driver - IV parameters]] the parameters are
       LOG_AMPL  = 1
       # Outputs for the ADWIN histogram measurement
       BRK_HIST  = 1
-      MK_HIST   = 2    
+      MK_HIST   = 2
 #+END_SRC
 
 *** TODO Adwin driver - interface
-The Adwin driver interface provides every functionality needed to interact with the ADwin instrument. 
+I have decided to split the Adwin driver in several classes, or interfaces, each with it's own purpose, to avoid having multiple variations within the same class, this promotes separation, and in my opinion, would allow anyone to add a new interface with little concern of the already available functionality, as each class would be independent. This has the small restriction that 2 different interfaces with their corresponding processes should not be used in tandem, but at most sequentially. That being said, the different interfaces are split in:
+- Base Class :: Shown in  [[Adwin driver - base class]], Provides the minimum interface over which to build the different drivers
+- IV Measurement :: Shown in [[Adwin IV-measurement driver]] Provides the interface for the continuous  measurement.
+- Histogram measurment :: Shown in [[Adwin histogram-measurement driver]], Provides the interfaces for generating histogram data for a full break-restore cycle.
 
+**** Adwin driver - base class 
+The Adwin driver interface provides the basic functionality needed to interact with the ADwin instrument, which is the bare minimum. The idea is that each process should have it's own specialized driver.
+Is important to note that any parameter used by this abstract driver, should be a global Adwin parameter. See
 
 #+BEGIN_SRC python
   ############################################################
   ## @class   adwin_driver
-  #  @details This class stores all configuration values to be
-  #           used for the measurements.
+  #  @details This class initializes the driver without
+  #           any particular purpose. This is the parent class
+  #           and user should use this only when designing a
+  #           new measurement method
   ############################################################
-  class adwin_driver:
+  class adwin_driver(object):
+      #############################################################
+      ## @brief   Initilaization code
+      #############################################################
       def __init__(self):
           self._adwin_subdir= ADW_GPARAM.PROGRAM_DIR
           self.adw = ADwin.ADwin(ADW_GPARAM.ADDRESS,1)
           self.adw.Boot(ADW_GPARAM.BOOT_SCRIPT_DFLT)
-          self.load_iv_process()
-          self.load_histogram_process()
-          self.configure_iv_process()
-          self.configure_hist_process()        
+      #############################################################
+      ## @brief   Load the measurement program. Basic interface
+      #############################################################
       def load_process(self, filename):
           root_path = utl.get_script_root_path()
           program_path = os.path.join(root_path,self._adwin_subdir)
@@ -1877,23 +1920,134 @@ The Adwin driver interface provides every functionality needed to interact with 
               self.adw.Load_Process(process_file)
           else :
               raise Exception("Bad file, check %s" %process_file)
-      def load_iv_process(self):
+      #############################################################
+      ## @brief   Show information on the adwin and process
+      #############################################################
+      def analyze(self, process_number):
+          version = self.adw.Test_Version()
+          processor = self.adw.Processor_Type()
+          status = self.Process_Status(process_number)
+          print("Version %s " % name)
+          print("Processor type: %s " % name)
+          self.print_status(status, process_number)
+      #############################################################
+      ## @brief   Minor utility to print the status information
+      #############################################################
+      def print_status(status, process_number):
+          if (status == 0):
+              print("Process %1.0f is not running" % process_number)
+          if status == 1:
+              print("Process %1.0f is running" % process_number)
+          if status < 0:
+              print("Process %1.0f is stopped" % process_number)
+#+END_SRC
+
+**** Adwin IV-measurement driver
+This driver provides the functionality required to perform the measurements using the IV-measurement process, which is to perform continuous measures and provide an interface to query the current state (See [[Adwin Measure IV process]]). This process is designed to be used in conjunction with the Faulhaber part of the process (See [[Faulhaber driver]]).
+
+As usual with this type of definitions, the code is split in logical blocks; in this case:
+- Initialization code :: The code required to initialize the class and instantiate it as a user. See [[Adwin driver - Initialization Code]]
+- API :: Or the functions that a user should use in order to query the information from the instrument. See [[Adwin driver - interface functions]]
+
+*****  Adwin driver - Initialization Code
+Code fragment [[adwin-driver-iv-interface]] shows the initialization code for the IV-measurements, in which some specializations are used over the base class in the =__init__=, where the function =configure_process= shown in line [[(adw-iv-configure)]] , which ensures that every parameter and variable needed for performing the measurements is correctly initialized
+#+Caption: <<adwin-driver-iv-interface>> Code fragment with the base definition for the iv measurements
+#+name: adwin-driver-iv-interface
+#+BEGIN_SRC python
+  ############################################################
+  ## @class   adwin_iv_driver
+  #  @details This class initializes the driver with the
+  #           the purpose of performing continuos IV
+  #           measurements.
+  #           The class provides the interfaces to extract
+  #           the data as necesary
+  ############################################################
+  class adwin_iv_driver(adwin_driver):
+      #############################################################
+      ## @brief   Initilaization code
+      #############################################################
+      def __init__(self, config):
+          super.__init__()
+          self.load_process()
+          self.configure_process(config)
+          self.parameters = config
+      #############################################################
+      ## @brief   Load the IV measurement program.
+      #############################################################
+      def load_process(self):
           iv_filename = "iv_measurement_process.T%d" % ADW_GPARAM.IV_PROCESS
-          self.load_process(iv_filename)
-      def load_histogram_process(self):
-          hist_filename = "hist_measurement_process.T%d" % ADW_GPARAM.HIST_PROCESS
-          self.load_process(hist_filename)
-      # Prepare IV measurements
-      def configure_iv_process(self):
+          super.load_process(iv_filename)
+      #############################################################
+      ## @brief   Print debug information if necessary
+      #############################################################
+      def analyze(self):
+          super.analyze(ADW_GPARAM.IV_PROCESS)
+      #############################################################
+      ## @brief   Set all parameters to start measuring
+      #############################################################
+      def configure_process(self,config):  (ref:adw-iv-configure)
           self.adw.Set_Processdelay(ADW_GPARAM.IV_PROCESS,
                                     ADW_GPARAM.PROCES_DELAY )
-          self.adw.SetDataFloat(log_array, ADW_APARAM.LOG_AMPL,1,len(log_array))
-          self.adw.Set_Par(ADW_IV_PARAM.START_JV, start_jv)
-          self.adw.Set_Par(ADW_IV_PARAM.MEASURE_JV, start_jv)
-          self.adw.Set_Par(ADW_IV_PARAM.END_JV, start_jv)
-          self.adw.Set_Par(ADW_IV_PARAM.WAIT, start_jv)
-          self.adw.Set_Par(ADW_IV_PARAM.AVG, start_jv)
-          self.adw.Set_Par(ADW_IV_PARAM.MAX_DATA, start_jv)        
+          self.adw.SetDataFloat(config.log_array,
+                                ADW_APARAM.LOG_AMPL,1,len(config.log_array))
+          self.adw.Set_Par(ADW_IV_PARAM.START_JV, config.start_jv)
+          self.adw.Set_Par(ADW_IV_PARAM.MEASURE_JV, config.measure_jv)
+          self.adw.Set_Par(ADW_IV_PARAM.END_JV, config.end_jv)
+          self.adw.Set_Par(ADW_IV_PARAM.WAIT, config.wait_stabilize)
+          self.adw.Set_Par(ADW_IV_PARAM.AVG, config.avg_points)
+          self.adw.Set_Par(ADW_IV_PARAM.MAX_DATA, config.max_data)
+      <<adwin-iv-driver-api>>
+#+END_SRC
+
+***** Adwin driver - interface functions
+   :PROPERTIES:
+   :header-args: :tangle no
+   :END:
+This section provides with the functions required to obtain the measurements from the instrument.
+#+name: adwin-iv-driver-api
+#+BEGIN_SRC python
+  def get_current(self):
+      if self.parameters.use_log_ampl :
+          current = self.adw.getFPar(I_CH1_AMPL)
+      else :
+          binary_current = self.adw.getFPar(I_CH1)
+          current = convert_bin_to_V(binary_current, input_range, resolution) /linear gain
+    return current
+
+  def get_conductance(self):
+      return self.get_current()/self.parameters.junture_voltage
+  def get_conductance_in_G0(self):
+      return self.get_conductance()/self.parameters.g0
+#+END_SRC
+
+
+**** Adwin histogram-measurement driver
+#+BEGIN_SRC python
+  ############################################################
+  ## @class   adwin_hist_driver
+  #  @details This class initializes the driver with the
+  #           the purpose of performing histogram
+  #           measurements.
+  #           The class provides the interfaces to extract
+  #           the data as necesary
+  ############################################################
+  class adwin_hist_driver(adwin_driver):
+      #############################################################
+      ## @brief   Initilaization code
+      #############################################################
+      def __init__(self):
+          super.__init__()
+          self.load_process()
+          self.configure_process()
+      #############################################################
+      ## @brief   Load the IV measurement program.
+      #############################################################
+      def load_process(self):
+          hist_filename = "hist_measurement_process.T%d" % ADW_GPARAM.HIST_PROCESS
+          super.load_process(iv_filename)
+      def analyze(self):
+          super.analyze(ADW_GPARAM.HIST_PROCESS)
+
       # Prepare the histogram
       def configure_hist_process(self):
           self.adw.Set_Processdelay(ADW_GPARAM.HIST_PROCESS,
@@ -1907,31 +2061,14 @@ The Adwin driver interface provides every functionality needed to interact with 
           self.adw.Set_Par(ADW_HIST_PARAM.AVG, start_jv)
           self.adw.Set_Par(ADW_HIST_PARAM.I_MIN_BRK, start_jv)
           self.adw.Set_Par(ADW_HIST_PARAM.I_MAX_BRK, start_jv)
-      # Print debug messages
-      def analyze(self):
-          version = self.adw.Test_Version()
-          processor = self.adw.Processor_Type()
-          iv_status = self.Process_Status(ADW_GPARAM.IV_PROCESS)
-          hist_status = self.Process_Status(ADW_GPARAM.HIST_PROCESS)
-          print("Version %s " % name)
-          print("Processor type: %s " % name)
-          print_status(iv_status, ADW_GPARAM.IV_PROCESS)
-          print_status(hist_status, ADW_GPARAM.HIST_PROCESS)
-      #asdf, probably util
-      def print_status(status, process_number):
-          if (status == 0):
-              print("Process %1.0f is not running" % process_number)
-          if status == 1:
-              print("Process %1.0f is running" % process_number)
-          if status < 0:
-              print("Process %1.0f is stopped" % process_number)
 #+END_SRC
+
 
 *** Adwin driver - utilities
 There are several functionalities that are tied to the ADwin intrument but do not belong to it.
 
 **** Logaritmic amplifier calibration
- #+CAPTION: log amplifier 
+ #+CAPTION: log amplifier
  #+BEGIN_SRC python
    class adwin_log_aplifier:
        def __init__(self):
@@ -2000,7 +2137,7 @@ Converter from "regular numbers" to adwin parameters
   :header-args+:  :noweb    tangle
   :header-args+:  :comments noweb
   :END:
-The Faulhaber motor is used to perform the initial breaking of the juncture as it has a far larger dynamic range than possible with a single piezoelectric actuator. The driver class defines an interface for the rest of the program 
+The Faulhaber motor is used to perform the initial breaking of the juncture as it has a far larger dynamic range than possible with a single piezoelectric actuator. The driver class defines an interface for the rest of the program
 
 As with many files, this file has a description header and the corresponding includes. In order to control the motor, the generic [[http://pyvisa.readthedocs.io/en/stable/index.html][Python Visa]] interface is used.
 #+BEGIN_SRC python
@@ -2031,7 +2168,7 @@ As previously mentioned, the Faulhaber VISA interface, and some of the physical 
 The constants are:
 - Port :: Defined in line [[(fh-const-port)]], describes the port used to communicate with the motor.
 - Baud rate :: Defined in line [[(fh-const-br)]]Is the communication rate in the channel used by the motor interface with the computer
-- Motor Pitch :: Defined in line [[(fh-const-pitch)]], describes the pitch angle of the differential screw of the motor, relating a distance to an angle of the motor. 
+- Motor Pitch :: Defined in line [[(fh-const-pitch)]], describes the pitch angle of the differential screw of the motor, relating a distance to an angle of the motor.
 - Motor gearbox :: Defined in line [[(fh-const-gear)]], describes the gearbox multiplier of the motor, indicating how many full revolutions of the motor correspond to a given target angle.
 - Motor Maximum position :: Described in line [[(fh-const-max)]] Describes the maximum position allowed for the motor as to avoid damaging the equipment.
 - Motor Minimum position ::  Described in line [[(fh-const-min)]] Describes the minimum position allowed for the motor to avoid damaging the equipment
@@ -2067,7 +2204,7 @@ The interface to the Faulhaber motor is in \([rpm]\), however the magnitude has 
 
 #+name: eq-conversion-rpm-ums
 \begin{equation}
-V_{rpm} = 60 \cdot gearbox \cdot \left(\dfrac{V_{\mu m/s}}{pitch}\right) 
+V_{rpm} = 60 \cdot gearbox \cdot \left(\dfrac{V_{\mu m/s}}{pitch}\right)
 \end{equation}
 
 #+BEGIN_SRC python
@@ -2088,7 +2225,7 @@ V_{rpm} = 60 \cdot gearbox \cdot \left(\dfrac{V_{\mu m/s}}{pitch}\right)
 
 As an additional comment it can be pointed out that  \(1 [\mu m /s] \approx 100 [rpm]\), which means that at maximum acceleration (\(40 [rpm/s]\)) to reach the target speed it takes roughly \(2.5[s]\), which means that large displacements take very long times or that fine control is hard to achieve.
 
-*** Faulhaber State 
+*** Faulhaber State
 The Faulhaber motor, can only operate at seconds rates, however the control loop runs in less time. In order to properly control the motor, it's necessary to add state variables to help with the control loop and avoid overcontroling the motor.
 #+BEGIN_SRC python
   class faulhaber_state():
@@ -2146,7 +2283,7 @@ The Faulhaber class defined in the code block [[faulhaber-class-def]], provides 
 As previously stated this section defines the basic functions of the Faulhaber motor.
 - Enable Motor :: This function enables the motor to allow it to move.
    #+NAME: faulhaber-basic-fn-interface
-   #+BEGIN_SRC python 
+   #+BEGIN_SRC python
      #################################################################
      ## @brief   Enables the motor
      #################################################################
@@ -2171,7 +2308,7 @@ As previously stated this section defines the basic functions of the Faulhaber m
        def _set_respect_user_limits(self):
            self.motor_ctrl.write("APL 1")
      #+END_SRC
-- Set motor position range :: This function set the maximum and minimum position of the motor axis to prevent damage to the equipment. 
+- Set motor position range :: This function set the maximum and minimum position of the motor axis to prevent damage to the equipment.
    #+NAME: faulhaber-basic-fn-interface
    #+BEGIN_SRC python
      #################################################################
@@ -2257,7 +2394,7 @@ As previously stated this section defines the basic functions of the Faulhaber m
     :PROPERTIES:
     :header-args:  :tangle   no
     :END:
-The Faulhaber program interface is actually the control algorithm for the motor, this is, given a set of parameters, the control algorithm will set the new speed for the motor. 
+The Faulhaber program interface is actually the control algorithm for the motor, this is, given a set of parameters, the control algorithm will set the new speed for the motor.
 
 *** Faulhaber Control Algorithm
     :PROPERTIES:
@@ -2305,7 +2442,7 @@ As a final note, each algorithm updates the data of the run, as defined in [[Sec
       num_breakings = config.get_num_breakings()
       if(break_junction):
           counter = 0
-          restore_data = data_set 
+          restore_data = data_set
           while(counter < num_breakings):
               break_data = self.motor_break(restore_data, config)
               restore_data = self.break_restore(break_data, config)
@@ -2324,7 +2461,7 @@ As a final note, each algorithm updates the data of the run, as defined in [[Sec
 [[file:Doc/Dia/Motor_Make.png]]
 
 
-The motor make algorithm as shown in figure [[fig:ctrl-algorithm-motor-make]] is excecuted to release set the motor back to a position in which the sample can be manipulated and removed from the equipment. 
+The motor make algorithm as shown in figure [[fig:ctrl-algorithm-motor-make]] is excecuted to release set the motor back to a position in which the sample can be manipulated and removed from the equipment.
 
 #+NAME: src-fh-ctrl-motor-make
 #+CAPTION: Motor-make function
@@ -2468,7 +2605,7 @@ This section is for the interface with each measurement instrument.
 : t
 
 ** Basic-mode
-#+BEGIN_SRC emacs-lisp
+#+BEGIN_SRC emacs-lisp :results none
   (defvar basic-events
     '("INIT"
       "END"
@@ -2527,7 +2664,4 @@ This section is for the interface with each measurement instrument.
 
   (add-to-list 'auto-mode-alist '("\\.bas\\'" . basic-mode))
 #+END_SRC
-
-#+RESULTS:
-: ((\.bas\' . basic-mode) (\.hva\' . latex-mode) (\.drv\' . latex-mode) (\.pgn\' . chess-pgn-mode) (/git-rebase-todo\' . git-rebase-mode) (\.gpg\(~\|\.~[0-9]+~\)?\' nil epa-file) (\.\(?:3fr\|a\(?:r[tw]\|vs\)\|bmp[23]?\|c\(?:als?\|myka?\|r[2w]\|u[rt]\)\|d\(?:c[mrx]\|ds\|ng\|px\)\|f\(?:ax\|its\)\|gif\(?:87\)?\|hrz\|ic\(?:on\|[bo]\)\|j\(?:\(?:pe\|[np]\)g\)\|k\(?:25\|dc\)\|m\(?:iff\|ng\|rw\|s\(?:l\|vg\)\|tv\)\|nef\|o\(?:rf\|tb\)\|p\(?:bm\|c\(?:ds\|[dltx]\)\|db\|ef\|gm\|i\(?:ct\|x\)\|jpeg\|n\(?:g\(?:24\|32\|8\)\|[gm]\)\|pm\|sd\|tif\|wp\)\|r\(?:a[fs]\|gb[ao]?\|l[ae]\)\|s\(?:c[rt]\|fw\|gi\|r[2f]\|un\|vgz?\)\|t\(?:ga\|i\(?:ff\(?:64\)?\|le\|m\)\|tf\)\|uyvy\|v\(?:da\|i\(?:car\|d\|ff\)\|st\)\|w\(?:bmp\|pg\)\|x\(?:3f\|bm\|cf\|pm\|wd\|[cv]\)\|y\(?:cbcra?\|uv\)\)\' . image-mode) (\.elc\' . elisp-byte-code-mode) (\.dz\' nil jka-compr) (\.xz\' nil jka-compr) (\.lzma\' nil jka-compr) (\.lz\' nil jka-compr) (\.g?z\' nil jka-compr) (\.bz2\' nil jka-compr) (\.Z\' nil jka-compr) (\.vr[hi]?\' . vera-mode) (\(?:\.\(?:rbw?\|ru\|rake\|thor\|jbuilder\|rabl\|gemspec\|podspec\)\|/\(?:Gem\|Rake\|Cap\|Thor\|Puppet\|Berks\|Vagrant\|Guard\|Pod\)file\)\' . ruby-mode) (\.re?st\' . rst-mode) (\.pyw?\' . python-mode) (\.scss\' . scss-mode) (\.awk\' . awk-mode) (\.\(u?lpc\|pike\|pmod\(\.in\)?\)\' . pike-mode) (\.idl\' . idl-mode) (\.java\' . java-mode) (\.m\' . objc-mode) (\.ii\' . c++-mode) (\.i\' . c-mode) (\.lex\' . c-mode) (\.y\(acc\)?\' . c-mode) (\.[ch]\' . c-mode) (\.\(CC?\|HH?\)\' . c++-mode) (\.[ch]\(pp\|xx\|\+\+\)\' . c++-mode) (\.\(cc\|hh\)\' . c++-mode) (\.\(bat\|cmd\)\' . bat-mode) (\.[sx]?html?\(\.[a-zA-Z_]+\)?\' . html-mode) (\.svgz?\' . image-mode) (\.svgz?\' . xml-mode) (\.x[bp]m\' . image-mode) (\.x[bp]m\' . c-mode) (\.p[bpgn]m\' . image-mode) (\.tiff?\' . image-mode) (\.gif\' . image-mode) (\.png\' . image-mode) (\.jpe?g\' . image-mode) (\.te?xt\' . text-mode) (\.[tT]e[xX]\' . tex-mode) (\.ins\' . tex-mode) (\.ltx\' . latex-mode) (\.dtx\' . doctex-mode) (\.org\' . org-mode) (\.el\' . emacs-lisp-mode) (Project\.ede\' . emacs-lisp-mode) (\.\(scm\|stk\|ss\|sch\)\' . scheme-mode) (\.l\' . lisp-mode) (\.li?sp\' . lisp-mode) (\.[fF]\' . fortran-mode) (\.for\' . fortran-mode) (\.p\' . pascal-mode) (\.pas\' . pascal-mode) (\.\(dpr\|DPR\)\' . delphi-mode) (\.ad[abs]\' . ada-mode) (\.ad[bs].dg\' . ada-mode) (\.\([pP]\([Llm]\|erl\|od\)\|al\)\' . perl-mode) (Imakefile\' . makefile-imake-mode) (Makeppfile\(?:\.mk\)?\' . makefile-makepp-mode) (\.makepp\' . makefile-makepp-mode) (\.mk\' . makefile-gmake-mode) (\.make\' . makefile-gmake-mode) ([Mm]akefile\' . makefile-gmake-mode) (\.am\' . makefile-automake-mode) (\.texinfo\' . texinfo-mode) (\.te?xi\' . texinfo-mode) (\.[sS]\' . asm-mode) (\.asm\' . asm-mode) (\.css\' . css-mode) (\.mixal\' . mixal-mode) (\.gcov\' . compilation-mode) (/\.[a-z0-9-]*gdbinit . gdb-script-mode) (-gdb\.gdb . gdb-script-mode) ([cC]hange\.?[lL]og?\' . change-log-mode) ([cC]hange[lL]og[-.][0-9]+\' . change-log-mode) (\$CHANGE_LOG\$\.TXT . change-log-mode) (\.scm\.[0-9]*\' . scheme-mode) (\.[ckz]?sh\'\|\.shar\'\|/\.z?profile\' . sh-mode) (\.bash\' . sh-mode) (\(/\|\`\)\.\(bash_\(profile\|history\|log\(in\|out\)\)\|z?log\(in\|out\)\)\' . sh-mode) (\(/\|\`\)\.\(shrc\|[kz]shrc\|bashrc\|t?cshrc\|esrc\)\' . sh-mode) (\(/\|\`\)\.\([kz]shenv\|xinitrc\|startxrc\|xsession\)\' . sh-mode) (\.m?spec\' . sh-mode) (\.m[mes]\' . nroff-mode) (\.man\' . nroff-mode) (\.sty\' . latex-mode) (\.cl[so]\' . latex-mode) (\.bbl\' . latex-mode) (\.bib\' . bibtex-mode) (\.bst\' . bibtex-style-mode) (\.sql\' . sql-mode) (\.m[4c]\' . m4-mode) (\.mf\' . metafont-mode) (\.mp\' . metapost-mode) (\.vhdl?\' . vhdl-mode) (\.article\' . text-mode) (\.letter\' . text-mode) (\.i?tcl\' . tcl-mode) (\.exp\' . tcl-mode) (\.itk\' . tcl-mode) (\.icn\' . icon-mode) (\.sim\' . simula-mode) (\.mss\' . scribe-mode) (\.f9[05]\' . f90-mode) (\.f0[38]\' . f90-mode) (\.indent\.pro\' . fundamental-mode) (\.\(pro\|PRO\)\' . idlwave-mode) (\.srt\' . srecode-template-mode) (\.prolog\' . prolog-mode) (\.tar\' . tar-mode) (\.\(arc\|zip\|lzh\|lha\|zoo\|[jew]ar\|xpi\|rar\|7z\|ARC\|ZIP\|LZH\|LHA\|ZOO\|[JEW]AR\|XPI\|RAR\|7Z\)\' . archive-mode) (\.oxt\' . archive-mode) (\.\(deb\|[oi]pk\)\' . archive-mode) (\`/tmp/Re . text-mode) (/Message[0-9]*\' . text-mode) (\`/tmp/fol/ . text-mode) (\.oak\' . scheme-mode) (\.sgml?\' . sgml-mode) (\.x[ms]l\' . xml-mode) (\.dbk\' . xml-mode) (\.dtd\' . sgml-mode) (\.ds\(ss\)?l\' . dsssl-mode) (\.jsm?\' . javascript-mode) (\.json\' . javascript-mode) (\.[ds]?vh?\' . verilog-mode) (\.by\' . bovine-grammar-mode) (\.wy\' . wisent-grammar-mode) ([:/\]\..*\(emacs\|gnus\|viper\)\' . emacs-lisp-mode) (\`\..*emacs\' . emacs-lisp-mode) ([:/]_emacs\' . emacs-lisp-mode) (/crontab\.X*[0-9]+\' . shell-script-mode) (\.ml\' . lisp-mode) (\.ld[si]?\' . ld-script-mode) (ld\.?script\' . ld-script-mode) (\.xs\' . c-mode) (\.x[abdsru]?[cnw]?\' . ld-script-mode) (\.zone\' . dns-mode) (\.soa\' . dns-mode) (\.asd\' . lisp-mode) (\.\(asn\|mib\|smi\)\' . snmp-mode) (\.\(as\|mi\|sm\)2\' . snmpv2-mode) (\.\(diffs?\|patch\|rej\)\' . diff-mode) (\.\(dif\|pat\)\' . diff-mode) (\.[eE]?[pP][sS]\' . ps-mode) (\.\(?:PDF\|DVI\|OD[FGPST]\|DOCX?\|XLSX?\|PPTX?\|pdf\|djvu\|dvi\|od[fgpst]\|docx?\|xlsx?\|pptx?\)\' . doc-view-mode-maybe) (configure\.\(ac\|in\)\' . autoconf-mode) (\.s\(v\|iv\|ieve\)\' . sieve-mode) (BROWSE\' . ebrowse-tree-mode) (\.ebrowse\' . ebrowse-tree-mode) (#\*mail\* . mail-mode) (\.g\' . antlr-mode) (\.mod\' . m2-mode) (\.ses\' . ses-mode) (\.docbook\' . sgml-mode) (\.com\' . dcl-mode) (/config\.\(?:bat\|log\)\' . fundamental-mode) (\.\(?:[iI][nN][iI]\|[lL][sS][tT]\|[rR][eE][gG]\|[sS][yY][sS]\)\' . conf-mode) (\.\(?:desktop\|la\)\' . conf-unix-mode) (\.ppd\' . conf-ppd-mode) (java.+\.conf\' . conf-javaprop-mode) (\.properties\(?:\.[a-zA-Z0-9._-]+\)?\' . conf-javaprop-mode) (\`/etc/\(?:DIR_COLORS\|ethers\|.?fstab\|.*hosts\|lesskey\|login\.?de\(?:fs\|vperm\)\|magic\|mtab\|pam\.d/.*\|permissions\(?:\.d/.+\)?\|protocols\|rpc\|services\)\' . conf-space-mode) (\`/etc/\(?:acpid?/.+\|aliases\(?:\.d/.+\)?\|default/.+\|group-?\|hosts\..+\|inittab\|ksysguarddrc\|opera6rc\|passwd-?\|shadow-?\|sysconfig/.+\)\' . conf-mode) ([cC]hange[lL]og[-.][-0-9a-z]+\' . change-log-mode) (/\.?\(?:gitconfig\|gnokiirc\|hgrc\|kde.*rc\|mime\.types\|wgetrc\)\' . conf-mode) (/\.\(?:enigma\|gltron\|gtk\|hxplayer\|net\|neverball\|qt/.+\|realplayer\|scummvm\|sversion\|sylpheed/.+\|xmp\)rc\' . conf-mode) (/\.\(?:gdbtkinit\|grip\|orbital/.+txt\|rhosts\|tuxracer/options\)\' . conf-mode) (/\.?X\(?:default\|resource\|re\)s\> . conf-xdefaults-mode) (/X11.+app-defaults/\|\.ad\' . conf-xdefaults-mode) (/X11.+locale/.+/Compose\' . conf-colon-mode) (/X11.+locale/compose\.dir\' . conf-javaprop-mode) (\.~?[0-9]+\.[0-9][-.0-9]*~?\' nil t) (\.\(?:orig\|in\|[bB][aA][kK]\)\' nil t) ([/.]c\(?:on\)?f\(?:i?g\)?\(?:\.[a-zA-Z0-9._-]+\)?\' . conf-mode-maybe) (\.[1-9]\' . nroff-mode) (\.tgz\' . tar-mode) (\.tbz2?\' . tar-mode) (\.txz\' . tar-mode))
 
