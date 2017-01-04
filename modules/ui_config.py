@@ -1,4 +1,3 @@
-# [[file:../Measure_samples.org::*UI%20-%20Program%20Interface][UI\ -\ Program\ Interface:1]]
 #################################################################
 ## @file    ui_config.py
 #  @author  Joaquin Figueroa
@@ -34,9 +33,7 @@ Gmax = 10   # G0
 todoJUNCTURE_VOLTAGE_DFLT = 0  #[V]
 todoPIEZO_SPEED_DFLT = 0       #[V/S]
 todoDATA_DIRECTORY_DFTL = "./Data"
-# UI\ -\ Program\ Interface:1 ends here
 
-# [[file:../Measure_samples.org::*UI%20-%20Program%20Interface][UI\ -\ Program\ Interface:2]]
 ############################################################
 ## @class   UI_CONFIG
 #  @details This class has the return type of the UI class
@@ -60,9 +57,7 @@ class UI_CONFIG:
     ############################################################
     def update_config(self, new_config):
         self.config = new_config
-# UI\ -\ Program\ Interface:2 ends here
 
-# [[file:../Measure_samples.org::*UI%20command][UI\ command:1]]
 ############################################################
 ## @class  CMD
 #  @brief  UI calss to encode the possible commands for the
@@ -72,9 +67,7 @@ class UI_CMD:
     EXIT    = 0
     M_BREAK = 1
     MEASURE = 2
-# UI\ command:1 ends here
 
-# [[file:../Measure_samples.org::*UI%20Configuration%20Parameters][UI\ Configuration\ Parameters:1]]
 ############################################################
 ## @class   UI_CONFIG
 #  @details This class stores all configuration values to be
@@ -85,15 +78,13 @@ class UI_CONFIG_PARAMS:
         self._b_params = basic_params()
         self._a_params = adv_params()
         self._p_params = presentation()
-# UI\ Configuration\ Parameters:1 ends here
 
-# [[file:../Measure_samples.org::*UI%20Configuration%20Parameters][UI\ Configuration\ Parameters:2]]
+    ## asdf
+
 def ui_get_gui_config():
     retval = modules.ui_gui.run_gui()
     return retval
-# UI\ Configuration\ Parameters:2 ends here
 
-# [[file:../Measure_samples.org::src-config-num-param-class][src-config-num-param-class]]
 #############################################################
 ## @class   Numerical Parameter
 #  @brief   All functionality related to the numerical
@@ -136,9 +127,7 @@ class numerical_parameter(object):
     #############################################################
     def print_param(self):#
         print("%s = %f" % (self.name, self.value))
-# src-config-num-param-class ends here
 
-# [[file:../Measure_samples.org::src-config-int-param-class][src-config-int-param-class]]
 #############################################################
 ## @class   Integer Parameter
 #  @brief   All functionality related to the numerical
@@ -165,9 +154,7 @@ class integer_parameter(numerical_parameter):
     #############################################################
     def print_param(self): # 
         print("%s = %d" % (self.name, self.value))
-# src-config-int-param-class ends here
 
-# [[file:../Measure_samples.org::*UI%20-%20Basic%20parameters][UI\ -\ Basic\ parameters:1]]
 class basic_params:
       def __init__(self):
             self.juncture = juncture_voltage()
@@ -185,9 +172,7 @@ class basic_params:
             self.piezo_speed.print_param()
             self.traces.print_param()
             self.data_dir.print_param()
-# UI\ -\ Basic\ parameters:1 ends here
 
-# [[file:../Measure_samples.org::src-config-juncture-voltage-class][src-config-juncture-voltage-class]]
 #############################################################
 ## @class   juncture_voltage
 #  @brief   All functionality related to the juncture voltage
@@ -206,9 +191,7 @@ class juncture_voltage(numerical_parameter):
         _max = 0.3  #
         _name = "Juncture Voltage"
         super(juncture_voltage, self).__init__(_name,_dflt, _min, _max)
-# src-config-juncture-voltage-class ends here
 
-# [[file:../Measure_samples.org::src-config-piezo-speed-class][src-config-piezo-speed-class]]
 #############################################################
 ## @class   piezo_speed
 #  @brief   All functionality related to the
@@ -230,9 +213,7 @@ class piezo_speed(numerical_parameter):
         _name = "Piezo Speed"
         super(piezo_speed, self).__init__(_name,_dflt, _min, _max)
         self.fixed_speed = _dflt
-# src-config-piezo-speed-class ends here
 
-# [[file:../Measure_samples.org::src-config-traces-class][src-config-traces-class]]
 #############################################################
 ## @class   traces
 #  @brief   All functionality related to the number of traces
@@ -252,9 +233,7 @@ class traces(integer_parameter):
           _max = int(20000)  #
           _name = "Number of Traces"
           super(traces, self).__init__(_name,_dflt, _min, _max)
-# src-config-traces-class ends here
 
-# [[file:../Measure_samples.org::src-config-data-dir-class][src-config-data-dir-class]]
 #############################################################
 ## @class   traces
 #  @brief   All functionality related to the data directory
@@ -295,23 +274,15 @@ class data_dir:
     #############################################################
     def print_param(self):#
         print("Data Directory = %s" % self.path)
-# src-config-data-dir-class ends here
 
-# [[file:../Measure_samples.org::ui-config-bp-interface][ui-config-bp-interface]]
+## asdf
 
-# ui-config-bp-interface ends here
-
-# [[file:../Measure_samples.org::*UI%20-%20Advanced%20parameters][UI\ -\ Advanced\ parameters:1]]
 class adv_params:
       def __init__(self):
             self.asdf = 1
-# UI\ -\ Advanced\ parameters:1 ends here
 
-# [[file:../Measure_samples.org::ui-config-ap-interface][ui-config-ap-interface]]
 
-# ui-config-ap-interface ends here
 
-# [[file:../Measure_samples.org::ui-advanced-params-defaults][ui-advanced-params-defaults]]
 piezo_start_V = 0.0         # V
 high_G = 30.0              # G0
 inter_G = 20.0              # G0
@@ -327,20 +298,13 @@ xmin = -0.5 # nm
 xmax = 2    # nm
 Gmin = 1e-7 # G0
 Gmax = 10   # G0
-# ui-advanced-params-defaults ends here
 
-# [[file:../Measure_samples.org::ui-presentation-params-defaults][ui-presentation-params-defaults]]
 todoJUNCTURE_VOLTAGE_DFLT = 0  #[V]
 todoPIEZO_SPEED_DFLT = 0       #[V/S]
 todoDATA_DIRECTORY_DFTL = "./Data"
-# ui-presentation-params-defaults ends here
 
-# [[file:../Measure_samples.org::*UI%20-%20Presentation][UI\ -\ Presentation:2]]
 class presentation:
       def __init__(self):
             self.asdf = 1
-# UI\ -\ Presentation:2 ends here
 
-# [[file:../Measure_samples.org::ui-config-pp-interface][ui-config-pp-interface]]
 
-# ui-config-pp-interface ends here
