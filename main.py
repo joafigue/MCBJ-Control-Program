@@ -1,4 +1,4 @@
-# [[file:Measure_samples.org::*Main%20Loop][Main Loop:1]]
+# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::*Main%20Loop][Main Loop:1]]
 #################################################################
 ## @file    Main.py
 #  @author  Joaquin Figueroa
@@ -16,14 +16,14 @@
 #################################################################
 # Main Loop:1 ends here
 
-# [[file:Measure_samples.org::*Main%20Loop][Main Loop:2]]
+# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::*Main%20Loop][Main Loop:2]]
 import sys
 from modules.ui_config import *
 from modules.motor_break import *
 from modules.piezo_measure import *
 # Main Loop:2 ends here
 
-# [[file:Measure_samples.org::*Main%20Loop][Main Loop:3]]
+# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::*Main%20Loop][Main Loop:3]]
 ############################################################
 ## @fn    : main_exit
 #  @brief : Terminates program execution
@@ -33,7 +33,7 @@ def main_exit(config) :
     sys.exit()
 # Main Loop:3 ends here
 
-# [[file:Measure_samples.org::*Main%20Loop][Main Loop:4]]
+# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::*Main%20Loop][Main Loop:4]]
 ############################################################
 ## @fn      : main_motor_break
 #  @details : Commands the motor to break the gold channel
@@ -44,7 +44,7 @@ def main_motor_break(config):
     motor_break_juncture()
 # Main Loop:4 ends here
 
-# [[file:Measure_samples.org::*Main%20Loop][Main Loop:5]]
+# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::*Main%20Loop][Main Loop:5]]
 ############################################################
 ## @fn      : main_measure
 #  @details : Measures the transport properties of the
@@ -56,7 +56,7 @@ def main_measure(config):
     measure_sample()
 # Main Loop:5 ends here
 
-# [[file:Measure_samples.org::*Main%20Loop][Main Loop:6]]
+# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::*Main%20Loop][Main Loop:6]]
 ############################################################
 ## @fn      : execute_ui_cmd
 #  @details : Analyzed the command chosen by the user and
@@ -75,7 +75,7 @@ def execute_ui_cmd(ui_cmd,config) :
     cmd(config)
 # Main Loop:6 ends here
 
-# [[file:Measure_samples.org::*Main%20Loop][Main Loop:7]]
+# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::*Main%20Loop][Main Loop:7]]
 ############################################################
 ## @details : Main loop. Executes UI Cmd until the user end
 ##            the program

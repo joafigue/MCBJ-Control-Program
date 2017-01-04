@@ -11,9 +11,25 @@ from PyQt4 import QtGui
 from PyQt4 import QtCore
 import ui_config as conf
 import sys
-<<ui-basic-params-defaults>>
-<<ui-advanced-params-defaults>>
-<<ui-presentation-params-defaults>>
+
+piezo_start_V = 0.0         # V
+high_G = 30.0              # G0
+inter_G = 20.0              # G0
+low_G = 10.0              # G0
+piezo_speed_breaking1 = 300.0        # V/s
+piezo_speed_breaking2 = 300.0        # V/s (30 to 300) Este es el que se puede cambiar
+piezo_speed_making = 500.0        # V/s
+#post_breaking_voltage = 230.0       #
+post_breaking_voltage = 300.0       # cambia cuanto abro despues de que rompo
+nGbins = 251
+nDbins = 161
+xmin = -0.5 # nm
+xmax = 2    # nm
+Gmin = 1e-7 # G0
+Gmax = 10   # G0
+todoJUNCTURE_VOLTAGE_DFLT = 0  #[V]
+todoPIEZO_SPEED_DFLT = 0       #[V/S]
+todoDATA_DIRECTORY_DFTL = "./Data"
 
 ############################################################
 ## @brief   Runs the GUI for the program
