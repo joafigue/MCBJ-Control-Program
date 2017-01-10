@@ -1522,6 +1522,7 @@ This section describes the algorithm used to store the break histogram shown in 
       inc(PAR_1)
       IF (PAR_1 >= piezo_max) THEN
         state = 2 ' Go to make histogram
+        PAR_13 = 1
       ENDIF
       DAC(2,PAR_1)
       break_hist_flag = 1 ' Go to next stage
@@ -1600,9 +1601,6 @@ This section describes the algorithm used to store the make histogram shown in t
       DATA_2[PAR_21] = avgcurrent
       PAR_21 = PAR_21 + 1
       make_hist_flag = 0
-      IF (avgcurrent <= FPAR_11) THEN
-        state = 3 ' Go to end process
-      ENDIF
 #+END_SRC
 **** DONE Adwin histogram-Event reset juncture voltage
      :PROPERTIES:
