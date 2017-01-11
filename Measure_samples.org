@@ -195,7 +195,7 @@ Finally the main loop is executed indefinitely until the user terminates the pro
 
 ** TODO User Interface
    :PROPERTIES:
-   :header-args:  :noweb    tangle
+   :header-args+:  :noweb    tangle
    :END:
 The user interface has 2 requirements.
 1. It should allow the user to run the experiment
@@ -207,7 +207,7 @@ Now there is an additional requirement for the UI, which is the interface by its
 
 *** TODO UI-Program Interface
    :PROPERTIES:
-   :header-args:  :tangle   modules/ui_config.py
+   :header-args+:  :tangle   modules/ui_config.py
    :header-args+:  :noweb    tangle
    :END:
 # As with any module there is a section for the imports and the file headers, but these are unninteresting for any reader, thus they are put in comments and not exported to a PDF/HTML result
@@ -727,7 +727,7 @@ todoDATA_DIRECTORY_DFTL = "./Data"
 
 *** TODO UI-GUI
    :PROPERTIES:
-   :header-args:  :tangle   modules/ui_gui.py
+   :header-args+:  :tangle   modules/ui_gui.py
    :header-args+:  :noweb    tangle
    :END:
 # As with any module there is a section for the imports and the file headers, but these are unninteresting for any reader, thus they are put in comments and not exported to a PDF/HTML result
@@ -1046,7 +1046,7 @@ To provide the GUI for a parameter, a label and a text-box are needed, however f
 
 ** TODO Motor break junction
    :PROPERTIES:
-   :header-args:  :tangle   modules/motor_break.py
+   :header-args+:  :tangle   modules/motor_break.py
    :END:
 #+BEGIN_SRC python
   def motor_break_juncture():
@@ -1056,7 +1056,7 @@ To provide the GUI for a parameter, a label and a text-box are needed, however f
 
 ** TODO Measurement with Piezo
    :PROPERTIES:
-   :header-args:  :tangle   modules/piezo_measure.py
+   :header-args+:  :tangle   modules/piezo_measure.py
    :END:
 
 #+BEGIN_SRC python
@@ -1067,7 +1067,7 @@ To provide the GUI for a parameter, a label and a text-box are needed, however f
 
 ** TODO General purpose Utilities
    :PROPERTIES:
-   :header-args:  :tangle   modules/utilities.py
+   :header-args+:  :tangle   modules/utilities.py
    :header-args+:  :noweb    tangle
    :END:
 As with many programs, there are some general purpose functionalities that do not fit cleanly in other sections or files. This section is for these types of utilities.
@@ -1117,7 +1117,7 @@ Beyond the basic programs that perform the measurements, an interface to the act
 
 ** DONE Adwin Measure IV process
    :PROPERTIES:
-   :header-args:  :tangle   adwin_programs/iv_measurement_process.bas
+   :header-args+:  :tangle   adwin_programs/iv_measurement_process.bas
    :header-args+:  :noweb    tangle
    :header-args+:  :mkdirp   yes
    :END:
@@ -1265,7 +1265,7 @@ The =Event= Block is separated in different functionalities
 
 **** DONE Adwin IV-Event set juncture voltage
      :PROPERTIES:
-     :header-args:  :tangle   no
+     :header-args+:  :tangle   no
      :END:
 #+CAPTION: <<src-adwin-iv-set-jv>> Code to set the juncture voltage  to the measurement required value
 #+NAME: src-adwin-iv-set-jv
@@ -1275,12 +1275,12 @@ The =Event= Block is separated in different functionalities
   IF(juncture_voltage > PAR_2) THEN DEC(juncture_voltage)
   DAC(1,juncture_voltage)
   IF  (juncture_voltage = PAR_2) THEN state = 1
-  ' Mesureflag = 1 => we have to wait
+  ' state = 1 => we have to wait
 #+END_SRC
 
 **** DONE Adwin IV-Event stabilize system
      :PROPERTIES:
-     :header-args:  :tangle   no
+     :header-args+:  :tangle   no
      :END:
 #+CAPTION: <<src-adwin-iv-wait>> Code to wait for the system to stabilize before staring measurements
 #+NAME: src-adwin-iv-wait
@@ -1293,7 +1293,7 @@ The =Event= Block is separated in different functionalities
 #+END_SRC
 **** DONE Adwin IV-Event measure data
      :PROPERTIES:
-     :header-args:  :tangle   no
+     :header-args+:  :tangle   no
      :END:
 #+CAPTION: <<src-adwin-iv-measure>> Code to measure the data
 #+NAME: src-adwin-iv-measure
@@ -1324,7 +1324,7 @@ The =Event= Block is separated in different functionalities
 #+END_SRC
 **** DONE Adwin IV-Event reset juncture voltage
      :PROPERTIES:
-     :header-args:  :tangle   no
+     :header-args+:  :tangle   no
      :END:
 #+CAPTION: <<src-adwin-iv-reset-jv>> Code to restore the juncture value  to off value
 #+NAME: src-adwin-iv-reset-jv
@@ -1337,7 +1337,7 @@ The =Event= Block is separated in different functionalities
 
 ** DONE Adwin Measure-Generate piezo histogram
    :PROPERTIES:
-   :header-args:  :tangle   adwin_programs/piezo_histogram.bas
+   :header-args+:  :tangle   adwin_programs/piezo_histogram.bas
    :header-args+:  :noweb    tangle
    :END:
 Since the Adwin controls the piezoelectric device and take measurements, it makes sense  to provide a single program that operates the piezoelectric device , and then takes the corresponding measurements for each setting. After all the measurements are taken, the data is stored for analysis in the external program. The histogram program is split in several groups, similarly as the ones shown in [[Adwin Measure IV process]].
@@ -1487,7 +1487,7 @@ The =Event= Block is separated in different functionalities
 
 **** DONE Adwin histogram-Event set juncture voltage
      :PROPERTIES:
-     :header-args:  :tangle   no
+     :header-args+:  :tangle   no
      :END:
 The algorithm to set the juncture voltage is the same as the one used for the IV measurement. See [[Adwin IV-Event set juncture voltage]]
 #+CAPTION: <<src-adwin-hist-set-jv>> Code to set the juncture voltage  to the measurement required value
@@ -1498,7 +1498,7 @@ The algorithm to set the juncture voltage is the same as the one used for the IV
 
 **** DONE Adwin histogram-Event break histogram
      :PROPERTIES:
-     :header-args:  :tangle   no
+     :header-args+:  :tangle   no
      :END:
 This section describes the algorithm used to store the break histogram shown in the code fragment [[src-adwin-hist-break]]. The algorithm is broken in 4 steps.
 - Move the piezo :: Starting on line [[(adw-brk-pz)]] this is the first step  of the algorithm.
@@ -1554,7 +1554,7 @@ This section describes the algorithm used to store the break histogram shown in 
 
 **** DONE Adwin histogram-Event make histogram
      :PROPERTIES:
-     :header-args:  :tangle   no
+     :header-args+:  :tangle   no
      :END:
 This section describes the algorithm used to store the make histogram shown in the code fragment [[src-adwin-hist-break]]. The algorithm is broken in 4 steps, in a similar fashion as done in [[Adwin histogram-Event break histogram]]
 - Move the piezo :: Starting on line [[(adw-mk-pz)]] this is the first step  of the algorithm.
@@ -1604,7 +1604,7 @@ This section describes the algorithm used to store the make histogram shown in t
 #+END_SRC
 **** DONE Adwin histogram-Event reset juncture voltage
      :PROPERTIES:
-     :header-args:  :tangle   no
+     :header-args+:  :tangle   no
      :END:
 The algorithm to reset the juncture voltage is the same as the one used for the IV measurement. See  [[Adwin IV-Event reset juncture voltage]]
 #+CAPTION: <<src-adwin-hist-reset-jv>> Code to restore the juncture value  to off value
@@ -1615,7 +1615,7 @@ The algorithm to reset the juncture voltage is the same as the one used for the 
 
 ** TODO Adwin driver-program interface
    :PROPERTIES:
-   :header-args: :tangle modules/adwin_driver.py
+   :header-args+: :tangle modules/adwin_driver.py
    :header-args+: :noweb yes
    :END:
 The adwin driver is mostly a convenience layer between the ADwin and the Python program which uses it. This program will provide a different layer for each different process related to the different measurements. For convenience each process is isolated in its own class. Using a class inheritance scheme this file is split in different sections
@@ -2036,7 +2036,7 @@ In a similar manner as used in [[Adwin IV driver-Initialization Code]] the code 
       #############################################################
       ## @brief   Initilaization code
       #############################################################
-      def __init__(self):
+      def __init__(self,config):
           super.__init__()
           self.load_process()
           self.configure_process()
@@ -2093,6 +2093,7 @@ This section provides with the functions required to obtain the histogram measur
 - Break histogram :: Queries the data array from the ADwin that holds the break histogram and returns it
 #+name: src-adwin-hist-driver-api
 #+BEGIN_SRC python
+
   def measure_and_get_histogram(self):
       self.start_process()
       while !self.process_ended() :
@@ -2129,6 +2130,164 @@ This section provides with the functions required to obtain the histogram measur
   def error_in_measurement(self):
       return !self.adw.Get_Par(ADW_HIST_CONST.ERROR_STATUS) == 0
 
+
+#+END_SRC
+
+**** TODO ADwin Histogram test                                     :noexport:
+     :PROPERTIES:
+     :header-args+: :tangle modules/adwin_histogram_test.py
+     :END:
+Small test program for the ADwin hisotgram measurement.
+#+BEGIN_SRC python
+  from adwin_histogram import *
+
+  def convert_v_to_bin(V):
+      output_range = ADW_GPARAM.OUTPUT_RANGE
+      resolution = ADW_GPARAM.RESOLUTION
+      bin_v,real_v =convert_V_to_bin(V,output_range,resolution)
+      return real_v
+
+  def wait_from_speed(speed):
+      mod_speed = speed/100
+      scanrate = 1/ADW_GPARAM.PROCESS_DELAY
+      steps = 2*ADW_GPARAM.OUTPUT_RANGE/ 2**ADW_GPARAM.RESOLUTION
+      wait = int(scanrate/mod_speed/steps)
+
+
+  class adwin_histogram_config:
+      start_jv = 0
+      measure_jv = convert_v_to_bin(0.1)
+      end_jv = 0
+      break_wait = wait_from_speed(300)
+      make_wait = wait_from_speed(500)
+      num_avg = 32
+      G0 = 7.74809173e-5
+      min_i_brk = 7.74809173e-5 * 10 * convert_v_to_bin(0.1) 
+      max_i_brk = 7.74809173e-5 * 30 * convert_v_to_bin(0.1) 
+
+  class adw_display:
+      number_traces = 5000
+      nGbins = 251
+      nDbins = 161
+      xmin = -0.5 # nm
+      xmax = 2    # nm
+      Gmin = 1e-7 # G0
+      Gmax = 10   # G0
+
+
+  def plot_traces(axis, D_breaking, G_breaking, D_making, G_making):
+      axis.clear()
+      plt_breaking =  axis.plot(D_breaking,G_breaking,linewidth=2)
+      plt_making =  axis.plot(D_making,G_making,linewidth=2)
+      axis.set_yscale("log")
+      axis.set_xlim(0, max(max(D_making),max(D_breaking)))
+      axis.set_ylim(adw_display.Gmin, adw_display.Gmax)
+      axis.set_title("Conductance trace")
+      axis.set_xlabel('Displacement (nm)')
+      axis.set_ylabel('Conductance (G0)')
+      axis.set_aspect(1)
+      #axis.xticks(power(zeros(nGbins) + 10.0, range(-8,2,4)))
+      #axis.yticks(range(-10,1,10))
+
+  def plot_counts(axis, break_acc, make_acc, G_breaking, G_making, G_bins, D_bins):
+      tmp=np.histogram(G_breaking, bins=Gbins)
+      break_acc = break_acc + tmp[0]
+      tmp=np.histogram(G_making, bins=Gbins)
+      make_acc = make_acc + tmp[0]
+      # plot 1D histogram (2)
+      Gbins_plot = Gbins[0:-1]
+      Dbins_plot = Dbins[0:-1]
+      axis.clear()
+      plt_histo1D_breaking =  axis.plot(Gbins_plot, break_acc,linewidth=2)
+      plt_histo1D_making =  axis.plot(Gbins_plot,make_acc,linewidth=2)
+      axis.set_xscale("log")
+      axis.set_ylim(0, 1.2*max(max(break_acc),max(make_acc)))
+      axis.set_xlim(Gbins[0], Gbins[-1])
+      axis.set_title("1D Histogram")
+      axis.set_ylabel('Counts')
+      axis.set_xlabel('Conductance (G0)')
+      axis.set_aspect(1)
+
+      return break_acc, make_acc
+
+
+  def plot_2d_histogram(axis, G_breaking, G_making, G_bins, D_bins):
+      index=max(find(G_breaking>0.5))
+      D_breaking = D_breaking - D_breaking[index]
+      
+      # plot 2D histogram (3)
+      tmp = histogram2d(G_breaking, D_breaking, bins=(Gbins, Dbins))
+      histo2D_breaking_sum = histo2D_breaking_sum + tmp[0]
+      
+      index1 = find(min(abs(log10(Gbins) - -2 ))==(abs(log10(Gbins) - -2 )))
+      index2 = find(min(abs(log10(Gbins) - -6 ))==(abs(log10(Gbins) - -6 )))
+      tmp = histo2D_breaking_sum[index2:index1,:]
+      
+      Cmax = 0
+      for y in range(0,index1-index2):
+          Cmax = max(max(tmp[y,:]), Cmax)
+      
+      axis.clear()
+      surf = axis.contourf(Dbins_plot, Gbins_plot, histo2D_breaking_sum, linspace(0,Cmax/2,16))
+      axis.set_yscale("log")
+      axis.set_ylim(Gbins_plot[0], Gbins_plot[-1])
+      axis.set_xlim(Dbins_plot[0], Dbins_plot[-1])
+      axis.set_title("2D Histogram")
+      axis.set_xlabel('Displacement (nm)')
+      axis.set_ylabel('Conductance (G0)')
+      
+      pause(1)
+
+  def stop():
+      """stop ADwin and motor"""
+      ADwin_stop_all_process()
+      ADwin_boot()
+      Faulhaber_command('v 0')
+  # Configure Plot
+
+  ## initialize histogram
+  Gbins = power(zeros(nGbins) + 10.0, linspace(log10(Gmin), log10(Gmax), nGbins)) # create conductance array
+  Dbins = linspace(xmin, xmax, nDbins) # create displacement array
+
+  histo1D_breaking_sum = zeros(nGbins-1)
+  histo1D_making_sum = zeros(nGbins-1)
+  histo2D_breaking_sum = zeros(shape=(nGbins-1,nDbins-1))
+
+  ## plot settings
+  rcParams['figure.figsize'] = [22, 10]
+  font = {'family' : 'normal',
+          'weight' : 'normal',
+          'size'   : 22}
+  fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
+  ax1.set_position([0.07, 0.1, 0.25, 0.8])
+  ax2.set_position([0.39, 0.1, 0.25, 0.8])
+  ax3.set_position([0.72, 0.1, 0.25, 0.8])
+  fig.set_facecolor('white')
+  matplotlib.rc('font', **font)
+
+  adw = adwin_histogram_driver(adwin_histogram_config)
+  date = strftime("%y%m%d")
+  for i in range(adw_display.num_traces):
+      break_histogram, make_histogram = adw.measure_and_get_histogram()
+      if adw.error_in_measurement() :
+          continue
+      D_breaking = break_histogram[0]
+      G_breaking = break_histogram[1]
+
+      D_making = make_histogram[0]
+      G_making = make_histogram[1]
+
+      plot_traces(ax1, D_breaking, G_breaking, D_making, G_making):    
+      break_acc, make_acc = plot_counts(ax2, break_acc, make_acc, G_breaking, G_making, G_bins, D_bins)
+      plot_2d_histogram(ax2, G_breaking, G_making, G_bins, D_bins):
+      
+      filename = save_dir + 'scan_jf' + date + '_' + "%1.0f.dat" % x
+      file = open(filename, "w")
+      #make_general_header(file)
+      make_piezo_header(file)
+      save_data(file, D_breaking, G_breaking)
+      save_data(file, D_making, G_making)
+      file.close()
 
 #+END_SRC
 
@@ -2198,7 +2357,7 @@ Converter from "regular numbers" to adwin parameters
 
 * Faulhaber Driver
   :PROPERTIES:
-  :header-args:  :tangle   modules/Faulhaber_driver.py
+  :header-args+:  :tangle   modules/Faulhaber_driver.py
   :header-args+:  :noweb    tangle
   :header-args+:  :comments noweb
   :END:
@@ -2343,7 +2502,7 @@ The Faulhaber class defined in the code block [[faulhaber-class-def]], provides 
 #+END_SRC
 *** Faulhaber Basic Functions
     :PROPERTIES:
-    :header-args:  :tangle   no
+    :header-args+:  :tangle   no
     :END:
 As previously stated this section defines the basic functions of the Faulhaber motor.
 - Enable Motor :: This function enables the motor to allow it to move.
@@ -2457,13 +2616,13 @@ As previously stated this section defines the basic functions of the Faulhaber m
 
 *** Faulhaber Program Interface
     :PROPERTIES:
-    :header-args:  :tangle   no
+    :header-args+:  :tangle   no
     :END:
 The Faulhaber program interface is actually the control algorithm for the motor, this is, given a set of parameters, the control algorithm will set the new speed for the motor.
 
 *** Faulhaber Control Algorithm
     :PROPERTIES:
-    :header-args:  :tangle   no
+    :header-args+:  :tangle   no
     :END:
 In order to produce the most reliable measurements with the piezoelectric device, and with the least amount of noise for multiple measurements of the same samples, it's required to start the piezoelectric measurement *at the same data point* every time. Considering the characteristics of the experiment, there are only a few ways to ensure this.
 1. Always start the measurement at the same *Displacement* of the motor, and hence the sample.
