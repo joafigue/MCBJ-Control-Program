@@ -201,10 +201,10 @@ The user interface has 2 requirements.
 1. It should allow the user to run the experiment
 2. It should allow the user to tweak with the configuration for the experiment
 
-Now there is an additional requirement for the UI, which is the interface by itself, thus the UI module can be thought as the result of 2 pieces.
+Now there is an additional requirement for the UI, which is the interface by itself, thus the UI module can be thought as the result of 3 pieces.
 - Program Interface :: The UI - program interface is how the UI interacts with the rest of the program. See [[UI-Program Interface]]
 - GUI :: The graphical User interface is how the program interacts with the user. See [[UI-GUI]]
-
+- Configuration Files :: Full textual interfaces so users can set a configuration file which takes cares of all modifiable constants of the problem, without needing to use a GUI
 *** TODO UI-Program Interface
    :PROPERTIES:
    :header-args+:  :tangle   modules/ui_config.py
@@ -724,6 +724,206 @@ todoDATA_DIRECTORY_DFTL = "./Data"
 #+BEGIN_SRC python
 
 #+END_SRC
+*** TODO Configuration Files
+Following a more traditional UNIX approach, is a good idea to allow the program to be run from the command line, rather than forcing a GUI to the user. By using a configuration file, the user will be able to configure the run, and be sure that all parameters are correctly set beforehand, in a way that would allow for several runs automatically.
+
+Also the introduction of configuration files does not mean that the program will do away with the GUI, rather that the GUI will generate the appropriate configuration file, to run  the program.
+
+**** Configuration Files specification
+     :PROPERTIES:
+     :header-args+: :tangle  Measurement_deafult_config.yaml
+     :END:
+To specify the configuration, I've decided to use [[http://www.yaml.org][YAML]], which provides a relatively simple interface, and an appropriate parser for python, while also allowing comments.
+The configuration will be split in 3 parts.
+- General Parameters :: These are variables that should be set by the user, but can apply to any process associated with the measurement, for example the juncture voltage
+- Histogram parameters :: The histogram is the measurement that the program is really interested on, therefore the user may need to modify some parameters
+- Presentation parameters :: During measurement the program will display the histogram to provide the user with feedback, therefore the user may need to modify some of these parameters to better suits his[fn:or her needs] needs
+
+That being said, we provide with an example configuration file. See [[http://www.yaml.org/spec/1.2/spec.html][YAML Specification]] or [[http://ess.khhq.net/wiki/YAML_Tutorial][YAML tutorial]]
+#+BEGIN_SRC yaml
+  # Begin of configuration File
+  ---
+  General Configuration :
+    JunctureVoltage : 0.1 #Range 0.1-0.3
+    SaveDir : 'E:/Measurements/Fullerenos/C60 2/Molecule/' # Where to save the Data
+
+  Histogram Configuration :
+    AveragePoints : 32            # Number of points to average
+    BreakSpeed : 300              #  Volts/s
+    MakeSpeed : 500               # Vols/s
+    NumberTraces : 500            # Number of histograms
+
+  Presentation Configuration:
+    xmin : -0.5 # nm
+    xmax : 2    # nm
+    Gmin : 1e-7 # G0
+    Gmax : 10   # G0
+#+END_SRC
+**** Configuration Files interface
+   :PROPERTIES:
+   :header-args+:  :tangle   modules/config_interface.py
+   :header-args+:  :noweb    tangle
+   :END:
+
+Since the program will be configured through a configuration file, it only makes sense to provide with a writer and a parser for it. Fortunately we already have most of the heavy-lifting done by YAML libraries and the parameters configurations in the UI-interface part of the program, I'd expect this part to be relatively easy to understand.
+
+As usual we start with the header
+# Yaml is stored as python dictionaries.
+#+BEGIN_SRC python
+  #################################################################
+  ## @file    Configuration_parser.py
+  #  @author  Joaquin Figueroa
+  #  @date    Wed Jan 11 11:02:47 CLST 2017
+  #  @brief   Parse Yaml configuration file and builds configs
+  #
+  #  @details This file uses PyYaml to parse the configuration file
+  #           and builds the necessary configurations for each
+  #           run type.
+  #           Then we return the collection of configurations
+  #################################################################
+  import yaml
+#+end_src
+
+
+#+begin_src python
+  def yaml_loader(filepath):
+      with open(filepath, "r") as file_descriptor:
+          data = yaml.safe_load(file_descriptor)
+      return data
+
+  def yaml_dump(filepath, data):
+      with open(filepath, "w") as file_descriptor:
+          yaml.dump(data, file_descriptor)
+
+  def yaml_extract_juncture_voltage(data):
+      General_config = data['General Configuration']
+      new_jv_val = General_config['JunctureVoltage']
+      jv = juncture_voltage()
+      if !jv.validate(new_jv_val):
+          print("ERROR: JV value out of range. Using default")
+          print("Range min ={0}, Max ={1}".format(jv._min, jv._max))
+      jv.update(new_jv_val)
+      return jv
+
+  def yaml_extract_save_dir(data):
+      General_config = data['General Configuration']
+      target_dir = General_config['SaveDir']
+      save_dir = data_dir()
+      if !save_dir.validate(target_dir):
+          print("Directory does not exists")
+          raise
+      save_dir.update(target_dir)
+      return save_dir
+
+  def yaml_extract_avg_points(data):
+      Histo_config = data['Histogram Configuration']
+      new_avg = Histo_config['AveragePoints']
+      avg = average_points()
+      if !avg.validate(new_avg):
+          print("ERROR: AVG value out of range. Using default")
+          print("Range min ={0}, Max ={1}".format(avg._min, avg._max))
+      avg.update(new_avg)
+      return avg
+
+
+  def yaml_extract_break_speed(data):
+      Histo_config = data['Histogram Configuration']
+      new_speed = Histo_config['BreakSpeed']
+      speed = piezo_break_speed()
+      if !speed.validate(new_avg):
+          print("ERROR: Break Speed value out of range. Using default")
+          print("Range min ={0}, Max ={1}".format(speed._min, speed._max))
+      speed.update(new_speed)
+      return speed
+
+
+  def yaml_extract_break_speed(data):
+      Histo_config = data['Histogram Configuration']
+      new_speed = Histo_config['BreakSpeed']
+      speed = piezo_break_speed()
+      if !speed.validate(new_avg):
+          print("ERROR: Break Speed value out of range. Using default")
+          print("Range min ={0}, Max ={1}".format(speed._min, speed._max))
+      speed.update(new_speed)
+      return speed
+
+  def yaml_extract_make_speed(data):
+      Histo_config = data['Histogram Configuration']
+      new_speed = Histo_config['MakeSpeed']
+      speed = piezo_make_speed()
+      if !speed.validate(new_avg):
+          print("ERROR: Make Speed value out of range. Using default")
+          print("Range min ={0}, Max ={1}".format(speed._min, speed._max))
+      speed.update(new_speed)
+      return speed
+
+
+  def yaml_extract_num_traces(data):
+      Histo_config = data['Histogram Configuration']
+      new_traces = Histo_config['NumberTraces']
+      traces = number_traces()
+      if !traces.validate(new_traces):
+          print("ERROR: Num_traces value out of range. Using default")
+          print("Range min ={0}, Max ={1}".format(traces._min, traces._max))
+      traces.update(new_speed)
+      return traces
+
+
+  def yaml_extract_xmin(data):
+      config = data['Presentation Configuration']
+      new_xmin = config['xmin']
+      xmin = xmin()
+      if !xmin.validate(new_xmin):
+          print("ERROR: xmin value out of range. Using default")
+          print("Range min ={0}, Max ={1}".format(xmin._min, xmin._max))
+      xmin.update(new_xmin)
+      return xmin
+
+  def yaml_extract_xmax(data):
+      config = data['Presentation Configuration']
+      new_xmax = config['xmax']
+      xmax = xmax()
+      if !xmax.validate(new_xmax):
+          print("ERROR: xmax value out of range. Using default")
+          print("Range min ={0}, Max ={1}".format(xmax._min, xmax._max))
+      xmax.update(new_xmax)
+      return xmax
+
+
+  def yaml_extract_Gmin(data):
+      config = data['Presentation Configuration']
+      new_Gmin = config['Gmin']
+      Gmin = Gmin()
+      if !Gmin.validate(new_Gmin):
+          print("ERROR: Gmin value out of range. Using default")
+          print("Range min ={0}, Max ={1}".format(Gmin._min, Gmin._max))
+      Gmin.update(new_Gmin)
+      return Gmin
+
+
+  def yaml_extract_Gmax(data):
+      config = data['Presentation Configuration']
+      new_Gmax = config['Gmax']
+      Gmax = Gmax()
+      if !Gmax.validate(new_Gmax):
+          print("ERROR: Gmax value out of range. Using default")
+          print("Range min ={0}, Max ={1}".format(Gmax._min, Gmax._max))
+      Gmax.update(new_Gmax)
+      return Gmax
+
+
+
+  # testing
+  if __name__ == "__main__":
+      filepath = "Measurement_deafult_config.yaml"
+      data = yaml_loader(filepath)
+      print(data)
+
+
+#+END_SRC
+
+
+
 
 *** TODO UI-GUI
    :PROPERTIES:
@@ -1657,10 +1857,10 @@ The adwin driver is mostly a convenience layer between the ADwin and the Python 
   import os
   import modules.utilities as utl
 #+END_SRC
-*** TODO Adwin driver-base class 
+*** TODO Adwin driver-base class
 The Adwin base class, provides with the minimum data structure and global parameters in order to define a proper driver for ADwin measurement process. This part of the file is split in:
 - Parameters :: Shown in [[Adwin driver-base class parameters]] defines the global parameters which are common to any process related to the ADwin measurements; such as the physical address in the computer
-- Interface :: Shown in [[Adwin driver-base class Interface]], defines the class and the high-level functionality common to all classes  
+- Interface :: Shown in [[Adwin driver-base class Interface]], defines the class and the high-level functionality common to all classes
 
 **** DONE Adwin driver-base class parameters
 As previously stated the base-class  parameters hold information necessary for the ADwin instrument to work and some of the instrument characterization constants. The parameters are:
@@ -1768,9 +1968,9 @@ Is important to note that any parameter used by this abstract driver, should be 
 The Adwin IV measurement class provides a single interface, which controls the process to perform continuous measurements of the current/voltage characteristics of the sample,  while providing a high level interface to interact with the instrument. To define the class we need
 - Parameters :: Defined in [[Adwin driver-IV parameters]]. These parameters define the indices required to interact with the internal program.
 - Driver class :: Defined in  [[Adwin IV-measurement driver]]. This is the class definition which provides with the necessary interface to interact with the instrument.
-                
+
 **** DONE Adwin driver-IV parameters
-The Adwin instrument, stores its internal variables in predefined variables, which can be queried through an external program such as the driver defined in  [[Adwin IV-measurement driver]].  These variables are classified as: 
+The Adwin instrument, stores its internal variables in predefined variables, which can be queried through an external program such as the driver defined in  [[Adwin IV-measurement driver]].  These variables are classified as:
 
 - Int variables :: Defined in [[Adwin driver-IV int parameter]]. These correspond to integer variables.
 - Float variables :: Defined in [[Adwin driver-IV int parameter]]. These correspond to  float variables.
@@ -1791,9 +1991,9 @@ The variables are identified with an index according to the instrument documenta
 
 ***** DONE Adwin driver-IV int parameters
 The Int parameters are used to define the indices to the corresponding integer variables in the internal ADwin memory used for communication. The variables used are:
-- START_JV :: Used for setting the initial juncture voltage (off). The value should be set to an equivalent of \(0[V]\)              
+- START_JV :: Used for setting the initial juncture voltage (off). The value should be set to an equivalent of \(0[V]\)
 - MEASURE_JV ::  Used for setting the Juncture voltage set during measurements
-- END_JV :: Used for setting the juncture voltage at end of measurements, like the starting voltage should be set to \(0[V]\) 
+- END_JV :: Used for setting the juncture voltage at end of measurements, like the starting voltage should be set to \(0[V]\)
 - WAIT   :: Used for setting  the number of cycles to wait before measuring the current, after reaching the desired juncture voltage
 - MAX_DATA :: Used for setting the maximum number of data points to measure. After reaching the target value, the measurements should stop
 - ABORT ::  Used ad the parameter used to  abort measurements early
@@ -1804,7 +2004,7 @@ The Int parameters are used to define the indices to the corresponding integer v
 #+BEGIN_SRC python :tangle no
   ###########################################################################
   ## @brief  Indices  for int vars in ADwin used for IV measurements
-  ###########################################################################    
+  ###########################################################################
   # Inputs for the ADWIN IV measurement
   START_JV    = 1
   MEASURE_JV  = 2
@@ -1818,9 +2018,9 @@ The Int parameters are used to define the indices to the corresponding integer v
 #+END_SRC
 ***** DONE Adwin driver-IV float parameters
 The float parameters are used to define the indices to the corresponding float variables in the internal ADwin memory used for communication. The variables used are:
-- I_CH1      :: Float variable used to store the current measured in channel 1                   
+- I_CH1      :: Float variable used to store the current measured in channel 1
 - I_CH1_AMPL :: Float variable used to store the current measured in channel 1 with log amplifier
-- I_CH2      :: Float variable used to store the current measured in channel 1                   
+- I_CH2      :: Float variable used to store the current measured in channel 1
 - I_CH2_AMPL :: Float variable used to store the current measured in channel 1 with log amplifier
 
 #+CAPTION: <<src-adwin-iv-fparam>> Adwin parameter indices used for communicating the float variables with the instrument for IV parameter measurements
@@ -1828,7 +2028,7 @@ The float parameters are used to define the indices to the corresponding float v
 #+BEGIN_SRC python :tangle no
   ###########################################################################
   ## @brief  Indices  for float vars in ADwin used for IV measurements.
-  ###########################################################################    
+  ###########################################################################
   # output variables for measured currents for the ADWIN IV measurement
   I_CH1       = 1
   I_CH1_AMPL  = 2
@@ -1844,7 +2044,7 @@ The array  parameters are used to define the indices to the corresponding array 
 #+BEGIN_SRC python :tangle no
   ###########################################################################
   ## @brief  Indices  for array vars in ADwin used for IV measurements
-  ###########################################################################    
+  ###########################################################################
   # ----------------------------- inputs  ------------------------------
   LOG_AMPL  = 10
 #+END_SRC
@@ -1962,9 +2162,9 @@ In a similar way as shown in [[Adwin driver-IV parameters]] the parameters are g
 #+END_SRC
 ***** DONE Adwin driver-histogram int parameters
 The Int parameters are used to define the indices to the corresponding integer variables in the internal ADwin memory used for communication. The variables used are:
-- START_JV :: Used for setting the initial juncture voltage (off). The value should be set to an equivalent of \(0[V]\)              
+- START_JV :: Used for setting the initial juncture voltage (off). The value should be set to an equivalent of \(0[V]\)
 - MEASURE_JV ::  Used for setting the Juncture voltage set during measurements
-- END_JV :: Used for setting the juncture voltage at end of measurements, like the starting voltage should be set to \(0[V]\) 
+- END_JV :: Used for setting the juncture voltage at end of measurements, like the starting voltage should be set to \(0[V]\)
 - BREAK_WAIT   :: Used for setting  the number of cycles to wait before measuring the current, after modifying the piezoelectric voltage during the breaking analysis, and in turn the position of the piezoelectric. This time is considered as a stabilization time, to avoid measuring before the piezoelectric is stable in its new position
 - MAKE_WAIT   :: Used for setting  the number of cycles to wait before measuring the current, after modifying the piezoelectric voltage during the make histogram analysis. As with the *BREAK_WAIT* this is considered a stabilization time.
 - AVG :: Used as the index to set the number of measurements to be performed before taking an average in each piezoelectric point.
@@ -1976,7 +2176,7 @@ The Int parameters are used to define the indices to the corresponding integer v
 #+BEGIN_SRC python :tangle no
   ###########################################################################
   ## @brief  Indices  for int vars with ADwin for IV measurements
-  ###########################################################################    
+  ###########################################################################
   # Inputs for the ADWIN histogram measurement
   START_JV    = 1
   MEASURE_JV  = 2
@@ -2001,7 +2201,7 @@ The float parameters are used to define the indices to the corresponding float v
 #+BEGIN_SRC python :tangle no
   ###########################################################################
   ## @brief  Indices  for float vars with ADwin for IV measurements
-  ###########################################################################    
+  ###########################################################################
   # inputs for the ADWIN histogram measurement
   I_MIN_BRK  = 10
   I_MAX_MK   = 11
@@ -2018,7 +2218,7 @@ The array  parameters are used to define the indices to the corresponding array 
 #+BEGIN_SRC python :tangle no
   ###########################################################################
   ## @brief  Indices  for array vars with ADwin for IV measurements
-  ###########################################################################    
+  ###########################################################################
   # Inputs for the ADWIN histogram measurement
   LOG_AMPL  = 10
   # Outputs for the ADWIN histogram measurement. Histogram
@@ -2035,7 +2235,7 @@ As usual with this type of definitions, the code is split in logical blocks; in 
 - Initialization code :: The code required to initialize the class and instantiate it as a user. See [[Adwin histogram driver-Initialization Code]]
 - API :: Or the functions that a user should use in order to query the information from the instrument. See [[Adwin histogram driver-interface functions]]
 ***** TODO Adwin histogram driver-Initialization Code
-In a similar manner as used in [[Adwin IV driver-Initialization Code]] the code fragment [[src-adwin-hist-driver-init]], provides with the initialization code and corresponding configuration of the ADwin driver in order to perform the histogram measurement 
+In a similar manner as used in [[Adwin IV driver-Initialization Code]] the code fragment [[src-adwin-hist-driver-init]], provides with the initialization code and corresponding configuration of the ADwin driver in order to perform the histogram measurement
 
 #+CAPTION: <<src-adwin-hist-driver-init>>
 #+NAME: src-adwin-hist-driver-init
@@ -2198,8 +2398,8 @@ Small test program for the ADwin hisotgram measurement.
       make_wait = wait_from_speed(500)
       num_avg = 32
       G0 = 7.74809173e-5
-      min_i_brk = 7.74809173e-5 * 10 * convert_v_to_bin(0.1) 
-      max_i_brk = 7.74809173e-5 * 30 * convert_v_to_bin(0.1) 
+      min_i_brk = 7.74809173e-5 * 10 * convert_v_to_bin(0.1)
+      max_i_brk = 7.74809173e-5 * 30 * convert_v_to_bin(0.1)
 
   class adw_display:
       number_traces = 5000
@@ -2250,19 +2450,19 @@ Small test program for the ADwin hisotgram measurement.
   def plot_2d_histogram(axis, G_breaking, G_making, G_bins, D_bins):
       index=max(find(G_breaking>0.5))
       D_breaking = D_breaking - D_breaking[index]
-      
+
       # plot 2D histogram (3)
       tmp = histogram2d(G_breaking, D_breaking, bins=(Gbins, Dbins))
       histo2D_breaking_sum = histo2D_breaking_sum + tmp[0]
-      
+
       index1 = find(min(abs(log10(Gbins) - -2 ))==(abs(log10(Gbins) - -2 )))
       index2 = find(min(abs(log10(Gbins) - -6 ))==(abs(log10(Gbins) - -6 )))
       tmp = histo2D_breaking_sum[index2:index1,:]
-      
+
       Cmax = 0
       for y in range(0,index1-index2):
           Cmax = max(max(tmp[y,:]), Cmax)
-      
+
       axis.clear()
       surf = axis.contourf(Dbins_plot, Gbins_plot, histo2D_breaking_sum, linspace(0,Cmax/2,16))
       axis.set_yscale("log")
@@ -2271,7 +2471,7 @@ Small test program for the ADwin hisotgram measurement.
       axis.set_title("2D Histogram")
       axis.set_xlabel('Displacement (nm)')
       axis.set_ylabel('Conductance (G0)')
-      
+
       pause(1)
 
   def stop():
@@ -2313,10 +2513,10 @@ Small test program for the ADwin hisotgram measurement.
       D_making = make_histogram[0]
       G_making = make_histogram[1]
 
-      plot_traces(ax1, D_breaking, G_breaking, D_making, G_making):    
+      plot_traces(ax1, D_breaking, G_breaking, D_making, G_making):
       break_acc, make_acc = plot_counts(ax2, break_acc, make_acc, G_breaking, G_making, G_bins, D_bins)
       plot_2d_histogram(ax2, G_breaking, G_making, G_bins, D_bins):
-      
+
       filename = save_dir + 'scan_jf' + date + '_' + "%1.0f.dat" % x
       file = open(filename, "w")
       #make_general_header(file)
@@ -2925,4 +3125,3 @@ This section is for the interface with each measurement instrument.
 
   (add-to-list 'auto-mode-alist '("\\.bas\\'" . basic-mode))
 #+END_SRC
-
