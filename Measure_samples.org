@@ -1373,6 +1373,8 @@ As in many programs, a header is required. In the Adwin case, this is necessary 
   ' PAR_1 -> Initial juncture voltage (off)
   ' PAR_2 -> Juncture voltage for measurement
   ' PAR_3 -> Juncture voltage at end (off)
+  ' ---- Piezo Voltage ----
+  ' PAR_5 -> Initial Piezo Voltage
   ' ---- Current Measurement ----
   ' PAR_17 -> Stabilizing time for breaking
   ' PAR_18 -> Stabilizing time for making
@@ -1390,8 +1392,10 @@ As in many programs, a header is required. In the Adwin case, this is necessary 
   ' PAR_12 -> Set to 2 when the measurement process is finished
   ' PAR_13 -> Set to 1 when there is a problem in the measurement
   ' ---- Current Measurements ----
-  ' DATA_1 -> Array of measured currents for each data point
-  ' DATA_2 -> Array of set Piezo voltage for each data point
+  ' DATA_1 -> Array of measured currents for each data point -> breaking
+  ' DATA_2 -> Array of set Piezo voltage for each data point -> breaking
+  ' DATA_3 -> Array of measured currents for each data point -> making
+  ' DATA_4 -> Array of set Piezo voltage for each data point -> making
   ' PAR_20 -> Final data point in  break histogram
   ' PAR_21 -> Final data point in  make histogram
 
@@ -1406,6 +1410,7 @@ As in many programs, a header is required. In the Adwin case, this is necessary 
   ' juncture_voltage -> Current juncture_voltage at the DAC
   ' break_acc -> Accumulator for measurements during breaking
   ' make_acc -> Accumulator for measurements during making
+  ' piezo_v -> Piezoelectric voltage
   ' piezo_min -> Minimum voltage to set in the piezo
   ' piezo_max -> Maximum voltage to set in the piezo
  #+END_SRC
@@ -1420,7 +1425,7 @@ In an Adwin program the local variables must be declared before the =INIT= block
   DIM avgcounter  as long
   DIM juncture_voltage as long
   DIM break_acc, make_acc  as long
-  DIM piezo_min, piezo_max as long
+  DIM piezo_V, piezo_min, piezo_max as long
   DIM avgcurrent as float
   ' Output histogram
   DIM histoindex_make histoindex_break as long
@@ -1442,8 +1447,11 @@ In the ADwin =INIT= block the variables defined are set to their default values.
   avgcurrent = 0
   break_acc = 0
   make_acc = 0
+  piezo_V = PAR_5
   piezo_min = 32771
   piezo_max = 65533
+  PAR_20 = 1                      ' Break index
+  PAR_21 = 1                      'Make index
   ' Set juncture voltage at output and prepare measurement
   juncture_voltage = PAR_1
   DAC(1, juncture_voltage)
@@ -1519,12 +1527,12 @@ This section describes the algorithm used to store the break histogram shown in 
       breakwait = 0
       avgcounter = 0
       break_acc = 0
-      inc(PAR_1)
-      IF (PAR_1 >= piezo_max) THEN
+      inc(piezo_V)
+      IF (piezo_V >= piezo_max) THEN
         state = 2 ' Go to make histogram
         PAR_13 = 1
       ENDIF
-      DAC(2,PAR_1)
+      DAC(2,piezo_V)
       break_hist_flag = 1 ' Go to next stage
 
     CASE 1  ' Wait for stabilization (ref:adw-brk-wt)
@@ -1543,8 +1551,9 @@ This section describes the algorithm used to store the break histogram shown in 
       ENDIF
 
     CASE 3  ' Store average in array (ref:adw-brk-store)
-      avgcurrent = totalcurrent1 / PAR_19
+      avgcurrent = break_acc / PAR_19
       DATA_1[PAR_20] = avgcurrent
+      DATA_2[PAR_20] = piezo_V
       PAR_20 = PAR_20 + 1
       break_hist_flag = 0
       IF (avgcurrent <= FPAR_10) THEN
@@ -1574,11 +1583,15 @@ This section describes the algorithm used to store the make histogram shown in t
       makewait = 0
       avgcounter = 0
       make_acc = 0
-      DEC(PAR_1)
-      IF (PAR_1 <= piezo_min) THEN
+      DEC(piezo_V)
+      IF (piezo_V <= piezo_min) THEN
         state = 3 ' Go to end process
+        IF (avgcurrent >= FPAR_11) THEN
+          PAR_13 = PAR_13 + 2 ' Go to end process
+        ENDIF
+
       ENDIF
-      DAC(2,PAR_1)
+      DAC(2,piezo_V)
       make_hist_flag = 1 ' Go to next stage
 
     CASE 1  ' Wait for stabilization (ref:adw-mk-wt)
@@ -1598,7 +1611,8 @@ This section describes the algorithm used to store the make histogram shown in t
 
     CASE 3  ' Store average in array  (ref:adw-mk-store)
       avgcurrent = make_acc / PAR_19
-      DATA_2[PAR_21] = avgcurrent
+      DATA_3[PAR_21] = avgcurrent
+      DATA_4[PAR_21] = piezo_V
       PAR_21 = PAR_21 + 1
       make_hist_flag = 0
 #+END_SRC
@@ -2009,7 +2023,9 @@ The array  parameters are used to define the indices to the corresponding array 
   LOG_AMPL  = 10
   # Outputs for the ADWIN histogram measurement. Histogram
   BRK_HIST  = 1
-  MK_HIST   = 2
+  BRK_VOLT  = 2
+  MK_HIST   = 3
+  MK_VOLT   = 4
 #+END_SRC
 
 **** TODO Adwin histogram-measurement driver
@@ -2109,13 +2125,6 @@ This section provides with the functions required to obtain the histogram measur
 
       return break_histogram, make_histogram
 
-  def get_make_histogram(self):
-      length = self.adw.Get_Par(ADW_HIST_CONST.MAKE_IDX) -1 
-      current_hist = self.adw.GetData_Float(ADW_HIST_CONST.MK_HIST, 1, length)
-      conductance_hist = current_hist/(self.config.measure_jv * self.config.G0) #TODO FIX
-      ret_hist = convert_to_list_float(conductance_hist)
-      return ret_hist
-
   def get_break_histogram(self):
       length = self.adw.Get_Par(ADW_HIST_CONST.BREAK_IDX) -1 
       current_hist = self.adw.GetData_Float(ADW_HIST_CONST.BRK_HIST, 1, length)
@@ -2123,14 +2132,41 @@ This section provides with the functions required to obtain the histogram measur
       ret_hist = convert_to_list_float(conductance_hist)
       return ret_hist
 
+  def get_break_voltage(self):
+      length = self.adw.Get_Par(ADW_HIST_CONST.BREAK_IDX) -1 
+      voltage_hist = self.adw.GetData_Float(ADW_HIST_CONST.BRK_VOLT, 1, length)
+      new_voltage_hist = np.zeros(length)
+      for idx in range(length):
+          new_v = convert_bin_to_v(voltage_hist[idx])
+          new_voltage_hist[idx] = new_v
+      ret_hist = convert_to_list_float(new_voltage_hist)
+      return ret_hist
+
+  def get_make_histogram(self):
+      length = self.adw.Get_Par(ADW_HIST_CONST.MAKE_IDX) -1 
+      current_hist = self.adw.GetData_Float(ADW_HIST_CONST.MK_HIST, 1, length)
+      conductance_hist = current_hist/(self.config.measure_jv * self.config.G0) #TODO FIX
+      ret_hist = convert_to_list_float(conductance_hist)
+      return ret_hist
+
+  def get_make_voltage(self):
+      length = self.adw.Get_Par(ADW_HIST_CONST.MK_IDX) -1 
+      voltage_hist = self.adw.GetData_Float(ADW_HIST_CONST.MK_VOLT, 1, length)
+      new_voltage_hist = np.zeros(length)
+      for idx in range(length):
+          new_v = convert_bin_to_v(voltage_hist[idx])
+          new_voltage_hist[idx] = new_v
+      ret_hist = convert_to_list_float(new_voltage_hist)
+      return ret_hist
+
   def process_ended():
       return self.adw.Get_Par(ADW_HIST_CONST.END_STATUS) == 2
-  def get_error_status(self):
-      return self.adw.Get_Par(ADW_HIST_CONST.ERROR_STATUS)
-  def error_in_measurement(self):
+  def measurement_without_errors(self):
       return !self.adw.Get_Par(ADW_HIST_CONST.ERROR_STATUS) == 0
-
-
+  def error_in_breaking(self):
+      return self.adw.Get_Par(ADW_HIST_CONST.ERROR_STATUS) & 1 == 1 
+  def error_in_making(self):
+      return (self.adw.Get_Par(ADW_HIST_CONST.ERROR_STATUS) >> 1) & 1 == 1 
 #+END_SRC
 
 **** TODO ADwin Histogram test                                     :noexport:
