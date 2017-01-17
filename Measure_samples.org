@@ -2,7 +2,7 @@
 #+OPTIONS: author:t broken-links:mark c:nil creator:nil
 #+OPTIONS: d:(not "LOGBOOK") date:t e:t email:nil f:t inline:t num:t
 #+OPTIONS: p:nil pri:nil prop:nil stat:t tags:t tasks:t tex:t
-#+OPTIONS: timestamp:t title:t toc:t todo:nil |:t
+#+OPTIONS: timestamp:t title:t toc:t todo:t |:t
 #+TITLE: Measure_samples
 #+DATE: <2017-01-03 Tue>
 #+AUTHOR:
@@ -69,7 +69,7 @@ Since the gold is the sustrate, is measured to ensure that is clean and there ar
 **** Gold + Molecule
 The focus of the experiment is to measure the transport (conductance) properties of a given molecule, thus once a gold sustrate has been measured and confirmed to be usable, a molecule solution is placed on the sustrate with the expectation that a molecule gets inserted in the gap between the gold terminals.
 
-*** ADWin mesurement
+*** ADWin measurement
 The measurement of the conductance is performed using the ADWin board which has an interface and binding to python. The documentation for the ADWin measurement instrument can be found on the [[http://www.adwin.de/us/download/linux.html][Download page]]
 
 Since the objective is to measure the transport properties, the most important parameters to measure are the conductance and the separation between the gold contacts (break junction)
@@ -200,16 +200,1183 @@ The user interface has 2 requirements.
 1. It should allow the user to run the experiment
 2. It should allow the user to tweak with the configuration for the experiment
 
-Now there is an additional requirement for the UI, which is the interface by itself, thus the UI module can be thought as the result of 3 pieces.
-- Program Interface :: The UI - program interface is how the UI interacts with the rest of the program. See [[UI-Program Interface]]
-- GUI :: The graphical User interface is how the program interacts with the user. See [[UI-GUI]]
-- Configuration Files :: Full textual interfaces so users can set a configuration file which takes cares of all modifiable constants of the problem, without needing to use a GUI
-*** TODO UI-Program Interface
-   :PROPERTIES:
-   :header-args+:  :tangle   modules/ui_config.py
-   :header-args+:  :noweb    tangle
-   :END:
-# As with any module there is a section for the imports and the file headers, but these are unninteresting for any reader, thus they are put in comments and not exported to a PDF/HTML result
+Now there is an additional requirement for the UI, which is the interface by itself, is related to the configuration, and the different measurement process available. Up to this point we have 3 main purposes:
+1. Histogram measurement of the conductance/distance characteristic of the molecule
+2. Display the measurements, which is used during measurements as feedback for the process and allows an advance user to judge the state of the experiment
+3. intermediate measurements which are measurements of the I/V characteristics of the sample and are used in the experiment to drive the program to the starting point as it was discussed in [[Program Description]].
+
+With this into consideration I have decided to provide with 2 distinct interfaces for the program:
+- Configuration files :: Configuration files are the standard direct way of configuring the behavior of a program, and if done properly is easier to extend and adapt.
+- GUI :: A graphical user interface will be provided for user that may not have an interest in tweaking with the configuration files, the purpose of the GUI is to automatically  generate the corresponding configuration files through a relatively more intuitive interface. Considering that GUI programming is harder, it may be possible that another programmer may find the task of extending the GUI to daunting, which is the reason for this dual approach instead of simply using a GUI directly.
+
+Now I will provide a slightly more detailed view of the UI directives, leaving in depth description to the corresponding sections.
+
+As previously discussed, there are several parameters to tweak, which can be modified with a configuration file that is written in use [[http://www.yaml.org][YAML]], for its simplicity for the user, and corresponding library availability for python which allows for simple interfaces for readers and writers of the configuration file.
+
+The configuration file will be read and used to create a *configuration structure* (See [[Program Configuration-Process configurations]] ), which has the configurations for each of the configurable processes in a *Sub-configuration* manner.
+
+For each configurable process, we easily identify 2 types of parameters:
+- Configurable parameters :: These are the parameters that are modified through the Configuration file. Even though the user may modify these values, the parameters can't be set to any arbitrary value, therefore there is a mechanism to ensure that the values may never exceed some hardcoded limits. See  [[Parameters definitions]]
+- Non Configurable parameters :: This are parameters, that are needed for running the different processes, but should not be tampered by the user, and therefore are hard-coded in the program.
+
+On the other hand, it was mentioned that the GUI will build a configuration file for use of the rest of the program, therefore a Writer function is needed for a configuration, so the *YAML* can be written. Naturally the easiest way to achieve such functionality is to tie it directly to the same configuration, therefore the GUI would be building a configuration in order to write the configuration file. At first glance this may seem redundant, but allows for planning of multiple builds or even ensuring the exact parameters of a particular run of the experiment, as the written file will be available for further inspection.
+
+Considering the previous description, the User interface of the program can be separated in the following logical sections.
+
+- Configuration :: As mentioned the configuration is the main objective of the configuration file and should be considered as a 2 part section. Further details can be seen in the [[Program Configuration]]
+  - Configuration file :: Which is the definition of the configuration file, and therefore defines the configurable parameters
+  - Configuration Class :: Which is the output of the configuration, and provides the configurations for every configurable process of the program.
+- Parameters Definitions :: This section shown in  [[Parameters definitions]] has the necessary definitions to have a robust interface with the user defined variables. It also provides the definitions for the hardcoded constants and their manipulations
+- GUI :: The Graphical User interface which will launch a application terminal for the user to tweak the different parameters and finally write a configuration file for further use.
+*** TODO Program Configuration 
+    :PROPERTIES:
+    :header-args+: :tangle   modules/configuration.py
+    :header-args+: :noweb    tangle
+    :END:
+
+The program configuration, is the interface that allows the user to modify the program's behavior through the use of configuration files; the functionality to do this is provided in the file  [[file:modules/parameters.py]]. This file provides:
+- Configuration structures :: The configuration structures is a set of classes which are used to configure the different processes of the program. Further explained in [[Program Configuration-Process configurations]]
+- Configuration File interface :: Provides with the functions required to interact with the configuration file, which means to read and write it. Also this section provides the specification for the file. Further details in [[Configuration Files]]
+
+# Here we put the header
+#+BEGIN_SRC python :exports none
+  #################################################################
+  ## @file    parameters.py
+  #  @author  Joaquin Figueroa
+  #  @dateMon Jan 16, 2017
+  #  @brief   Defines configurable parameters and global constants
+  #
+  #  @details This file defines the configurable parameters of the
+  #           program with their corresponding interfaces and
+  #           validations.
+  #           Also the program provides the definitions of the
+  #           global constants of the program
+  #################################################################
+  import modules.utilities as utl
+  import modules.parameters as param
+  import os
+  import sys
+#+END_SRC
+
+**** TODO Program Configuration-Process configurations
+This section is devoted to describe the configuration of the program, which is tied to the configuration file specification shown in [[Configuration Files specification]], but is also tied to the different processes which are used through the program for the different types of measurements that are defined in the [[ADwin Driver]].
+
+In order to provide with the complete interface, the file is separated in:
+- Full configuration :: Properly discussed in [[Full Configuration definition]]. This configuration is a large structure whose purpose is to serve a single return parameter of the different types of configuration. It also provides with some generic functionalities
+- IV-Measurement Configuration :: Properly defined in [[IV-Measurement Configuration]]. This structures has the parameters required to perform the  IV-measurement as defined in [[Adwin driver-IV measurement class]]
+- Histogram Measurements configuration ::  Properly defined in [[Histogram-Measurement Configuration]]. This structures has the parameters required to perform the  histogram measurements as defined in [[Adwin driver-histogram class]]
+- Display Configuration :: Properly defined in [[Display Configuration]]. This structure has all the parameters needed to produce runtime graphics to display the results for the user to judge the quality of the results.
+
+***** Full Configuration definition
+The full configuration is the general interface for all configuratioins, as it encompasses them all.
+
+#+BEGIN_SRC python
+  class program_config:
+      def __init__(self,data=None):
+          iv_data = None
+          hist_data = None
+          display_data = None
+          if data :
+              iv_data = data.get('IV Configuration')
+              hist_data = data.get('Histogram Configuration')
+              display_data = data.get('Display Configuration')
+
+          self.iv_config = iv_config(iv_data)
+          self.hist_config = histogram_config(hist_data)
+          self.display_config = histogram_config(display_data)
+#+END_SRC
+
+***** IV-Measurement Configuration
+
+#+BEGIN_SRC python
+  class iv_config:
+      def __init__(self,data=None):
+          build_config_dftl()
+          if data :
+              update_config_with_data(data)
+
+      def build_config_dflt(self):
+          self.measure_jv = param.juncture_voltage()
+          self.log_ampl = adwin_log_amplifier()
+          self.avg_points = param.avg_points()
+          self.wait = param.GLOBAL_CONSTANTS.IV_settling_time
+          self.start_jv = param.GLOBAL_CONSTANTS.start_jv
+          self.end_jv = param.GLOBAL_CONSTANTS.end_jv
+          self.max_data = param.GLOBAL_CONSTANTS.IV_max_data_points
+          self.g0 = param.GLOBAL_CONSTANTS.G0
+          self.config = {}
+          self.update_config()
+
+      def update_config(self):
+          self.config['JunctureVoltage'] = self.measure_jv.value
+          self.config['AveragePoints'] = self.avg_points.value
+
+      def update_config_with_data(data):
+          self.measure_jv.update_or_dflt(data.get('JunctureVoltage'))
+          self.avg_points.update_or_dflt(data.get('AveragePoints'))
+          self.update_config()
+
+      def convert_to_adwin(self):
+          adwin_measure_jv = convert_V_to_bin(self.measure_jv.value)
+          measure_jv.update(convert_bin_to_V(adwin_measure_jv))
+
+  class adwin_iv_config:
+      def __init__(self, iv_conf):
+          self.log_array = iv_conf.log_ampl.get_calibration()
+          self.start_jv = convert_V_to_bin(iv_conf.start_jv)
+          self.measure_jv = convert_V_to_bin(iv_conf.measure_jv.value)
+          self.stop_jv = convert_V_to_bin(iv_conf.stop_jv)
+          self.avg_points = iv_conf.avg_pints.value
+          # Wait is in ms, but we need to wait number of cycles.
+          # Each cycle is 10 us => wait/cycle_time
+          cycle_time = ADW_GCONST.HIGH_PERIOD * ADW_GCONST.PROCESS_DELAY
+          self.wait_stabilize = int(iv_conf.wait*1e-3 /cycle_time ) # Because ms
+
+
+#+END_SRC
+
+***** Histogram-Measurement Configuration
+#+BEGIN_SRC python
+    class hist_config:
+        def __init__(self,data=None):
+            build_config_dftl()
+            if data :
+                update_config_with_data(data)
+
+        def build_iv_config_dflt(self):
+            self.measure_jv = param.juncture_voltage()
+            self.start_jv = param.GLOBAL_CONSTANTS.start_jv
+            self.end_jv = param.GLOBAL_CONSTANTS.end_jv
+            self.log_ampl = adwin_log_amplifier()
+            self.avg_points = param.avg_points()
+            self.break_speed = param.break_speed()
+            self.make_speed = param.make_speed()
+            self.traces = param.traces()
+            self.save_dir = param.save_dir()
+            self.save_data = param.data_dir()
+            self.G0 = param.GLOBAL_CONSTANTS.G0
+            self.G_open = 1e-5 * self.G0
+            self.G_closed =  2 * self.G0
+            self.config = {}
+            self.update_config()
+
+        def update_config(self):
+            self.config['JunctureVoltage'] = self.measure_jv.value
+            self.config['AveragePoints'] = self.avg_points.value
+            self.config['BreakSpeed'] = self.break_speed.value
+            self.config['MakeSpeed'] = self.make_speed.value
+            self.config['NumberTraces'] = self.traces.value
+            self.config['SaveData'] = self.save_data.value
+            self.config['SaveDir'] = self.data_dir.path
+
+
+        def update_config_with_data(data):
+            self.measure_jv.update_or_dflt(data.get('JunctureVoltage'))
+            self.avg_points.update_or_dflt(data.get('AveragePoints'))
+            self.break_speed.update_or_dflt(data.get('BreakSpeed'))
+            self.make_speed.update_or_dflt(data.get('MakeSpeed'))
+            self.traces.update_or_dflt(data.get('NumberTraces'))
+            self.data_dir.update(data.get('SaveDir'))
+            self.save_data.update(data.get('SaveData'))
+
+            self.update_config()
+
+        def convert_to_adwin(self):
+            adwin_measure_jv = convert_V_to_bin(self.measure_jv.value)
+            measure_jv.update(convert_bin_to_V(adwin_measure_jv))
+
+    class adwin_hist_config:
+        def __init__(self, hist_conf):
+            self.log_array = hist_conf.log_ampl.get_calibration()
+            self.start_jv = convert_V_to_bin(hist_conf.start_jv)
+            self.measure_jv = convert_V_to_bin(hist_conf.measure_jv.value)
+            self.stop_jv = convert_V_to_bin(hist_conf.stop_jv)
+            self.avg_points = hist_conf.avg_pints.value
+            # To determine the wait cycles we need the cycle time. (10^5)
+            cycle_time = ADW_GCONST.HIGH_PERIOD * ADW_GCONST.PROCESS_DELAY
+            # First we convert speed to steps/seg. Factor is due to adwin range
+            # between [-10,10], so 1000 [V] at piezo is 10 [V] in adwin
+            brk_steps_seg = convert_V_to_bin(hist_conf.break_speed.value/100)
+            mk_steps_seg = convert_V_to_bin(hist_conf.make_speed.value/100)
+            # Example 10 steps/s => 10^4 wait cycles as cycle time is 10^5
+            self.break_wait = 1/(brk_steps_seg * cycle_time)
+            self.make_wait = 1/(mk_steps_seg * cycle_time)
+            self.I_break_end = hist_config.G_break_end*hist_conf.measure_jv.value
+            self.I_make_end = hist_config.G_make_end*hist_conf.measure_jv.value
+#+END_SRC
+
+***** Display Configuration
+#+BEGIN_SRC python
+  class display_config:
+      def __init__(self,data=None):
+          build_config_dftl()
+          if data :
+              update_config_with_data(data)
+
+      def build_config_dflt(self):
+          self.xmin = display_xmin()
+          self.xmax = display_xmax()
+          self.Gmin = display_Gmin()
+          self.Gmax = display_Gmax()
+          self.nGbins = display_nGbins()
+          self.nDbins = display_nDbins()
+          self.config = {}
+          self.update_config()
+
+
+      def update_config(self):
+          self.config['xmin'] = self.xmin.value
+          self.config['xmax'] = self.xmax.value
+          self.config['Gmin'] = self.Gmin.value
+          self.config['Gmax'] = self.Gmax.value
+          self.config['nGbins'] = self.nGbins.value
+          self.config['nDbins'] = self.nDbins.value
+
+      def update_config_with_data(data):
+          self.xmin.update_or_dftl(data.get('xmin'))
+          self.xmax.update_or_dftl(data.get('xmax'))
+          self.Gmin.update_or_dftl(data.get('Gmin'))
+          self.Gmax.update_or_dftl(data.get('Gmax'))
+          self.nGbins.update_or_dftl(data.get('nGbins'))
+          self.nDbins.update_or_dftl(data.get('nDbins'))
+
+          self.update_config()
+
+  class display_config_values:
+      def __init__(self, display_conf):
+          self.xmin = display.conf.xmin.value
+          self.xmax = display_conf.xmax.value
+          self.Gmin = display_conf.Gmin.value
+          self.Gmax = display_conf.Gmax.value
+          self.nGbins = display_conf.nGbins.value
+          self.nDbins = display_conf.nDbins.value
+#+END_SRC
+
+**** TODO Configuration Files
+ Following a more traditional UNIX approach, is a good idea to allow the program to be run from the command line, rather than forcing a GUI to the user. By using a configuration file, the user will be able to configure the run, and be sure that all parameters are correctly set beforehand, in a way that would allow for several runs automatically.
+
+ Also the introduction of configuration files does not mean that the program will do away with the GUI, rather that the GUI will generate the appropriate configuration file, to run  the program.
+
+***** DONE Configuration Files specification
+      :PROPERTIES:
+      :header-args+: :tangle  Measurement_deafult_config.yaml
+      :END:
+ To specify the configuration, I've decided to use [[http://www.yaml.org][YAML]], which provides a relatively simple interface, and an appropriate parser for python, while also allowing comments.
+ The configuration will be split in 3 parts.
+ - IV Parameters :: These are variables that control the Adwin during the motor break process.
+ - Histogram parameters :: The histogram is the measurement that the program is really interested on, therefore the user may need to modify some parameters
+ - Presentation parameters :: During measurement the program will display the histogram to provide the user with feedback, therefore the user may need to modify some of these parameters to better suits his[fn:or her needs] needs
+
+ That being said, we provide with an example configuration file. See [[http://www.yaml.org/spec/1.2/spec.html][YAML Specification]] or [[http://ess.khhq.net/wiki/YAML_Tutorial][YAML tutorial]]
+ #+BEGIN_SRC yaml
+   # Begin of configuration File
+   ---
+   IV Configuration :              # Continous measurement during motor break
+     JunctureVoltage : 0.1         # Range 0.1-0.3
+     AveragePoints : 32            # Number of points to average
+
+   Histogram Configuration :
+     JunctureVoltage : 0.1         # Range 0.1-0.3
+     AveragePoints : 32            # Number of points to average
+     BreakSpeed : 300              # Volts/s
+     MakeSpeed : 500               # Volts/s
+     NumberTraces : 5000            # Number of histograms
+     # Where to save the Data
+     SaveData: Yes
+     DataDir : 'E:/Measurements/Fullerenos/C60 2/Molecule/'
+
+   Display Configuration:
+     xmin : -0.5                   # nm
+     xmax : 2                      # nm
+     Gmin : 1e-7                   # G0
+     Gmax : 10                     # G0
+     nGbins : 251                  # Slots for Conductance histogram
+     nDbins : 161                  # Slots for Distance histogram
+ #+END_SRC
+***** TODO Configuration Files interface
+      :PROPERTIES:
+      :header-args+: :tangle   modules/config_interface.py
+      :header-args+: :noweb    tangle
+      :END:
+
+ Since the program will be configured through a configuration file, it only makes sense to provide with a writer and a parser for it. Fortunately we already have most of the heavy-lifting done by YAML libraries and the parameters configurations in the UI-interface part of the program, I'd expect this part to be relatively easy to understand.
+
+ As usual we start with the header
+ # Yaml is stored as python dictionaries.
+ #+BEGIN_SRC python
+   #################################################################
+   ## @file    Configuration_parser.py
+   #  @author  Joaquin Figueroa
+   #  @date    Wed Jan 11 11:02:47 CLST 2017
+   #  @brief   Parse Yaml configuration file and builds configs
+   #
+   #  @details This file uses PyYaml to parse the configuration file
+   #           and builds the necessary configurations for each
+   #           run type.
+   #           Then we return the collection of configurations
+   #################################################################
+   import yaml
+ #+end_src
+
+
+ #+begin_src python
+   def yaml_loader(filepath):
+       with open(filepath, "r") as file_descriptor:
+           data = yaml.safe_load(file_descriptor)
+       return data
+
+   def yaml_dump(filepath, data):
+       with open(filepath, "w") as file_descriptor:
+           yaml.dump(data, file_descriptor)
+
+   def yaml_extract_juncture_voltage(data):
+       General_config = data['General Configuration']
+       new_jv_val = General_config['JunctureVoltage']
+       jv = juncture_voltage()
+       if !jv.validate(new_jv_val):
+           print("ERROR: JV value out of range. Using default")
+           print("Range min ={0}, Max ={1}".format(jv._min, jv._max))
+       jv.update(new_jv_val)
+       return jv
+
+   def yaml_extract_save_dir(data):
+       General_config = data['General Configuration']
+       target_dir = General_config['SaveDir']
+       save_dir = data_dir()
+       if !save_dir.validate(target_dir):
+           print("Directory does not exists")
+           raise
+       save_dir.update(target_dir)
+       return save_dir
+
+   def yaml_extract_avg_points(data):
+       Histo_config = data['Histogram Configuration']
+       new_avg = Histo_config['AveragePoints']
+       avg = average_points()
+       if !avg.validate(new_avg):
+           print("ERROR: AVG value out of range. Using default")
+           print("Range min ={0}, Max ={1}".format(avg._min, avg._max))
+       avg.update(new_avg)
+       return avg
+
+
+   def yaml_extract_break_speed(data):
+       Histo_config = data['Histogram Configuration']
+       new_speed = Histo_config['BreakSpeed']
+       speed = piezo_break_speed()
+       if !speed.validate(new_avg):
+           print("ERROR: Break Speed value out of range. Using default")
+           print("Range min ={0}, Max ={1}".format(speed._min, speed._max))
+       speed.update(new_speed)
+       return speed
+
+
+   def yaml_extract_break_speed(data):
+       Histo_config = data['Histogram Configuration']
+       new_speed = Histo_config['BreakSpeed']
+       speed = piezo_break_speed()
+       if !speed.validate(new_avg):
+           print("ERROR: Break Speed value out of range. Using default")
+           print("Range min ={0}, Max ={1}".format(speed._min, speed._max))
+       speed.update(new_speed)
+       return speed
+
+   def yaml_extract_make_speed(data):
+       Histo_config = data['Histogram Configuration']
+       new_speed = Histo_config['MakeSpeed']
+       speed = piezo_make_speed()
+       if !speed.validate(new_avg):
+           print("ERROR: Make Speed value out of range. Using default")
+           print("Range min ={0}, Max ={1}".format(speed._min, speed._max))
+       speed.update(new_speed)
+       return speed
+
+
+   def yaml_extract_num_traces(data):
+       Histo_config = data['Histogram Configuration']
+       new_traces = Histo_config['NumberTraces']
+       traces = number_traces()
+       if !traces.validate(new_traces):
+           print("ERROR: Num_traces value out of range. Using default")
+           print("Range min ={0}, Max ={1}".format(traces._min, traces._max))
+       traces.update(new_speed)
+       return traces
+
+
+   def yaml_extract_xmin(data):
+       config = data['Presentation Configuration']
+       new_xmin = config['xmin']
+       xmin = xmin()
+       if !xmin.validate(new_xmin):
+           print("ERROR: xmin value out of range. Using default")
+           print("Range min ={0}, Max ={1}".format(xmin._min, xmin._max))
+       xmin.update(new_xmin)
+       return xmin
+
+   def yaml_extract_xmax(data):
+       config = data['Presentation Configuration']
+       new_xmax = config['xmax']
+       xmax = xmax()
+       if !xmax.validate(new_xmax):
+           print("ERROR: xmax value out of range. Using default")
+           print("Range min ={0}, Max ={1}".format(xmax._min, xmax._max))
+       xmax.update(new_xmax)
+       return xmax
+
+
+   def yaml_extract_Gmin(data):
+       config = data['Presentation Configuration']
+       new_Gmin = config['Gmin']
+       Gmin = Gmin()
+       if !Gmin.validate(new_Gmin):
+           print("ERROR: Gmin value out of range. Using default")
+           print("Range min ={0}, Max ={1}".format(Gmin._min, Gmin._max))
+       Gmin.update(new_Gmin)
+       return Gmin
+
+
+   def yaml_extract_Gmax(data):
+       config = data['Presentation Configuration']
+       new_Gmax = config['Gmax']
+       Gmax = Gmax()
+       if !Gmax.validate(new_Gmax):
+           print("ERROR: Gmax value out of range. Using default")
+           print("Range min ={0}, Max ={1}".format(Gmax._min, Gmax._max))
+       Gmax.update(new_Gmax)
+       return Gmax
+
+
+
+   # testing
+   if __name__ == "__main__":
+       filepath = "Measurement_deafult_config.yaml"
+       data = yaml_loader(filepath)
+       print(data)
+
+
+ #+END_SRC
+
+*** TODO Parameters definitions
+    :PROPERTIES:
+    :header-args+: :tangle   modules/parameters.py
+    :header-args+: :noweb    tangle
+    :END:
+
+As mentioned earlier, there are 2 basic types of parameters: Configurable, and  Non-Configurable. The non configurable parameters are global constants of the program.
+The parameters are located in the file [[file:modules/parameters.py]], which has the minimum requirements for it to work.
+
+# Here we put the header
+#+BEGIN_SRC python :exports none
+  #################################################################
+  ## @file    parameters.py
+  #  @author  Joaquin Figueroa
+  #  @dateMon Jan 16, 2017
+  #  @brief   Defines configurable parameters and global constants
+  #
+  #  @details This file defines the configurable parameters of the
+  #           program with their corresponding interfaces and
+  #           validations.
+  #           Also the program provides the definitions of the
+  #           global constants of the program
+  #################################################################
+  import modules.utilities as utl
+  import os
+  import sys
+#+END_SRC
+
+**** DONE Configurable parameters definitions
+     For configurable parameters, is necessary to allow the user to set values within certain limits, either to avoid damaging the equipment, the sample or just to prevent measurement that would take months to complete.
+     The proper way to allow users to set the values within a constrained range is to provide with validation code, and if necessary with error correction.
+     Considering the configuration file definition shown in [[Configuration Files]], the *data directory* which is further discussed in [[Data directory]] is one of the few parameters that are not a number. It is noticed that all numeric parameters show some similarities and therefore are defined together in [[Numerical Parameters definition]]
+
+     The Parameter that controls if the Data should be saved is defined in [[Histogram Save Data]]
+
+***** DONE Histogram Save Data
+The user may decide not to save the data, for example if is just checking the configuration and do not want to save the data as he will run the process again later.
+
+#+CAPTION: Define if saving the data is necessary
+#+NAME: src-config-save-data-class
+#+BEGIN_SRC python
+  #############################################################
+  ## @class   save_data
+  #  @brief   All functionality to the decition to save data
+  #
+  #  @details This class defines the parameter that controls
+  #           if the data is stored 
+  #           that codifies the directory, depending on the
+  #           os and inspect modules
+  #############################################################
+  class save_data:
+      #############################################################
+      ## @brief   Initilaization code
+      #############################################################
+      def __init__(self):#(ref:src-dd-init)
+          self.reset()
+      ##############################################################
+      ## @brief   restores the default value of the number of traces
+      ##############################################################
+      def reset(self): #(ref:src-dd-reset)
+          self.value = True
+      ##############################################################
+      ## @brief   Ensures the new target string is a directory
+      ##############################################################
+      def validate(self, new_value):#(ref:src-dd-validation)
+          return type(new_calue) is bool
+      #############################################################
+      ## @brief   Updates the target directory only if its a
+      #           directory in the filesystem
+      #############################################################
+      def update(self, new_value):#(ref:src-dd-update)
+          if self.validate(new_value):
+              self.value = new_value
+      #############################################################
+      ## @brief   Print the parameter.
+      #############################################################
+      def print_param(self):#(ref:src-dd-print)
+          print("Save Data is = {0}".format(self.value))
+
+#+END_SRC
+***** DONE Data directory
+  The program provides the user with the ability to store the Data in a directory of his choice, which is stored as a string.
+  The data directory parameter is defined in [[src-config-data-dir-class]], which provides the full interface for the data directory.
+
+  - Initialization Function :: Defined at [[(src-dd-init)]]. This function uses the "reset" function
+  - Reset function :: Defined at [[(src-dd-reset)]], this function restores the default data directory,  is chosen to be a "data" subdirectory of the program root directory.
+  - Validation Function :: Defined at [[(src-dd-validation)]], this function returns true if the chosen path is a directory as recognyzed by the operative system.
+  - Update functionality :: Defined at [[(src-dd-update)]], this function is used to change the data directory to a new chosen path in the computer.
+  -  Printing function ::  Defined at [[(src-dd-print)]] and used mainly for debug purposes this function prints the chosen data directory to the console.
+
+  #+CAPTION: Data directory parameter class
+  #+NAME: src-config-data-dir-class
+  #+BEGIN_SRC python -n -r
+    #############################################################
+    ## @class   traces
+    #  @brief   All functionality related to the data directory
+    #
+    #  @details This class defines the parameter that controls
+    #           where the results will be stored. Is a string
+    #           that codifies the directory, depending on the
+    #           os and inspect modules
+    #############################################################
+    class data_dir:
+        _subdir= "data"#(ref:src-dd-dflt)
+        #############################################################
+        ## @brief   Initilaization code
+        #############################################################
+        def __init__(self):#(ref:src-dd-init)
+            self.reset()
+        ##############################################################
+        ## @brief   restores the default value of the number of traces
+        ##############################################################
+        def reset(self): #(ref:src-dd-reset)
+            script_root = utl.get_script_root_path()
+            data_path = os.path.join(script_root,self._subdir)
+            self.path = data_path
+        ##############################################################
+        ## @brief   Ensures the new target string is a directory
+        ##############################################################
+        def validate(self, new_path):#(ref:src-dd-validation)
+            return os.path.isdir(new_path)
+        #############################################################
+        ## @brief   Updates the target directory only if its a
+        #           directory in the filesystem
+        #############################################################
+        def update(self,new_path):#(ref:src-dd-update)
+            if self.validate(new_path):
+                self.path = new_path
+        #############################################################
+        ## @brief   Print the parameter.
+        #############################################################
+        def print_param(self):#(ref:src-dd-print)
+            print("Data Directory = %s" % self.path)
+  #+END_SRC
+
+***** DONE Numerical Parameters definition
+  As previously stated most parameters are numerical, so a parent class is created to provide a common interface for them all and to ensure that all numerical parameters behave consistently.
+  The numerical parameters are defined in [[src-config-num-param-class]], which provides the interfaces that define the numerical parameters
+  - Initialization function :: The function defined in line [[(src-np-init)]], provide the initialization code for a generic numerical parameter, which is defined by the following parameters:
+    - Default Value :: Is the value that the parameter takes by default, such as the voltage for the juncture.
+    - Minimum value :: The minimum value acceptable for the parameter. With the maximum value defines the range of admissible values
+    - Maximum value :: The maximum value acceptable for the parameter. With the minimum value defines the range of admissible values
+    - Name :: The name defines a name for the parameter, which is useful to print information about it.
+  - Reset function :: Defined in line  [[(src-np-reset)]], provides a mechanism to restore the parameter value to its default.
+  - Validation function ::  Defined in line [[(src-np-validation)]] returns a boolean determining if the new value is within the range of accepted values
+  - Update function :: Defined in line  [[(src-np-update)]] updates the parameter to a new value defined by the user, only if the value is within the accepted range, but if not it leaves the value unchanged
+  - Update or default function :: Defined in line  [[(src-np-update-dflt)]] similar to the update function, this will reset the value to the default if the provided value is invalid; Also provides and optional error message in such case.
+  - Print function ::  Defined in line  [[(src-np-print)]] provides an utility to print the current value to the terminal. Useful during testing and for sending messages
+  - Error message :: Defined in line  [[(src-np-print)]] Will print and error message if the user tries to set the value of the parameter to an invalid quantity. This error function is intended for use through the configuration file, and is not necessary if the user uses the GUI.
+
+
+  #+CAPTION: Numerical parameters class definition
+  #+NAME: src-config-num-param-class
+  #+BEGIN_SRC python  -n -r
+    #############################################################
+    ## @class   Numerical Parameter
+    #  @brief   All functionality related to the numerical
+    #           parameters
+    #
+    #  @details This class defines the basic behavior common to
+    #           all numerical parameters, including common
+    #           interfaces and values.
+    #############################################################
+    class numerical_parameter(object):
+        #############################################################
+        ## @brief   Initilaization code
+        #############################################################
+        def __init__(self,name,dflt_val,min_val,max_val):#(ref:src-np-init)
+            self._dflt = dflt_val
+            self._min = min_val
+            self._max = max_val
+            self.name = name
+            self.reset()
+        #############################################################
+        ## @brief   restores the default value of the parameter
+        #############################################################
+        def reset(self): #(ref:src-np-reset)
+            self.value = self._dflt
+        #############################################################
+        ## @brief   Determines if a new value is in the permited
+        #           range
+        #############################################################
+        def validate(self, val):#(ref:src-np-validation)
+            return (self._min <= val) & (val <= self._max)
+        #############################################################
+        ## @brief   Updates the stored value only if the new
+        #           value is within range
+        #############################################################
+        def update(self,new_val):#(ref:src-np-update)
+            if self.validate(new_val):
+                self.value = new_val
+        #############################################################
+        ## @brief   Updates the stored value only if the new
+        #           value is within range, otherwise returns to
+        #           the default value
+        #############################################################
+        def update_or_dflt(self,new_val,verbose=False): #(ref:src-np-update-dflt)
+            if self.validate(new_val):
+                self.value = new_val
+            else:
+                self.reset()
+                if verbose:
+                    self.error_message(new_val):
+        #############################################################
+        ## @brief   Prints the parameter name and its value
+        #############################################################
+        def print_param(self):#(ref:src-np-print)
+            print("{0} = {1}".format(self.name, self.value))
+        #############################################################
+        ## @brief   Prints error message if parameter outside range
+        #############################################################
+        def error_message(self,value):#(ref:src-np-error)
+            print("------------------------------------------------")
+            print("ERROR INVALID PARAMETER VALUE:")
+            print("Value {0} is invalid for parameter {1}".format(self.name,value))
+            print("Using default value {0}".format(self._dflt))
+            print("Valid range for parameter {0} is:".format(self.name))
+            print("Range min ={0}, Max ={1}".format(self._min, self._max))
+            print("------------------------------------------------")
+  #+END_SRC
+
+  There is also a requirement to treat some numerical parameters as integers, therefore a specialization of the numerical parameters is shown in  [[src-config-int-param-class]], where some modifications and overloading are executed to provide with the desired properties.
+  - Values must be integers :: This class must have all its values as integers, thus the default values and other parameters are cast as integers.
+  - Validation Function :: Defined in line [[(src-ip-validation)]], this function also confirms that the parameter is an integer
+  - Print as integer :: The printing function defined in line  [[(src-ip-print)]], changes the format to ensure that the parameter is displayed as an integer and not as a float. This is a minor change, but desirable for consistency.
+
+  #+CAPTION: Integer parameters class definition
+  #+NAME: src-config-int-param-class
+  #+BEGIN_SRC python  -n -r
+    #############################################################
+    ## @class   Integer Parameter
+    #  @brief   All functionality related to the numerical
+    #           parameters that are to be treated as int
+    #############################################################
+    class integer_parameter(numerical_parameter):
+        #############################################################
+        ## @brief   Initilaization code
+        #############################################################
+        def __init__(self,name,dflt_val,min_val,max_val):
+            _dflt = int(dflt_val)
+            _min = int(min_val)
+            _max = int(max_val)
+            super(integer_parameter,self).__init__(name,_dflt,_min,_max)
+        #############################################################
+        ## @brief   Determines if a new int value is in the permited
+        #           range, and integer
+        #############################################################
+        def validate(self, val): # (ref:src-ip-validation)
+            is_valid = super(integer_parameter,self).validate(val)
+            return  float(val).is_integer() & is_valid
+        #############################################################
+        ## @brief   Prints the parameter name and its value
+        #############################################################
+        def print_param(self): # (ref:src-ip-print)
+            print("%s = %d" % (self.name, self.value))
+  #+END_SRC
+
+****** DONE Numerical Parameter Test                               :noexport:
+  Test the functionality of a generic numerical parameter. Just excecuted by using =C-c C-c=. Should all be true
+  #+BEGIN_SRC python :tangle no
+    import modules.ui_config as c
+    tp = c.numerical_parameter("Test", 7.8, 0.5,50)
+    t1 = tp.value == 7.8
+    t2 = tp.validate(-1.1) == False
+    tp.update(0.12)
+    t3 = tp.value == 7.8
+    tp.update(9)
+    t4 = tp.value == 9
+    t5 = tp.validate(88) == False
+    tp.update(55)
+    t6 = tp.value == 9
+    tp.update(0.7)
+    t7 = tp.value == 0.7
+    tp.reset()
+    t8 = tp.value == 7.8
+    t9 = tp.name == "Test"
+    return [t1,t2,t3,t4,t5,t6,t7,t8,t9]
+  #+END_SRC
+
+  #+RESULTS:
+  | True | True | True | True | True | True | True | True | True |
+
+****** DONE Average points
+   For each histogram measurement, at each voltage value, the instrument should take several consecutive measurements and average them, this parameter defined in [[src-config-avg-points-class]] is just a specialization of the integer parameter class shown in [[src-config-int-param-class]]
+
+   #+CAPTION: Average points class definition
+   #+name: src-config-avg-points-class
+   #+BEGIN_SRC python -n -r
+     #############################################################
+     ## @class   avg_points
+     #  @brief   All functionality related to the number of average points
+     #
+     #  @details This class defines the behavior of the jucture
+     #           voltage. Provides the default values and range
+     #           plus the corresponding interface.
+     #############################################################
+     class avg_points(integer_parameter):
+         #############################################################
+         ## @brief   Initilaization code
+         #############################################################
+         def __init__(self):
+             _dflt = 32 # (ref:src-jv-dflt)
+             _min = 1  #(ref:src-jv-min)
+             _max = 99  #(ref:src-jv-max)
+             _name = "Juncture Voltage"
+             super(avg_points, self).__init__(_name,_dflt, _min, _max)
+   #+END_SRC
+
+****** DONE Juncture Voltage
+   The juncture voltage defined in [[src-config-juncture-voltage-class]], as previously stated, is the parameter that controls the voltage applied to the juncture during the analysis. The juncture voltage class is just a specialization of the Numerical parameter class described in [[Numerical Parameters definition]]
+
+   #+CAPTION: Juncture voltage class definition
+   #+name: src-config-juncture-voltage-class
+   #+BEGIN_SRC python  -n -r
+     #############################################################
+     ## @class   juncture_voltage
+     #  @brief   All functionality related to the juncture voltage
+     #
+     #  @details This class defines the behavior of the jucture
+     #           voltage. Provides the default values and range
+     #           plus the corresponding interface.
+     #############################################################
+     class juncture_voltage(numerical_parameter):
+         #############################################################
+         ## @brief   Initilaization code
+         #############################################################
+         def __init__(self):
+             _dflt = 0.1 # (ref:src-jv-dflt)
+             _min = 0.0  #(ref:src-jv-min)
+             _max = 0.3  #(ref:src-jv-max)
+             _name = "Juncture Voltage"
+             super(juncture_voltage, self).__init__(_name,_dflt, _min, _max)
+   #+END_SRC
+
+******* DONE juncture voltage test                                 :noexport:
+   Test functionality. Just excecuted by using =C-c C-c=. Should all be true
+   #+BEGIN_SRC python :tangle no
+     import modules.ui_config as c
+     jv = c.juncture_voltage()
+     t1 = jv.value == 0.1
+     t2 = jv.validate(1.1) == False
+     jv.update(2)
+     t3 = jv.value == 0.1
+     jv.update(0.2)
+     t4 = jv.value == 0.2
+     t5 = jv.validate(-1.1) == False
+     jv.update(5)
+     t6 = jv.value == 0.2
+     jv.update(0.22)
+     t7 = jv.value == 0.22
+     jv.reset()
+     t8 = jv.value == 0.1
+     t9 = jv.name == "Juncture Voltage"
+     return [t1,t2,t3,t4,t5,t6,t7,t8,t9]
+   #+END_SRC
+
+    #+RESULTS:
+    | True | True | True | True | True | True | True | True | True |
+****** DONE Piezo Speed Breaking
+   The piezo speed breaking defined in [[src-config-piezo-brk-class]] is the parameter that controls the speed at which each measurement cycle is executed, defined in \([V/s]\). The Piezo speed class is just a specialization of the Numerical parameter class described in [[Numerical Parameters definition]].
+
+   #+CAPTION: <<src-config-piezo-brk-class>> : Piezo speed breaking class definition
+   #+name: src-config-piezo-brk-class
+   #+BEGIN_SRC python -n -r
+     #############################################################
+     ## @class   piezo_break
+     #  @brief   All functionality related to the
+     #           piezo_speed_breaking
+     #
+     #  @details This class defines the behavior of the piezo
+     #           speed voltage relations which is defined in [V/s]
+     #           Provides the default values and range plus the
+     #           corresponding interfaces.
+     #############################################################
+     class break_speed(numerical_parameter):
+         #############################################################
+         ## @brief   Initilaization code
+         #############################################################
+         def __init__(self):
+             _dflt = 300.0 #(ref:src-ps-dflt)
+             _min = 30.0   #(ref:src-ps-min)
+             _max = 300.0  #(ref:src-ps-max)
+             _name = "Piezo Speed"
+             super(piezo_speed, self).__init__(_name,_dflt, _min, _max)
+   #+END_SRC
+******* DONE Piezo brk test                                        :noexport:
+   Test functionality. Just executed by using =C-c C-c=. Should all be true
+   #+BEGIN_SRC python :tangle no
+     import modules.ui_config as c
+     ps = c.break_speed()
+     t1 = (ps.value == 300.0) & (ps.fixed_speed == 300.0)
+     t2 = ps.validate(331.1) == False
+     ps.update(334.2)
+     t3 = (ps.value == 300.0) & (ps.fixed_speed == 300.0)
+     ps.update(45.2)
+     t4 = (ps.value == 45.2) & (ps.fixed_speed == 300.0)
+     t5 = ps.validate(2.1) == False
+     ps.update(700)
+     t6 = (ps.value == 45.2) & (ps.fixed_speed == 300.0)
+     ps.update(90)
+     t7 = (ps.value == 90) & (ps.fixed_speed == 300.0)
+     ps.reset()
+     t8 = (ps.value == 300) & (ps.fixed_speed == 300.0)
+     ps.update(-90)
+     t9 = (ps.value == 300) & (ps.fixed_speed == 300.0)
+     return [t1,t2,t3,t4,t5,t6,t7,t8,t9]
+   #+END_SRC
+
+   #+RESULTS:
+   | True | True | True | True | True | True | True | True | True |
+****** DONE Piezo Speed Making
+   The piezo speed making defined in [[src-config-piezo-mk-class]] is the parameter that controls the speed at which each measurement cycle is executed, defined in \([V/s]\). The Piezo speed class is just a specialization of the Numerical parameter class described in [[Numerical Parameters definition]].
+
+   #+CAPTION: <<src-config-piezo-mk-class>> : Piezo speed breaking class definition
+   #+name: src-config-piezo-mk-class
+   #+BEGIN_SRC python -n -r
+     #############################################################
+     ## @class   piezo_make
+     #  @brief   All functionality related to the
+     #           piezo_speed_making
+     #
+     #  @details This class defines the behavior of the piezo
+     #           speed voltage relations which is defined in [V/s]
+     #           Provides the default values and range plus the
+     #           corresponding interfaces.
+     #############################################################
+     class piezo_make_speed(numerical_parameter):
+         #############################################################
+         ## @brief   Initilaization code
+         #############################################################
+         def __init__(self):
+             _dflt = 500.0 #(ref:src-ps-dflt)
+             _min = 30.0   #(ref:src-ps-min)
+             _max = 500.0  #(ref:src-ps-max)
+             _name = "Piezo Speed"
+             super(piezo_speed, self).__init__(_name,_dflt, _min, _max)
+   #+END_SRC
+******* DONE Piezo make test                                       :noexport:
+   Test functionality. Just executed by using =C-c C-c=. Should all be true
+   #+BEGIN_SRC python :tangle no
+     import modules.ui_config as c
+     ps = c.make_speed()
+     t1 = (ps.value == 300.0) & (ps.fixed_speed == 300.0)
+     t2 = ps.validate(531.1) == False
+     ps.update(334.2)
+     t3 = (ps.value == 300.0) & (ps.fixed_speed == 300.0)
+     ps.update(45.2)
+     t4 = (ps.value == 45.2) & (ps.fixed_speed == 300.0)
+     t5 = ps.validate(2.1) == False
+     ps.update(700)
+     t6 = (ps.value == 45.2) & (ps.fixed_speed == 300.0)
+     ps.update(90)
+     t7 = (ps.value == 90) & (ps.fixed_speed == 300.0)
+     ps.reset()
+     t8 = (ps.value == 300) & (ps.fixed_speed == 300.0)
+     ps.update(-90)
+     t9 = (ps.value == 300) & (ps.fixed_speed == 300.0)
+     return [t1,t2,t3,t4,t5,t6,t7,t8,t9]
+   #+END_SRC
+
+   #+RESULTS:
+   | True | True | True | True | True | True | True | True | True |
+****** DONE Number of traces
+   The number of traces defined in [[src-config-traces-class]] is the parameter that controls the number of measurement cycles excecuted using the piezoelectric actuator, where a trace is a full cycle going from closed to open and back. The traces class is a simple specialization of the Integer parameter class described in [[Numerical Parameters definition]] ([[src-config-int-param-class]]).
+
+   #+CAPTION: Number of traces class definition
+   #+NAME: src-config-traces-class
+   #+BEGIN_SRC python -n -r
+     #############################################################
+     ## @class   traces
+     #  @brief   All functionality related to the number of traces
+     #
+     #  @details This class defines the parameter that controls
+     #           the number of traces (runs) performed using the
+     #           piezo. Each trace correspond to a full cycle
+     #           from closed juncture to open and back.
+     #############################################################
+     class traces(integer_parameter):
+           #############################################################
+           ## @brief   Initilaization code
+           #############################################################
+           def __init__(self):
+               _dflt = int(5000)  #(ref:src-tr-dflt)
+               _min = int(1)      #(ref:src-tr-min)
+               _max = int(20000)  #(ref:src-tr-max)
+               _name = "Number of Traces"
+               super1(traces, self).__init__(_name,_dflt, _min, _max)
+   #+END_SRC
+******* DONE number traces test                                    :noexport:
+   #+BEGIN_SRC python :tangle no
+     import modules.ui_config as c
+     tr = c.traces()
+     t1 = tr.value == 5000
+     t2 = tr.validate(40000) == False
+     tr.update(5.2)
+     t3 = tr.value == 5000
+     tr.update(200)
+     t4 = tr.value == 200
+     t5 = tr.validate(-100) == False
+     tr.update(120000)
+     t6 = tr.value == 200
+     tr.update(8000)
+     t7 = tr.value == 8000
+     tr.reset()
+     t8 = tr.value == 5000
+     return [t1,t2,t3,t4,t5,t6,t7,t8]
+   #+END_SRC
+
+   #+RESULTS:
+   | True | True | True | True | True | True | True | True |
+****** DONE Display xmin
+   To display the measurements on real time, we show the histogram, and we define the minimum value for the *X-axis*, since we plot in *distance* value, we define the minimun as:
+
+   #+CAPTION: display xmin class definition
+   #+name: src-config-xmin-class
+   #+BEGIN_SRC python  -n -r
+     #############################################################
+     ## @class   display_xmin
+     #  @brief   All functionality related to the minimum of X axis
+     #
+     #  @details This class defines the behavior of the minimum
+     #           for the X axis. Provides the default values and range
+     #           plus the corresponding interface.
+     #############################################################
+     class display_xmin(numerical_parameter):
+         #############################################################
+         ## @brief   Initilaization code
+         #############################################################
+         def __init__(self):
+             _dflt = -0.5 # (ref:src-jv-dflt)
+             _min = -0.9  #(ref:src-jv-min)
+             _max = -0.1  #(ref:src-jv-max)
+             _name = "display_xmin"
+             super(display_xmin, self).__init__(_name,_dflt, _min, _max)
+   #+END_SRC
+****** DONE Display xmax
+   To display the measurements on real time, we show the histogram, and we define the maximum value for the *X-axis*, since we plot in *distance* value, we define the minimun as:
+
+   #+CAPTION: Display xmax class definition
+   #+name: src-config-xmax-class
+   #+BEGIN_SRC python  -n -r
+     #############################################################
+     ## @class   display_xmax
+     #  @brief   All functionality related to the maximum of X axis
+     #
+     #  @details This class defines the behavior of the maximum
+     #           for the X axis. Provides the default values and range
+     #           plus the corresponding interface.
+     #############################################################
+     class display_xmax(numerical_parameter):
+         #############################################################
+         ## @brief   Initilaization code
+         #############################################################
+         def __init__(self):
+             _dflt = 2 # (ref:src-jv-dflt)
+             _min = 0.9  #(ref:src-jv-min)
+             _max = 3.9  #(ref:src-jv-max)
+             _name = "display_xmax"
+             super(display_xmax, self).__init__(_name,_dflt, _min, _max)
+   #+END_SRC
+****** DONE Display Gmin
+   To display the measurements on real time, we show the histogram, and we define the minimum value for the *Y-axis*, since we plot in *conductance* value, we define the minimun as:
+
+   #+CAPTION: Display Gmin class definition
+   #+name: src-config-gmin-class
+   #+BEGIN_SRC python  -n -r
+     #############################################################
+     ## @class   display_Gmin
+     #  @brief   All functionality related to the minimum of Y axis
+     #
+     #  @details This class defines the behavior of the minimum
+     #           for the Y axis. Provides the default values and range
+     #           plus the corresponding interface.
+     #############################################################
+     class display_Gmin(numerical_parameter):
+         #############################################################
+         ## @brief   Initilaization code
+         #############################################################
+         def __init__(self):
+             _dflt = 1e-7 # (ref:src-jv-dflt)
+             _min = 1e-9  #(ref:src-jv-min)
+             _max = 1e-6  #(ref:src-jv-max)
+             _name = "display_Gmin"
+             super(display_Gmin, self).__init__(_name,_dflt, _min, _max)
+   #+END_SRC
+****** DONE Display Gmax
+   To display the measurements on real time, we show the histogram, and we define the maximum value for the *Y-axis*, since we plot in *Conductance* value, we define the maximum as:
+
+   #+CAPTION: Display Gmax class definition
+   #+name: src-config-gmax-class
+   #+BEGIN_SRC python  -n -r
+     #############################################################
+     ## @class   display_xmax
+     #  @brief   All functionality related to the maximum of Y axis
+     #
+     #  @details This class defines the behavior of the maximum
+     #           for the X axis. Provides the default values and range
+     #           plus the corresponding interface.
+     #############################################################
+     class display_xmax(numerical_parameter):
+         #############################################################
+         ## @brief   Initilaization code
+         #############################################################
+         def __init__(self):
+             _dflt = 10 # (ref:src-jv-dflt)
+             _min = 1  #(ref:src-jv-min)
+             _max = 100  #(ref:src-jv-max)
+             _name = "display_Gmax"
+             super(display_Gmax, self).__init__(_name,_dflt, _min, _max)
+   #+END_SRC
+
+****** DONE Display num-D-slots
+   To display the measurements on real time, we show the histogram, and we define the number of partitions or ranges for the values in the *X-axis* since we plot in *distance* value, we the number of partitions as:
+
+   #+CAPTION: Display num-D-slots class definition
+   #+name: src-config-nDbin-class
+   #+BEGIN_SRC python  -n -r
+     #############################################################
+     ## @class   display_nDbins
+     #  @brief   All functionality related to the X axis slots(bins)
+     #
+     #  @details This class defines the behavior of the number of
+     #           slots for the X axis. Provides the default value
+     #           and range plus the corresponding interface.
+     #############################################################
+     class display_nXbins(integer_parameter):
+         #############################################################
+         ## @brief   Initilaization code
+         #############################################################
+         def __init__(self):
+             _dflt = 161 # (ref:src-jv-dflt)
+             _min = 99  #(ref:src-jv-min)
+             _max = 999  #(ref:src-jv-max)
+             _name = "display_nDbins"
+             super(display_nDbins, self).__init__(_name,_dflt, _min, _max)
+   #+END_SRC
+
+****** DONE Display num-G-slots
+   To display the measurements on real time, we show the histogram, and we define the number of partitions or ranges for the values in the *Y-axis* since we plot in *conductance* value, we the number of partitions as:
+
+   #+CAPTION: Display num-G-slots class definition
+   #+name: src-config-nGbins-class
+   #+BEGIN_SRC python  -n -r
+     #############################################################
+     ## @class   display_nGbins
+     #  @brief   All functionality related to the Y axis slots(bins)
+     #
+     #  @details This class defines the behavior of the number of
+     #           slotsfor the Y axis. Provides the default value
+     #           and range plus the corresponding interface.
+     #############################################################
+     class display_nGbins(integer_parameter):
+         #############################################################
+         ## @brief   Initilaization code
+         #############################################################
+         def __init__(self):
+             _dflt = 251 # (ref:src-jv-dflt)
+             _min = 99  #(ref:src-jv-min)
+             _max = 999  #(ref:src-jv-max)
+             _name = "display_nGbins"
+             super(display_nGbins, self).__init__(_name,_dflt, _min, _max)
+   #+END_SRC
+
+
+
+
+
+
+   , thus the UI module can be thought as the result of 3 pieces.
+   - Program Interface :: The UI - program interface is how the UI interacts with the rest of the program. See [[UI-Program Interface]]
+   - GUI :: The graphical User interface is how the program interacts with the user. See [[UI-GUI]]
+   - Configuration Files :: Full textual interfaces so users can set a configuration file which takes cares of all modifiable constants of the problem, without needing to use a GUI
+**** TODO Non-Configurable parameters definitions
+There are parameters that con modify the behavior of the run, but are not expected to be modified by the user, therefore are hardcoded in the program. The code fragment [[src-parameters-global-constants]] shows the constant definitions which are:
+- G0 :: Conductance of a "1-gold-atom" channel
+- Start Juncture voltage :: The voltage of the juncture before starting the measurement. The juncture voltage is modified in order to measure
+- End Juncture voltage :: The voltage of the juncture after the end of the measurement. The juncture voltage moved back to a rest value
+#+caption Global constants
+#+name: src-parameters-global-constants
+#+BEGIN_SRC python
+  # Non configurable parameters
+  class GLOBAL_CONTANTS:
+      G0 = 7.74809173e-5          # Quantum Conductance
+      start_jv = 0
+      end_jv = 0
+      IV_settling_time = 10       # ms
+      IV_max_data_points = 5000   # seg
+#+END_SRC
+
+***** TODO Logaritmic amplifier calibration
+  #+CAPTION: log amplifier
+  #+BEGIN_SRC python
+    class adwin_log_aplifier:
+        def __init__(self):
+            calibration_dir = ADW_GCONST.PROGRAM_DIR
+            root_path = utl.get_script_root_path()
+            program_path = os.path.join(root_path,self._adwin_subdir)
+            filename = "calibrationIO.txt"
+            calibration_file = os.path.join(program_path,filename)
+            if (os.path.isfile(calibration_file)):
+                read_data_file(calibration_file)
+            else:
+                raise Exception("Bad file, check %s" %calibration_file)
+        def read_data_file(self, filename):
+            # reads matrix from data file. As optional input a column can be specified
+            data=[]
+            file =open(filename)
+            for line in file:
+                line_list = [float(x) for x in line.split()]
+            data.append(line_list)
+            self.data = data
+        def get_calibration(self):
+            return self.data
+  #+END_SRC
+
+*** TODO UI-Program Interface                                 :Heavyrefactor:
+    :PROPERTIES:
+    :header-args+: :tangle   modules/ui_config.py
+    :header-args+: :noweb    tangle
+    :END:
+   # As with any module there is a section for the imports and the file headers, but these are unninteresting for any reader, thus they are put in comments and not exported to a PDF/HTML result
 #+BEGIN_SRC python :exports none
   #################################################################
   ## @file    ui_config.py
@@ -260,583 +1427,19 @@ Therefore the output of the UI execution is a class of 2 values with one value b
  #+END_SRC
 
 **** DONE UI command
-  Now the command to be executed has only a few possible values, which are used to, as previously explained, to terminate the program, or execute one of the routines.
-  #+BEGIN_SRC python
-    ############################################################
-    ## @class  CMD
-    #  @brief  UI calss to encode the possible commands for the
-    #         program
-    ############################################################
-    class UI_CMD:
-        EXIT    = 0
-        M_BREAK = 1
-        MEASURE = 2
-  #+END_SRC
-
-**** DONE Parameters definitions
-Every configurable parameter, requires its definition, and the ability to modify it properly, the following shows the different user availbale parameters
-***** DONE Numerical Parameters definition
- As previously stated most parameters are numerical, so a parent class is created to provide a common interface for them all and to ensure that all numerical parameters behave consistently.
- The numerical parameters are defined in [[src-config-num-param-class]], which provides the interfaces that define the numerical parameters
- - Initialization function :: The function defined in line [[(src-np-init)]], provide the initialization code for a generic numerical parameter, which is defined by the following parameters:
-   - Default Value :: Is the value that the parameter takes by default, such as the voltage for the juncture.
-   - Minimum value :: The minimum value acceptable for the parameter. With the maximum value defines the range of admissible values
-   - Maximum value :: The maximum value acceptable for the parameter. With the minimum value defines the range of admissible values
-   - Name :: The name defines a name for the parameter, which is useful to print information about it.
- - Reset function :: Defined in line  [[(src-np-reset)]], provides a mechanism to restore the parameter value to its default.
- - Validation function ::  Defined in line [[(src-np-validation)]] returns a boolean determining if the new value is within the range of accepted values
- - Update function :: Defined in line  [[(src-np-update)]] updates the juncture voltage to a new value defined by the user, only if the value is within the accepted range, but if not it leaves the value unchanged
- - Print function ::  Defined in line  [[(src-np-print)]] provides an utility to print the current value to the terminal. Useful during testing and for sending messages
-
-
- #+CAPTION: Numerical parameters class definition
- #+NAME: src-config-num-param-class
- #+BEGIN_SRC python  -n -r
-   #############################################################
-   ## @class   Numerical Parameter
-   #  @brief   All functionality related to the numerical
-   #           parameters
-   #
-   #  @details This class defines the basic behavior common to
-   #           all numerical parameters, including common
-   #           interfaces and values.
-   #############################################################
-   class numerical_parameter(object):
-       #############################################################
-       ## @brief   Initilaization code
-       #############################################################
-       def __init__(self,name,dflt_val,min_val,max_val):#(ref:src-np-init)
-           self._dflt = dflt_val
-           self._min = min_val
-           self._max = max_val
-           self.name = name
-           self.reset()
-       #############################################################
-       ## @brief   restores the default value of the parameter
-       #############################################################
-       def reset(self): #(ref:src-np-reset)
-           self.value = self._dflt
-       #############################################################
-       ## @brief   Determines if a new value is in the permited
-       #           range
-       #############################################################
-       def validate(self, val):#(ref:src-np-validation)
-           return (self._min <= val) & (val <= self._max)
-       #############################################################
-       ## @brief   Updates the stored value only if the new
-       #           value is within range
-       #############################################################
-       def update(self,new_val):#(ref:src-np-update)
-           if self.validate(new_val):
-               self.value = new_val
-       #############################################################
-       ## @brief   Prints the parameter name and its value
-       #############################################################
-       def print_param(self):#(ref:src-np-print)
-           print("%s = %f" % (self.name, self.value))
+ Now the command to be executed has only a few possible values, which are used to, as previously explained, to terminate the program, or execute one of the routines.
+ #+BEGIN_SRC python
+   ############################################################
+   ## @class  CMD
+   #  @brief  UI calss to encode the possible commands for the
+   #         program
+   ############################################################
+   class UI_CMD:
+       EXIT    = 0
+       M_BREAK = 1
+       MEASURE = 2
  #+END_SRC
 
- There is also a requirement to treat some numerical parameters as integers, therefore a specialization of the numerical parameters is shown in  [[src-config-int-param-class]], where some modifications and overloading are executed to provide with the desired properties.
- - Values must be integers :: This class must have all its values as integers, thus the default values and other parameters are cast as integers.
- - Validation Function :: Defined in line [[(src-ip-validation)]], this function also confirms that the parameter is an integer
- - Print as integer :: The printing function defined in line  [[(src-ip-print)]], changes the format to ensure that the parameter is displayed as an integer and not as a float. This is a minor change, but desirable for consistency.
-
- #+CAPTION: Integer parameters class definition
- #+NAME: src-config-int-param-class
- #+BEGIN_SRC python  -n -r
-   #############################################################
-   ## @class   Integer Parameter
-   #  @brief   All functionality related to the numerical
-   #           parameters that are to be treated as int
-   #############################################################
-   class integer_parameter(numerical_parameter):
-       #############################################################
-       ## @brief   Initilaization code
-       #############################################################
-       def __init__(self,name,dflt_val,min_val,max_val):
-           _dflt = int(dflt_val)
-           _min = int(min_val)
-           _max = int(max_val)
-           super(integer_parameter,self).__init__(name,_dflt,_min,_max)
-       #############################################################
-       ## @brief   Determines if a new int value is in the permited
-       #           range, and integer
-       #############################################################
-       def validate(self, val): # (ref:src-ip-validation)
-           is_valid = super(integer_parameter,self).validate(val)
-           return  float(val).is_integer() & is_valid
-       #############################################################
-       ## @brief   Prints the parameter name and its value
-       #############################################################
-       def print_param(self): # (ref:src-ip-print)
-           print("%s = %d" % (self.name, self.value))
- #+END_SRC
-
-****** DONE Numerical Parameter Test                               :noexport:
-Test the functionality of a generic numerical parameter. Just excecuted by using =C-c C-c=. Should all be true
-#+BEGIN_SRC python :tangle no
-  import modules.ui_config as c
-  tp = c.numerical_parameter("Test", 7.8, 0.5,50)
-  t1 = tp.value == 7.8
-  t2 = tp.validate(-1.1) == False
-  tp.update(0.12)
-  t3 = tp.value == 7.8
-  tp.update(9)
-  t4 = tp.value == 9
-  t5 = tp.validate(88) == False
-  tp.update(55)
-  t6 = tp.value == 9
-  tp.update(0.7)
-  t7 = tp.value == 0.7
-  tp.reset()
-  t8 = tp.value == 7.8
-  t9 = tp.name == "Test"
-  return [t1,t2,t3,t4,t5,t6,t7,t8,t9]
-#+END_SRC
-
-#+RESULTS:
-| True | True | True | True | True | True | True | True | True |
-
-***** DONE Average_points
-For each histogram measurement, at each voltage value, the instrument should take several consecutive measurements and average them, this parameter defined in [[src-config-avg-points-class]] is just a specialization of the integer parameter class shown in [[src-config-int-param-class]]
-
-#+CAPTION: Average points class definition
-#+name: src-config-avg-points-class
-#+BEGIN_SRC python -n -r
-  #############################################################
-  ## @class   avg_points
-  #  @brief   All functionality related to the number of average points
-  #
-  #  @details This class defines the behavior of the jucture
-  #           voltage. Provides the default values and range
-  #           plus the corresponding interface.
-  #############################################################
-  class avg_points(integer_parameter):
-      #############################################################
-      ## @brief   Initilaization code
-      #############################################################
-      def __init__(self):
-          _dflt = 32 # (ref:src-jv-dflt)
-          _min = 1  #(ref:src-jv-min)
-          _max = 99  #(ref:src-jv-max)
-          _name = "Juncture Voltage"
-          super(avg_points, self).__init__(_name,_dflt, _min, _max)
-#+END_SRC
-
-***** DONE Juncture Voltage
-The juncture voltage defined in [[src-config-juncture-voltage-class]], as previously stated, is the parameter that controls the voltage applied to the juncture during the analysis. The juncture voltage class is just a specialization of the Numerical parameter class described in [[Numerical Parameters definition]]
-
-#+CAPTION: Juncture voltage class definition
-#+name: src-config-juncture-voltage-class
-#+BEGIN_SRC python  -n -r
-  #############################################################
-  ## @class   juncture_voltage
-  #  @brief   All functionality related to the juncture voltage
-  #
-  #  @details This class defines the behavior of the jucture
-  #           voltage. Provides the default values and range
-  #           plus the corresponding interface.
-  #############################################################
-  class juncture_voltage(numerical_parameter):
-      #############################################################
-      ## @brief   Initilaization code
-      #############################################################
-      def __init__(self):
-          _dflt = 0.1 # (ref:src-jv-dflt)
-          _min = 0.0  #(ref:src-jv-min)
-          _max = 0.3  #(ref:src-jv-max)
-          _name = "Juncture Voltage"
-          super(juncture_voltage, self).__init__(_name,_dflt, _min, _max)
-#+END_SRC
-
-****** DONE voltage test                                           :noexport:
-Test functionality. Just excecuted by using =C-c C-c=. Should all be true
-#+BEGIN_SRC python :tangle no
-  import modules.ui_config as c
-  jv = c.juncture_voltage()
-  t1 = jv.value == 0.1
-  t2 = jv.validate(1.1) == False
-  jv.update(2)
-  t3 = jv.value == 0.1
-  jv.update(0.2)
-  t4 = jv.value == 0.2
-  t5 = jv.validate(-1.1) == False
-  jv.update(5)
-  t6 = jv.value == 0.2
-  jv.update(0.22)
-  t7 = jv.value == 0.22
-  jv.reset()
-  t8 = jv.value == 0.1
-  t9 = jv.name == "Juncture Voltage"
-  return [t1,t2,t3,t4,t5,t6,t7,t8,t9]
-#+END_SRC
-
- #+RESULTS:
- | True | True | True | True | True | True | True | True | True |
-***** DONE Piezo Speed Breaking
-The piezo speed breaking defined in [[src-config-piezo-brk-class]] is the parameter that controls the speed at which each measurement cycle is executed, defined in \([V/s]\). The Piezo speed class is just a specialization of the Numerical parameter class described in [[Numerical Parameters definition]]. 
-
-#+CAPTION: <<src-config-piezo-brk-class>> : Piezo speed breaking class definition
-#+name: src-config-piezo-brk-class
-#+BEGIN_SRC python -n -r
-  #############################################################
-  ## @class   piezo_break
-  #  @brief   All functionality related to the
-  #           piezo_speed_breaking
-  #
-  #  @details This class defines the behavior of the piezo
-  #           speed voltage relations which is defined in [V/s]
-  #           Provides the default values and range plus the
-  #           corresponding interfaces.
-  #############################################################
-  class piezo_speed(numerical_parameter):
-      #############################################################
-      ## @brief   Initilaization code
-      #############################################################
-      def __init__(self):
-          _dflt = 300.0 #(ref:src-ps-dflt)
-          _min = 30.0   #(ref:src-ps-min)
-          _max = 300.0  #(ref:src-ps-max)
-          _name = "Piezo Speed"
-          super(piezo_speed, self).__init__(_name,_dflt, _min, _max)
-#+END_SRC
-****** DONE Piezo brk test                                         :noexport:
-Test functionality. Just executed by using =C-c C-c=. Should all be true
-#+BEGIN_SRC python :tangle no
-  import modules.ui_config as c
-  ps = c.piezo_break()
-  t1 = (ps.value == 300.0) & (ps.fixed_speed == 300.0)
-  t2 = ps.validate(331.1) == False
-  ps.update(334.2)
-  t3 = (ps.value == 300.0) & (ps.fixed_speed == 300.0)
-  ps.update(45.2)
-  t4 = (ps.value == 45.2) & (ps.fixed_speed == 300.0)
-  t5 = ps.validate(2.1) == False
-  ps.update(700)
-  t6 = (ps.value == 45.2) & (ps.fixed_speed == 300.0)
-  ps.update(90)
-  t7 = (ps.value == 90) & (ps.fixed_speed == 300.0)
-  ps.reset()
-  t8 = (ps.value == 300) & (ps.fixed_speed == 300.0)
-  ps.update(-90)
-  t9 = (ps.value == 300) & (ps.fixed_speed == 300.0)
-  return [t1,t2,t3,t4,t5,t6,t7,t8,t9]
-#+END_SRC
-
-#+RESULTS:
-| True | True | True | True | True | True | True | True | True |
-***** DONE Piezo Speed Making
-The piezo speed making defined in [[src-config-piezo-mk-class]] is the parameter that controls the speed at which each measurement cycle is executed, defined in \([V/s]\). The Piezo speed class is just a specialization of the Numerical parameter class described in [[Numerical Parameters definition]].
-
-#+CAPTION: <<src-config-piezo-mk-class>> : Piezo speed breaking class definition
-#+name: src-config-piezo-mk-class
-#+BEGIN_SRC python -n -r
-  #############################################################
-  ## @class   piezo_make
-  #  @brief   All functionality related to the
-  #           piezo_speed_making
-  #
-  #  @details This class defines the behavior of the piezo
-  #           speed voltage relations which is defined in [V/s]
-  #           Provides the default values and range plus the
-  #           corresponding interfaces.
-  #############################################################
-  class piezo_make(numerical_parameter):
-      #############################################################
-      ## @brief   Initilaization code
-      #############################################################
-      def __init__(self):
-          _dflt = 500.0 #(ref:src-ps-dflt)
-          _min = 30.0   #(ref:src-ps-min)
-          _max = 500.0  #(ref:src-ps-max)
-          _name = "Piezo Speed"
-          super(piezo_speed, self).__init__(_name,_dflt, _min, _max)
-#+END_SRC
-****** DONE Piezo make test                                        :noexport:
-Test functionality. Just executed by using =C-c C-c=. Should all be true
-#+BEGIN_SRC python :tangle no
-  import modules.ui_config as c
-  ps = c.piezo_make()
-  t1 = (ps.value == 300.0) & (ps.fixed_speed == 300.0)
-  t2 = ps.validate(531.1) == False
-  ps.update(334.2)
-  t3 = (ps.value == 300.0) & (ps.fixed_speed == 300.0)
-  ps.update(45.2)
-  t4 = (ps.value == 45.2) & (ps.fixed_speed == 300.0)
-  t5 = ps.validate(2.1) == False
-  ps.update(700)
-  t6 = (ps.value == 45.2) & (ps.fixed_speed == 300.0)
-  ps.update(90)
-  t7 = (ps.value == 90) & (ps.fixed_speed == 300.0)
-  ps.reset()
-  t8 = (ps.value == 300) & (ps.fixed_speed == 300.0)
-  ps.update(-90)
-  t9 = (ps.value == 300) & (ps.fixed_speed == 300.0)
-  return [t1,t2,t3,t4,t5,t6,t7,t8,t9]
-#+END_SRC
-
-#+RESULTS:
-| True | True | True | True | True | True | True | True | True |
-***** DONE Number of traces
-The number of traces defined in [[src-config-traces-class]] is the parameter that controls the number of measurement cycles excecuted using the piezoelectric actuator, where a trace is a full cycle going from closed to open and back. The traces class is a simple specialization of the Integer parameter class described in [[Numerical Parameters definition]] ([[src-config-int-param-class]]).
-
-#+CAPTION: Number of traces class definition
-#+NAME: src-config-traces-class
-#+BEGIN_SRC python -n -r
-  #############################################################
-  ## @class   traces
-  #  @brief   All functionality related to the number of traces
-  #
-  #  @details This class defines the parameter that controls
-  #           the number of traces (runs) performed using the
-  #           piezo. Each trace correspond to a full cycle
-  #           from closed juncture to open and back.
-  #############################################################
-  class traces(integer_parameter):
-        #############################################################
-        ## @brief   Initilaization code
-        #############################################################
-        def __init__(self):
-            _dflt = int(5000)  #(ref:src-tr-dflt)
-            _min = int(1)      #(ref:src-tr-min)
-            _max = int(20000)  #(ref:src-tr-max)
-            _name = "Number of Traces"
-            super(traces, self).__init__(_name,_dflt, _min, _max)
-#+END_SRC
-****** DONE number traces test                                     :noexport:
-#+BEGIN_SRC python :tangle no
-  import modules.ui_config as c
-  tr = c.traces()
-  t1 = tr.value == 5000
-  t2 = tr.validate(40000) == False
-  tr.update(5.2)
-  t3 = tr.value == 5000
-  tr.update(200)
-  t4 = tr.value == 200
-  t5 = tr.validate(-100) == False
-  tr.update(120000)
-  t6 = tr.value == 200
-  tr.update(8000)
-  t7 = tr.value == 8000
-  tr.reset()
-  t8 = tr.value == 5000
-  return [t1,t2,t3,t4,t5,t6,t7,t8]
-#+END_SRC
-
-#+RESULTS:
-| True | True | True | True | True | True | True | True |
-***** DONE Data directory
-The program provides the user with the ability to store the Data in a directory of his choice, which is stored as a string.
-The data directory parameter is defined in [[src-config-data-dir-class]], which provides the full interface for the data directory.
-
-- Initialization Function :: Defined at [[(src-dd-init)]]. This function uses the "reset" function
-- Reset function :: Defined at [[(src-dd-reset)]], this function restores the default data directory,  is chosen to be a "data" subdirectory of the program root directory.
-- Validation Function :: Defined at [[(src-dd-validation)]], this function returns true if the chosen path is a directory as recognyzed by the operative system.
-- Update functionality :: Defined at [[(src-dd-update)]], this function is used to change the data directory to a new chosen path in the computer.
--  Printing function ::  Defined at [[(src-dd-print)]] and used mainly for debug purposes this function prints the chosen data directory to the console.
-
-#+CAPTION: Data directory parameter class
-#+NAME: src-config-data-dir-class
-#+BEGIN_SRC python -n -r
-  #############################################################
-  ## @class   traces
-  #  @brief   All functionality related to the data directory
-  #
-  #  @details This class defines the parameter that controls
-  #           where the results will be stored. Is a string
-  #           that codifies the directory, depending on the
-  #           os and inspect modules
-  #############################################################
-  class data_dir:
-      _subdir= "data"#(ref:src-dd-dflt)
-      #############################################################
-      ## @brief   Initilaization code
-      #############################################################
-      def __init__(self):#(ref:src-dd-init)
-          self.reset()
-      ##############################################################
-      ## @brief   restores the default value of the number of traces
-      ##############################################################
-      def reset(self): #(ref:src-dd-reset)
-          script_root = utl.get_script_root_path()
-          data_path = os.path.join(script_root,self._subdir)
-          self.path = data_path
-      ##############################################################
-      ## @brief   Ensures the new target string is a directory
-      ##############################################################
-      def validate(self, new_path):#(ref:src-dd-validation)
-          return os.path.isdir(new_path)
-      #############################################################
-      ## @brief   Updates the target directory only if its a
-      #           directory in the filesystem
-      #############################################################
-      def update(self,new_path):#(ref:src-dd-update)
-          if self.validate(new_path):
-              self.path = new_path
-      #############################################################
-      ## @brief   Print the parameter.
-      #############################################################
-      def print_param(self):#(ref:src-dd-print)
-          print("Data Directory = %s" % self.path)
-#+END_SRC
-
-
-#+NAME: ui-config-bp-interface
-#+BEGIN_SRC python
-## asdf
-#+END_SRC
-***** DONE Display xmin
-To display the measurements on real time, we show the histogram, and we define the minimum value for the *X-axis*, since we plot in *distance* value, we define the minimun as:
-
-#+CAPTION: display xmin class definition
-#+name: src-config-xmin-class
-#+BEGIN_SRC python  -n -r
-  #############################################################
-  ## @class   display_xmin
-  #  @brief   All functionality related to the minimum of X axis
-  #
-  #  @details This class defines the behavior of the minimum
-  #           for the X axis. Provides the default values and range
-  #           plus the corresponding interface.
-  #############################################################
-  class display_xmin(numerical_parameter):
-      #############################################################
-      ## @brief   Initilaization code
-      #############################################################
-      def __init__(self):
-          _dflt = -0.5 # (ref:src-jv-dflt)
-          _min = -0.9  #(ref:src-jv-min)
-          _max = -0.1  #(ref:src-jv-max)
-          _name = "display_xmin"
-          super(display_xmin, self).__init__(_name,_dflt, _min, _max)
-#+END_SRC
-***** DONE Display xmax
-To display the measurements on real time, we show the histogram, and we define the maximum value for the *X-axis*, since we plot in *distance* value, we define the minimun as:
-
-#+CAPTION: Display xmax class definition
-#+name: src-config-xmax-class
-#+BEGIN_SRC python  -n -r
-  #############################################################
-  ## @class   display_xmax
-  #  @brief   All functionality related to the maximum of X axis
-  #
-  #  @details This class defines the behavior of the maximum
-  #           for the X axis. Provides the default values and range
-  #           plus the corresponding interface.
-  #############################################################
-  class display_xmax(numerical_parameter):
-      #############################################################
-      ## @brief   Initilaization code
-      #############################################################
-      def __init__(self):
-          _dflt = 2 # (ref:src-jv-dflt)
-          _min = 0.9  #(ref:src-jv-min)
-          _max = 3.9  #(ref:src-jv-max)
-          _name = "display_xmax"
-          super(display_xmax, self).__init__(_name,_dflt, _min, _max)
-#+END_SRC
-***** DONE Display Gmin
-To display the measurements on real time, we show the histogram, and we define the minimum value for the *Y-axis*, since we plot in *conductance* value, we define the minimun as:
-
-#+CAPTION: Display Gmin class definition
-#+name: src-config-gmin-class
-#+BEGIN_SRC python  -n -r
-  #############################################################
-  ## @class   display_Gmin
-  #  @brief   All functionality related to the minimum of Y axis
-  #
-  #  @details This class defines the behavior of the minimum
-  #           for the Y axis. Provides the default values and range
-  #           plus the corresponding interface.
-  #############################################################
-  class display_Gmin(numerical_parameter):
-      #############################################################
-      ## @brief   Initilaization code
-      #############################################################
-      def __init__(self):
-          _dflt = 1e-7 # (ref:src-jv-dflt)
-          _min = 1e-9  #(ref:src-jv-min)
-          _max = 1e-6  #(ref:src-jv-max)
-          _name = "display_Gmin"
-          super(display_Gmin, self).__init__(_name,_dflt, _min, _max)
-#+END_SRC
-***** DONE Display Gmax
-To display the measurements on real time, we show the histogram, and we define the maximum value for the *Y-axis*, since we plot in *Conductance* value, we define the maximum as:
-
-#+CAPTION: Display Gmax class definition
-#+name: src-config-gmax-class
-#+BEGIN_SRC python  -n -r
-  #############################################################
-  ## @class   display_xmax
-  #  @brief   All functionality related to the maximum of Y axis
-  #
-  #  @details This class defines the behavior of the maximum
-  #           for the X axis. Provides the default values and range
-  #           plus the corresponding interface.
-  #############################################################
-  class display_xmax(numerical_parameter):
-      #############################################################
-      ## @brief   Initilaization code
-      #############################################################
-      def __init__(self):
-          _dflt = 10 # (ref:src-jv-dflt)
-          _min = 1  #(ref:src-jv-min)
-          _max = 100  #(ref:src-jv-max)
-          _name = "display_Gmax"
-          super(display_Gmax, self).__init__(_name,_dflt, _min, _max)
-#+END_SRC
-
-***** DONE Display num-D-slots
-To display the measurements on real time, we show the histogram, and we define the number of partitions or ranges for the values in the *X-axis* since we plot in *distance* value, we the number of partitions as:
-
-#+CAPTION: Display num-D-slots class definition
-#+name: src-config-nDbin-class
-#+BEGIN_SRC python  -n -r
-  #############################################################
-  ## @class   display_nDbins
-  #  @brief   All functionality related to the X axis slots(bins)
-  #
-  #  @details This class defines the behavior of the number of
-  #           slots for the X axis. Provides the default value
-  #           and range plus the corresponding interface.
-  #############################################################
-  class display_nXbins(integer_parameter):
-      #############################################################
-      ## @brief   Initilaization code
-      #############################################################
-      def __init__(self):
-          _dflt = 161 # (ref:src-jv-dflt)
-          _min = 99  #(ref:src-jv-min)
-          _max = 999  #(ref:src-jv-max)
-          _name = "display_nDbins"
-          super(display_nDbins, self).__init__(_name,_dflt, _min, _max)
-#+END_SRC
-
-***** DONE Display num-G-slots
-To display the measurements on real time, we show the histogram, and we define the number of partitions or ranges for the values in the *Y-axis* since we plot in *conductance* value, we the number of partitions as:
-
-#+CAPTION: Display num-G-slots class definition
-#+name: src-config-nGbins-class
-#+BEGIN_SRC python  -n -r
-  #############################################################
-  ## @class   display_nGbins
-  #  @brief   All functionality related to the Y axis slots(bins)
-  #
-  #  @details This class defines the behavior of the number of
-  #           slotsfor the Y axis. Provides the default value
-  #           and range plus the corresponding interface.
-  #############################################################
-  class display_nGbins(integer_parameter):
-      #############################################################
-      ## @brief   Initilaization code
-      #############################################################
-      def __init__(self):
-          _dflt = 251 # (ref:src-jv-dflt)
-          _min = 99  #(ref:src-jv-min)
-          _max = 999  #(ref:src-jv-max)
-          _name = "display_nGbins"
-          super(display_nGbins, self).__init__(_name,_dflt, _min, _max)
-#+END_SRC
 **** TODO Configuration-structure
 Test configuration structure, I meed need to refactor this.
 #+BEGIN_SRC python
@@ -984,212 +1587,12 @@ The basic parameters are:
               self.traces.print_param()
               self.data_dir.print_param()
 #+END_SRC
-*** TODO Configuration Files
-Following a more traditional UNIX approach, is a good idea to allow the program to be run from the command line, rather than forcing a GUI to the user. By using a configuration file, the user will be able to configure the run, and be sure that all parameters are correctly set beforehand, in a way that would allow for several runs automatically.
-
-Also the introduction of configuration files does not mean that the program will do away with the GUI, rather that the GUI will generate the appropriate configuration file, to run  the program.
-
-**** Configuration Files specification
-     :PROPERTIES:
-     :header-args+: :tangle  Measurement_deafult_config.yaml
-     :END:
-To specify the configuration, I've decided to use [[http://www.yaml.org][YAML]], which provides a relatively simple interface, and an appropriate parser for python, while also allowing comments.
-The configuration will be split in 3 parts.
-- General Parameters :: These are variables that should be set by the user, but can apply to any process associated with the measurement, for example the juncture voltage
-- Histogram parameters :: The histogram is the measurement that the program is really interested on, therefore the user may need to modify some parameters
-- Presentation parameters :: During measurement the program will display the histogram to provide the user with feedback, therefore the user may need to modify some of these parameters to better suits his[fn:or her needs] needs
-
-That being said, we provide with an example configuration file. See [[http://www.yaml.org/spec/1.2/spec.html][YAML Specification]] or [[http://ess.khhq.net/wiki/YAML_Tutorial][YAML tutorial]]
-#+BEGIN_SRC yaml
-  # Begin of configuration File
-  ---
-  General Configuration :
-    JunctureVoltage : 0.1         #Range 0.1-0.3
-    # Where to save the Data
-    SaveDir : 'E:/Measurements/Fullerenos/C60 2/Molecule/' 
-
-  Histogram Configuration :
-    AveragePoints : 32            # Number of points to average
-    BreakSpeed : 300              # Volts/s
-    MakeSpeed : 500               # Volts/s
-    NumberTraces : 500            # Number of histograms
-
-  Presentation Configuration:
-    xmin : -0.5                   # nm
-    xmax : 2                      # nm
-    Gmin : 1e-7                   # G0
-    Gmax : 10                     # G0
-    nGbins : 251                  # Slots for Conductance histogram
-    nDbins : 161                  # Slots for Distance histogram
-#+END_SRC
-**** Configuration Files interface
-   :PROPERTIES:
-   :header-args+:  :tangle   modules/config_interface.py
-   :header-args+:  :noweb    tangle
-   :END:
-
-Since the program will be configured through a configuration file, it only makes sense to provide with a writer and a parser for it. Fortunately we already have most of the heavy-lifting done by YAML libraries and the parameters configurations in the UI-interface part of the program, I'd expect this part to be relatively easy to understand.
-
-As usual we start with the header
-# Yaml is stored as python dictionaries.
-#+BEGIN_SRC python
-  #################################################################
-  ## @file    Configuration_parser.py
-  #  @author  Joaquin Figueroa
-  #  @date    Wed Jan 11 11:02:47 CLST 2017
-  #  @brief   Parse Yaml configuration file and builds configs
-  #
-  #  @details This file uses PyYaml to parse the configuration file
-  #           and builds the necessary configurations for each
-  #           run type.
-  #           Then we return the collection of configurations
-  #################################################################
-  import yaml
-#+end_src
-
-
-#+begin_src python
-  def yaml_loader(filepath):
-      with open(filepath, "r") as file_descriptor:
-          data = yaml.safe_load(file_descriptor)
-      return data
-
-  def yaml_dump(filepath, data):
-      with open(filepath, "w") as file_descriptor:
-          yaml.dump(data, file_descriptor)
-
-  def yaml_extract_juncture_voltage(data):
-      General_config = data['General Configuration']
-      new_jv_val = General_config['JunctureVoltage']
-      jv = juncture_voltage()
-      if !jv.validate(new_jv_val):
-          print("ERROR: JV value out of range. Using default")
-          print("Range min ={0}, Max ={1}".format(jv._min, jv._max))
-      jv.update(new_jv_val)
-      return jv
-
-  def yaml_extract_save_dir(data):
-      General_config = data['General Configuration']
-      target_dir = General_config['SaveDir']
-      save_dir = data_dir()
-      if !save_dir.validate(target_dir):
-          print("Directory does not exists")
-          raise
-      save_dir.update(target_dir)
-      return save_dir
-
-  def yaml_extract_avg_points(data):
-      Histo_config = data['Histogram Configuration']
-      new_avg = Histo_config['AveragePoints']
-      avg = average_points()
-      if !avg.validate(new_avg):
-          print("ERROR: AVG value out of range. Using default")
-          print("Range min ={0}, Max ={1}".format(avg._min, avg._max))
-      avg.update(new_avg)
-      return avg
-
-
-  def yaml_extract_break_speed(data):
-      Histo_config = data['Histogram Configuration']
-      new_speed = Histo_config['BreakSpeed']
-      speed = piezo_break_speed()
-      if !speed.validate(new_avg):
-          print("ERROR: Break Speed value out of range. Using default")
-          print("Range min ={0}, Max ={1}".format(speed._min, speed._max))
-      speed.update(new_speed)
-      return speed
-
-
-  def yaml_extract_break_speed(data):
-      Histo_config = data['Histogram Configuration']
-      new_speed = Histo_config['BreakSpeed']
-      speed = piezo_break_speed()
-      if !speed.validate(new_avg):
-          print("ERROR: Break Speed value out of range. Using default")
-          print("Range min ={0}, Max ={1}".format(speed._min, speed._max))
-      speed.update(new_speed)
-      return speed
-
-  def yaml_extract_make_speed(data):
-      Histo_config = data['Histogram Configuration']
-      new_speed = Histo_config['MakeSpeed']
-      speed = piezo_make_speed()
-      if !speed.validate(new_avg):
-          print("ERROR: Make Speed value out of range. Using default")
-          print("Range min ={0}, Max ={1}".format(speed._min, speed._max))
-      speed.update(new_speed)
-      return speed
-
-
-  def yaml_extract_num_traces(data):
-      Histo_config = data['Histogram Configuration']
-      new_traces = Histo_config['NumberTraces']
-      traces = number_traces()
-      if !traces.validate(new_traces):
-          print("ERROR: Num_traces value out of range. Using default")
-          print("Range min ={0}, Max ={1}".format(traces._min, traces._max))
-      traces.update(new_speed)
-      return traces
-
-
-  def yaml_extract_xmin(data):
-      config = data['Presentation Configuration']
-      new_xmin = config['xmin']
-      xmin = xmin()
-      if !xmin.validate(new_xmin):
-          print("ERROR: xmin value out of range. Using default")
-          print("Range min ={0}, Max ={1}".format(xmin._min, xmin._max))
-      xmin.update(new_xmin)
-      return xmin
-
-  def yaml_extract_xmax(data):
-      config = data['Presentation Configuration']
-      new_xmax = config['xmax']
-      xmax = xmax()
-      if !xmax.validate(new_xmax):
-          print("ERROR: xmax value out of range. Using default")
-          print("Range min ={0}, Max ={1}".format(xmax._min, xmax._max))
-      xmax.update(new_xmax)
-      return xmax
-
-
-  def yaml_extract_Gmin(data):
-      config = data['Presentation Configuration']
-      new_Gmin = config['Gmin']
-      Gmin = Gmin()
-      if !Gmin.validate(new_Gmin):
-          print("ERROR: Gmin value out of range. Using default")
-          print("Range min ={0}, Max ={1}".format(Gmin._min, Gmin._max))
-      Gmin.update(new_Gmin)
-      return Gmin
-
-
-  def yaml_extract_Gmax(data):
-      config = data['Presentation Configuration']
-      new_Gmax = config['Gmax']
-      Gmax = Gmax()
-      if !Gmax.validate(new_Gmax):
-          print("ERROR: Gmax value out of range. Using default")
-          print("Range min ={0}, Max ={1}".format(Gmax._min, Gmax._max))
-      Gmax.update(new_Gmax)
-      return Gmax
-
-
-
-  # testing
-  if __name__ == "__main__":
-      filepath = "Measurement_deafult_config.yaml"
-      data = yaml_loader(filepath)
-      print(data)
-
-
-#+END_SRC
 
 *** TODO UI-GUI
-   :PROPERTIES:
-   :header-args+:  :tangle   modules/ui_gui.py
-   :header-args+:  :noweb    tangle
-   :END:
+    :PROPERTIES:
+    :header-args+: :tangle   modules/ui_gui.py
+    :header-args+: :noweb    tangle
+    :END:
 # As with any module there is a section for the imports and the file headers, but these are unninteresting for any reader, thus they are put in comments and not exported to a PDF/HTML result
 #+BEGIN_SRC python :exports none
   #################################################################
@@ -2120,10 +2523,10 @@ The adwin driver is mostly a convenience layer between the ADwin and the Python 
 #+END_SRC
 *** TODO Adwin driver-base class
 The Adwin base class, provides with the minimum data structure and global parameters in order to define a proper driver for ADwin measurement process. This part of the file is split in:
-- Parameters :: Shown in [[Adwin driver-base class parameters]] defines the global parameters which are common to any process related to the ADwin measurements; such as the physical address in the computer
+- Constants :: Shown in [[Adwin driver-global constants]] defines the global constants, which represents parameters that  are needed for any process related to the ADwin
 - Interface :: Shown in [[Adwin driver-base class Interface]], defines the class and the high-level functionality common to all classes
 
-**** DONE Adwin driver-base class parameters
+**** DONE Adwin driver-global constants
 As previously stated the base-class  parameters hold information necessary for the ADwin instrument to work and some of the instrument characterization constants. The parameters are:
 - ADDRESS :: The address is the associated to the port used to communicate with the instrument.
 - BOOT_SCRIPT_DFLT :: This parameter has the location of the boot script used to load the operative system of the ADwin instrument.
@@ -2135,7 +2538,7 @@ As previously stated the base-class  parameters hold information necessary for t
 
 #+BEGIN_SRC python
   ###########################################################################
-  ## @class  ADW_GPARAM
+  ## @class  ADW_GCONST
   #  @brief  Parameters for Adwin instrument
   #
   #  @details This is the list of parameters used by the ADwin
@@ -2150,7 +2553,7 @@ As previously stated the base-class  parameters hold information necessary for t
   #           PROCESS_DELAY -> number of ADwin clock between each operation
   #                            set to 400, in order to operate every 10 us
   ###########################################################################
-  class ADW_GPARAM:
+  class ADW_GCONST:
       # Interface with computer
       ADDRESS = 0x150
       BOOT_SCRIPT_DFLT = 'C:\ADwin\ADwin9.btl'
@@ -2180,9 +2583,9 @@ Is important to note that any parameter used by this abstract driver, should be 
       ## @brief   Initilaization code
       #############################################################
       def __init__(self):
-          self._adwin_subdir= ADW_GPARAM.PROGRAM_DIR
-          self.adw = ADwin.ADwin(ADW_GPARAM.ADDRESS,1)
-          self.adw.Boot(ADW_GPARAM.BOOT_SCRIPT_DFLT)
+          self._adwin_subdir= ADW_GCONST.PROGRAM_DIR
+          self.adw = ADwin.ADwin(ADW_GCONST.ADDRESS,1)
+          self.adw.Boot(ADW_GCONST.BOOT_SCRIPT_DFLT)
       #############################################################
       ## @brief   Load the measurement program. Basic interface
       #############################################################
@@ -2335,7 +2738,7 @@ Code fragment [[adwin-driver-iv-interface]] shows the initialization code for th
       ## @brief   Initilaization code
       #############################################################
       def __init__(self, config):
-          super.__init__()
+          super(adwin_iv_driver).__init__()
           self.load_process()
           self.configure_process(config)
           self.config = config
@@ -2344,28 +2747,29 @@ Code fragment [[adwin-driver-iv-interface]] shows the initialization code for th
       #############################################################
       def load_process(self):
           iv_filename = "iv_measurement_process.T%d" % ADW_IV_CONST.PROCESS_NUMBER
-          super.load_process(iv_filename)
+          super(adwin_iv_driver).load_process(iv_filename)
       #############################################################
       ## @brief   Starts the measurement process
       #############################################################
       def start_process(self):
-          super.start_process(ADW_IV_CONST.PROCESS_NUMBER)
+          super(adwin_iv_driver).start_process(ADW_IV_CONST.PROCESS_NUMBER)
       #############################################################
       ## @brief   Stop the measurement process
       #############################################################
       def stop_process(self):
-          super.stop_process(ADW_IV_CONST.PROCESS_NUMBER)
+          super(adwin_iv_driver).stop_process(ADW_IV_CONST.PROCESS_NUMBER)
       #############################################################
       ## @brief   Print debug information if necessary
       #############################################################
       def analyze(self):
-          super.analyze(ADW_IV_CONST.PROCESS_NUMBER)
+          super(adwin_iv_driver).analyze(ADW_IV_CONST.PROCESS_NUMBER)
       #############################################################
       ## @brief   Set all parameters to start measuring
       #############################################################
-      def configure_process(self,config): #  (ref:adw-iv-configure)
+      def configure_process(self): #  (ref:adw-iv-configure)
+          config = self.config
           self.adw.Set_Processdelay(ADW_IV_CONST.PROCESS_NUMBER,
-                                    ADW_GPARAM.PROCES_DELAY )
+                                    ADW_GCONST.PROCES_DELAY )
           self.adw.SetDataFloat(config.log_array,
                                 ADW_IV_CONST.LOG_AMPL,1,len(config.log_array))
           self.adw.Set_Par(ADW_IV_CONST.START_JV, config.start_jv)
@@ -2514,7 +2918,7 @@ In a similar manner as used in [[Adwin IV driver-Initialization Code]] the code 
       ## @brief   Initilaization code
       #############################################################
       def __init__(self,config):
-          super.__init__()
+          super(adwin_hist_driver).__init__()
           self.load_process()
           self.configure_process()
           self.config = config
@@ -2523,30 +2927,30 @@ In a similar manner as used in [[Adwin IV driver-Initialization Code]] the code 
       #############################################################
       def load_process(self):
           filename = "hist_measurement_process.T%d" % ADW_HIST_CONST.PROCESS_NUMBER
-          super.load_process(filename)
+          super(adwin_hist_driver).load_process(filename)
       #############################################################
       ## @brief   Starts the measurement process
       #############################################################
       def start_process(self):
           self.adw.Set_Par(ADW_HIST_CONST.ERROR_STATUS, 0)
           self.adw.Set_Par(ADW_HIST_CONST.END_STATUS, 0)
-          super.start_process(ADW_HIST_CONST.PROCESS_NUMBER)
+          super(adwin_hist_driver).start_process(ADW_HIST_CONST.PROCESS_NUMBER)
       #############################################################
       ## @brief   Stop the measurement process
       #############################################################
       def stop_process(self):
-          super.stop_process(ADW_HIST_CONST.PROCESS_NUMBER)
+          super(adwin_hist_driver).stop_process(ADW_HIST_CONST.PROCESS_NUMBER)
       #############################################################
       ## @brief   Print debug information if necessary
       #############################################################
       def analyze(self):
-          super.analyze(ADW_HIST_CONST.PROCESS_NUMBER)
+          super(adwin_hist_driver).analyze(ADW_HIST_CONST.PROCESS_NUMBER)
       #############################################################
       ## @brief   Set all parameters to start measuring
       #############################################################
       def configure_hist_process(self):
           self.adw.Set_Processdelay(ADW_HIST_CONST.PROCESS_NUMBER,
-                                    ADW_GPARAM.PROCES_DELAY )
+                                    ADW_GCONST.PROCES_DELAY )
           self.adw.SetDataFloat(log_array, ADW_CONST.LOG_AMPL,1,len(log_array))
           self.adw.Set_Par(ADW_HIST_CONST.START_JV, config.start_jv)
           self.adw.Set_Par(ADW_HIST_CONST.MEASURE_JV, config.measure_jv)
@@ -2554,8 +2958,8 @@ In a similar manner as used in [[Adwin IV driver-Initialization Code]] the code 
           self.adw.Set_Par(ADW_HIST_CONST.BREAK_WAIT, config.break_wait)
           self.adw.Set_Par(ADW_HIST_CONST.MAKE_WAIT, config.make_wait)
           self.adw.Set_Par(ADW_HIST_CONST.AVG, config.num_avg)
-          self.adw.Set_Par(ADW_HIST_CONST.I_MIN_BRK, config.min_i_brk) # Unsure
-          self.adw.Set_Par(ADW_HIST_CONST.I_MAX_BRK, config.max_i_brk) # Unsure
+          self.adw.Set_Par(ADW_HIST_CONST.I_MIN_BRK, config.I_break_end)
+          self.adw.Set_Par(ADW_HIST_CONST.I_MAX_BRK, config.I_make_end) # Unsure
       <<src-adwin-hist-driver-api>>
 #+END_SRC
 
@@ -2587,14 +2991,14 @@ This section provides with the functions required to obtain the histogram measur
       return break_histogram, make_histogram
 
   def get_break_histogram(self):
-      length = self.adw.Get_Par(ADW_HIST_CONST.BREAK_IDX) -1 
+      length = self.adw.Get_Par(ADW_HIST_CONST.BREAK_IDX) -1
       current_hist = self.adw.GetData_Float(ADW_HIST_CONST.BRK_HIST, 1, length)
       conductance_hist = current_hist/(self.config.measure_jv * self.config.G0) #TODO FIX
       ret_hist = convert_to_list_float(conductance_hist)
       return ret_hist
 
   def get_break_voltage(self):
-      length = self.adw.Get_Par(ADW_HIST_CONST.BREAK_IDX) -1 
+      length = self.adw.Get_Par(ADW_HIST_CONST.BREAK_IDX) -1
       voltage_hist = self.adw.GetData_Float(ADW_HIST_CONST.BRK_VOLT, 1, length)
       new_voltage_hist = np.zeros(length)
       for idx in range(length):
@@ -2604,14 +3008,14 @@ This section provides with the functions required to obtain the histogram measur
       return ret_hist
 
   def get_make_histogram(self):
-      length = self.adw.Get_Par(ADW_HIST_CONST.MAKE_IDX) -1 
+      length = self.adw.Get_Par(ADW_HIST_CONST.MAKE_IDX) -1
       current_hist = self.adw.GetData_Float(ADW_HIST_CONST.MK_HIST, 1, length)
       conductance_hist = current_hist/(self.config.measure_jv * self.config.G0) #TODO FIX
       ret_hist = convert_to_list_float(conductance_hist)
       return ret_hist
 
   def get_make_voltage(self):
-      length = self.adw.Get_Par(ADW_HIST_CONST.MK_IDX) -1 
+      length = self.adw.Get_Par(ADW_HIST_CONST.MK_IDX) -1
       voltage_hist = self.adw.GetData_Float(ADW_HIST_CONST.MK_VOLT, 1, length)
       new_voltage_hist = np.zeros(length)
       for idx in range(length):
@@ -2625,9 +3029,9 @@ This section provides with the functions required to obtain the histogram measur
   def measurement_without_errors(self):
       return not self.adw.Get_Par(ADW_HIST_CONST.ERROR_STATUS) == 0
   def error_in_breaking(self):
-      return self.adw.Get_Par(ADW_HIST_CONST.ERROR_STATUS) & 1 == 1 
+      return self.adw.Get_Par(ADW_HIST_CONST.ERROR_STATUS) & 1 == 1
   def error_in_making(self):
-      return (self.adw.Get_Par(ADW_HIST_CONST.ERROR_STATUS) >> 1) & 1 == 1 
+      return (self.adw.Get_Par(ADW_HIST_CONST.ERROR_STATUS) >> 1) & 1 == 1
 #+END_SRC
 
 **** TODO ADwin Histogram test                                     :noexport:
@@ -2639,15 +3043,15 @@ Small test program for the ADwin hisotgram measurement.
   from adwin_histogram import *
 
   def convert_v_to_bin(V):
-      output_range = ADW_GPARAM.OUTPUT_RANGE
-      resolution = ADW_GPARAM.RESOLUTION
+      output_range = ADW_GCONST.OUTPUT_RANGE
+      resolution = ADW_GCONST.RESOLUTION
       bin_v,real_v =convert_V_to_bin(V,output_range,resolution)
       return real_v
 
   def wait_from_speed(speed):
       mod_speed = speed/100
-      scanrate = 1/ADW_GPARAM.PROCESS_DELAY
-      steps = 2*ADW_GPARAM.OUTPUT_RANGE/ 2**ADW_GPARAM.RESOLUTION
+      scanrate = 1/ADW_GCONST.PROCESS_DELAY
+      steps = 2*ADW_GCONST.OUTPUT_RANGE/ 2**ADW_GCONST.RESOLUTION
       wait = int(scanrate/mod_speed/steps)
 
 
@@ -2791,40 +3195,14 @@ Small test program for the ADwin hisotgram measurement.
 *** TODO Adwin driver-utilities
 There are several functionalities that are tied to the ADwin intrument but do not belong to it.
 
-**** TODO Logaritmic amplifier calibration
- #+CAPTION: log amplifier
- #+BEGIN_SRC python
-   class adwin_log_aplifier:
-       def __init__(self):
-           calibration_dir = ADW_GPARAM.PROGRAM_DIR
-           root_path = utl.get_script_root_path()
-           program_path = os.path.join(root_path,self._adwin_subdir)
-           filename = "calibration.txt"
-           calibration_file = os.path.join(program_path,filename)
-           if (os.path.isfile(calibration_file)):
-               read_data_file(calibration_file)
-           else:
-               raise Exception("Bad file, check %s" %calibration_file)
-       def read_data_file(self, filename):
-           # reads matrix from data file. As optional input a column can be specified
-           data=[]
-           file =open(filename)
-           for line in file:
-               line_list = [float(x) for x in line.split()]
-           data.append(line_list)
-           self.data = data
-       def get_calibration(self):
-           return self.data
- #+END_SRC
-
 **** TODO converter
 Converter from "regular numbers" to adwin parameters
 
 #+BEGIN_SRC python
   def convert_bin_to_V(N_bin):
       # converts ADC/DAC bins to voltage, given the voltage range and the resolution (in bits)
-      step = 2 * ADW_GPARAM.OUTPUT_RANGE / (2**ADW_GPARAM.RESOLUTION-1)
-      voltage = np.arange(-ADW_GPARAM.OUTPUT_RANGE, ADW_GPARAM.OUTPUT_RANGE+step, step)
+      step = 2 * ADW_GCONST.OUTPUT_RANGE / (2**ADW_GCONST.RESOLUTION-1)
+      voltage = np.arange(-ADW_GCONST.OUTPUT_RANGE, ADW_GCONST.OUTPUT_RANGE+step, step)
       try:
           N_bin = int(N_bin)
           data = voltage[N_bin]
@@ -2836,9 +3214,9 @@ Converter from "regular numbers" to adwin parameters
       return data
 
   def convert_V_to_bin(V):
-      # converts ADC/DAC voltage to bin number, given the voltage range and the ADW_GPARAM.RESOLUTION (in bits)
-      step=2*ADW_GPARAM.OUTPUT_RANGE/(2**ADW_GPARAM.RESOLUTION-1)
-      voltage=np.arange(-ADW_GPARAM.OUTPUT_RANGE, ADW_GPARAM.OUTPUT_RANGE+step, step)
+      # converts ADC/DAC voltage to bin number, given the voltage range and the ADW_GCONST.RESOLUTION (in bits)
+      step=2*ADW_GCONST.OUTPUT_RANGE/(2**ADW_GCONST.RESOLUTION-1)
+      voltage=np.arange(-ADW_GCONST.OUTPUT_RANGE, ADW_GCONST.OUTPUT_RANGE+step, step)
       try:
           l = len(V)
           N_bin = zeros(l)
@@ -2849,7 +3227,7 @@ Converter from "regular numbers" to adwin parameters
           diff = abs(voltage - V)
           N_bin = diff.argmin()
 
-      return N_bin, convert_bin_to_V(N_bin, ADW_GPARAM.OUTPUT_RANGE, ADW_GPARAM.RESOLUTION)
+      return N_bin, convert_bin_to_V(N_bin, ADW_GCONST.OUTPUT_RANGE, ADW_GCONST.RESOLUTION)
 #+END_SRC
 
 * Faulhaber Driver
@@ -3307,15 +3685,17 @@ The motor break-restore algorithm tries to set the conductance to a target value
 This section is for the interface with each measurement instrument.
 
 * Settings                                                         :noexport:
-#+BEGIN_SRC emacs-lisp :export none :results none
-  (setq org-babel-use-quick-and-dirty-noweb-expansion t)
-  (org-babel-do-load-languages
-   'org-babel-load-languages
-   '((python . t)
-     ))
-  (setq org-babel-python-command "/bin/python2")
-  (setq org-export-with-broken-links 'mark)
-#+END_SRC
+
+** Python setup
+ #+BEGIN_SRC emacs-lisp :export none :results none
+   (setq org-babel-use-quick-and-dirty-noweb-expansion t)
+   (org-babel-do-load-languages
+    'org-babel-load-languages
+    '((python . t)
+      ))
+   (setq org-babel-python-command "/bin/python2")
+   (setq org-export-with-broken-links 'mark)
+ #+END_SRC
 
 ** colorize
 #+BEGIN_SRC emacs-lisp
