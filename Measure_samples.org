@@ -518,19 +518,28 @@ The full configuration is the general interface for all configuratioins, as it e
        return program_config(data)
 #+END_SRC
 
-****** Testing                                                     :noexport:
-    :PROPERTIES:
-    :header-args+: :tangle   no
-    :header-args+: :noweb    tangle
-    :END:
+***** Testing program configuration                                :noexport:
+      :PROPERTIES:
+      :header-args+: :tangle   no
+      :header-args+: :noweb    tangle
+      :END:
 
-#+BEGIN_SRC python :results none
+#+BEGIN_SRC python 
   from modules.configuration import *
+  import numpy as np
   infile = "Measurement_deafult_config.yaml"
   outfile = "Measurement_read_config.yaml"
   config = yaml_build_config_from_file(infile)
   config.dump_config_file(outfile)
+  Gmax = config.display_config.get_Gmax()
+  Gmin = config.display_config.get_Gmin()
+  #  return Gmin
+
+  return np.log10(Gmin)
 #+END_SRC
+
+#+RESULTS:
+: -7.0
 
 **** TODO Configuration File Specification
       :PROPERTIES:
@@ -553,12 +562,14 @@ Also the introduction of configuration files does not mean that the program will
    IV Configuration :              # Continous measurement during motor break
      JunctureVoltage : 0.1         # Range 0.1-0.3
      AveragePoints : 32            # Number of points to average
+     UseLogAmplifier: true
 
    Histogram Configuration :
      JunctureVoltage : 0.1         # Range 0.1-0.3
      AveragePoints : 32            # Number of points to average
      BreakSpeed : 300              # Volts/s
      MakeSpeed : 500               # Volts/s
+     UseLogAmplifier: true
 
    Display Configuration:
      xmin : -0.5                   # nm
@@ -705,7 +716,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
         ## @brief   restores the default value of the parameter
         #############################################################
         def reset(self): #(ref:src-np-reset)
-            self.value = self._dflt
+            self.value = float(self._dflt)
         #############################################################
         ## @brief   Determines if a new value is in the permited
         #           range
@@ -719,7 +730,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
         #############################################################
         def update(self,new_val):#(ref:src-np-update)
             if self.validate(new_val):
-                self.value = new_val
+                self.value = float(new_val)
         #############################################################
         ## @brief   Updates the stored value only if the new
         #           value is within range, otherwise returns to
@@ -727,7 +738,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
         #############################################################
         def update_or_dflt(self,new_val,verbose=True): #(ref:src-np-update-dflt)
             if self.validate(new_val):
-                self.value = new_val
+                self.value = float(new_val)
             else:
                 self.reset()
                 if verbose:
@@ -1322,8 +1333,11 @@ There are parameters that con modify the behavior of the run, but are not expect
 #+END_SRC
 
 ***** TODO Logaritmic amplifier calibration
-  #+CAPTION: log amplifier
-  #+BEGIN_SRC python
+While not really a parameter, the ADwin uses an array to calibrate the measurements through a logarithmic amplifier; such array is read from a file on the system and need to be available for measurements.
+
+#+CAPTION: Logarithmic amplifier configuration for use in measurements
+#+name: src-log-amplifier-class
+#+BEGIN_SRC python
     class adwin_log_amplifier:
         def __init__(self):
             calibration_dir = adwin.ADW_GCONST.PROGRAM_DIR
@@ -1345,7 +1359,7 @@ There are parameters that con modify the behavior of the run, but are not expect
             self.data = data
         def get_calibration(self):
             return self.data
-  #+END_SRC
+#+END_SRC
 
 *** TODO UI-Program Interface                                 :Heavyrefactor:
     :PROPERTIES:
@@ -1564,7 +1578,7 @@ The basic parameters are:
               self.save_dir.print_param()
 #+END_SRC
 
-*** TODO UI-GUI
+*** TODO UI-GUI                                                :Needrefactor:
     :PROPERTIES:
     :header-args+: :tangle   modules/ui_gui.py
     :header-args+: :noweb    tangle
@@ -2192,7 +2206,7 @@ Code fragment [[adwin-driver-iv-interface]] shows the initialization code for th
       ## @brief   Initilaization code
       #############################################################
       def __init__(self, config):
-          super(adwin_iv_driver).__init__()
+          super(adwin_iv_driver,self).__init__()
           self.load_process()
           self.configure_process(config)
           self.config = config
@@ -2201,22 +2215,22 @@ Code fragment [[adwin-driver-iv-interface]] shows the initialization code for th
       #############################################################
       def load_process(self):
           filename = "iv_measurement_process.T".format(ADW_IV_CONST.PROCESS_NUMBER)
-          super(adwin_iv_driver).load_process(filename)
+          super(adwin_iv_driver,self).load_process(filename)
       #############################################################
       ## @brief   Starts the measurement process
       #############################################################
       def start_process(self):
-          super(adwin_iv_driver).start_process(ADW_IV_CONST.PROCESS_NUMBER)
+          super(adwin_iv_driver,self).start_process(ADW_IV_CONST.PROCESS_NUMBER)
       #############################################################
       ## @brief   Stop the measurement process
       #############################################################
       def stop_process(self):
-          super(adwin_iv_driver).stop_process(ADW_IV_CONST.PROCESS_NUMBER)
+          super(adwin_iv_driver,self).stop_process(ADW_IV_CONST.PROCESS_NUMBER)
       #############################################################
       ## @brief   Print debug information if necessary
       #############################################################
       def analyze(self):
-          super(adwin_iv_driver).analyze(ADW_IV_CONST.PROCESS_NUMBER)
+          super(adwin_iv_driver,self).analyze(ADW_IV_CONST.PROCESS_NUMBER)
       #############################################################
       ## @brief   Set all parameters to start measuring
       #############################################################
@@ -2374,7 +2388,7 @@ In a similar manner as used in [[Adwin IV driver-Initialization Code]] the code 
       ## @brief   Initilaization code
       #############################################################
       def __init__(self,config):
-          super(adwin_hist_driver).__init__()
+          super(adwin_hist_driver,self).__init__()
           self.load_process()
           self.configure_process()
           self.config = config
@@ -2383,24 +2397,24 @@ In a similar manner as used in [[Adwin IV driver-Initialization Code]] the code 
       #############################################################
       def load_process(self):
           filename = "hist_measurement_process.T%d" % ADW_HIST_CONST.PROCESS_NUMBER
-          super(adwin_hist_driver).load_process(filename)
+          super(adwin_hist_driver,self).load_process(filename)
       #############################################################
       ## @brief   Starts the measurement process
       #############################################################
       def start_process(self):
           self.adw.Set_Par(ADW_HIST_CONST.ERROR_STATUS, 0)
           self.adw.Set_Par(ADW_HIST_CONST.END_STATUS, 0)
-          super(adwin_hist_driver).start_process(ADW_HIST_CONST.PROCESS_NUMBER)
+          super(adwin_hist_driver,self).start_process(ADW_HIST_CONST.PROCESS_NUMBER)
       #############################################################
       ## @brief   Stop the measurement process
       #############################################################
       def stop_process(self):
-          super(adwin_hist_driver).stop_process(ADW_HIST_CONST.PROCESS_NUMBER)
+          super(adwin_hist_driver,self).stop_process(ADW_HIST_CONST.PROCESS_NUMBER)
       #############################################################
       ## @brief   Print debug information if necessary
       #############################################################
       def analyze(self):
-          super(adwin_hist_driver).analyze(ADW_HIST_CONST.PROCESS_NUMBER)
+          super(adwin_hist_driver,self).analyze(ADW_HIST_CONST.PROCESS_NUMBER)
       #############################################################
       ## @brief   Set all parameters to start measuring
       #############################################################
@@ -2424,9 +2438,7 @@ In a similar manner as used in [[Adwin IV driver-Initialization Code]] the code 
 #+END_SRC
 
 **** TODO Adwin histogram driver-interface functions
-     :PROPERTIES:
-     :header-args+: :tangle no
-     :END:
+
 This section provides with the functions required to obtain the histogram measurements from the instrument. This fragment provides with the following interfaces:
 - Process ended :: Queries the status variable from the ADwin and check if the status is the same as the one defined to be the end status
 - Measure :: The meaure runs the adwin histogram process and wait untill the measurement is finished, then obtains the corresponding make and break histograms and returns them
@@ -2494,163 +2506,146 @@ This section provides with the functions required to obtain the histogram measur
       return (self.adw.Get_Par(ADW_HIST_CONST.ERROR_STATUS) >> 1) & 1 == 1
 #+END_SRC
 
-*** TODO ADwin Histogram test                                      :noexport:
-    :PROPERTIES:
-    :header-args+: :tangle modules/adwin_histogram_test.py
-    :END:
-Small test program for the ADwin hisotgram measurement.
-#+BEGIN_SRC python
-  from adwin_histogram import *
+**** TODO ADwin Histogram test                                     :noexport:
+     :PROPERTIES:
+     :header-args+: :tangle adwin_histogram_test.py
+     :END:
+ Small test program for the ADwin hisotgram measurement.
+ #+BEGIN_SRC python
+   from modules.adwin_driver import *
+   from modules.configuration import *
+   import numpy as np
+   from pylab import *
 
-  def convert_v_to_bin(V):
-      output_range = ADW_GCONST.OUTPUT_RANGE
-      resolution = ADW_GCONST.RESOLUTION
-      bin_v,real_v =convert_V_to_bin(V,output_range,resolution)
-      return real_v
+   def plot_traces(axis, D_breaking, G_breaking, D_making, G_making):
+       axis.clear()
+       plt_breaking =  axis.plot(D_breaking,G_breaking,linewidth=2)
+       plt_making =  axis.plot(D_making,G_making,linewidth=2)
+       axis.set_yscale("log")
+       axis.set_xlim(0, max(max(D_making),max(D_breaking)))
+       axis.set_ylim(adw_display.Gmin, adw_display.Gmax)
+       axis.set_title("Conductance trace")
+       axis.set_xlabel('Displacement (nm)')
+       axis.set_ylabel('Conductance (G0)')
+       axis.set_aspect(1)
+       #axis.xticks(power(np.zeros(nGbins) + 10.0, range(-8,2,4)))
+       #axis.yticks(range(-10,1,10))
 
-  def wait_from_speed(speed):
-      mod_speed = speed/100
-      scanrate = 1/ADW_GCONST.PROCESS_DELAY
-      steps = 2*ADW_GCONST.OUTPUT_RANGE/ 2**ADW_GCONST.RESOLUTION
-      wait = int(scanrate/mod_speed/steps)
+   def plot_counts(axis, break_acc, make_acc, G_breaking, G_making, G_bins, D_bins):
+       tmp=np.histogram(G_breaking, bins=Gbins)
+       break_acc = break_acc + tmp[0]
+       tmp=np.histogram(G_making, bins=Gbins)
+       make_acc = make_acc + tmp[0]
+       # plot 1D histogram (2)
+       Gbins_plot = Gbins[0:-1]
+       Dbins_plot = Dbins[0:-1]
+       axis.clear()
+       plt_histo1D_breaking =  axis.plot(Gbins_plot, break_acc,linewidth=2)
+       plt_histo1D_making =  axis.plot(Gbins_plot,make_acc,linewidth=2)
+       axis.set_xscale("log")
+       axis.set_ylim(0, 1.2*max(max(break_acc),max(make_acc)))
+       axis.set_xlim(Gbins[0], Gbins[-1])
+       axis.set_title("1D Histogram")
+       axis.set_ylabel('Counts')
+       axis.set_xlabel('Conductance (G0)')
+       axis.set_aspect(1)
 
-
-  class adwin_histogram_config:
-      start_jv = 0
-      measure_jv = convert_v_to_bin(0.1)
-      end_jv = 0
-      break_wait = wait_from_speed(300)
-      make_wait = wait_from_speed(500)
-      num_avg = 32
-      G0 = 7.74809173e-5
-      min_i_brk = 7.74809173e-5 * 10 * convert_v_to_bin(0.1)
-      max_i_brk = 7.74809173e-5 * 30 * convert_v_to_bin(0.1)
-
-  class adw_display:
-      number_traces = 5000
-      nGbins = 251
-      nDbins = 161
-      xmin = -0.5 # nm
-      xmax = 2    # nm
-      Gmin = 1e-7 # G0
-      Gmax = 10   # G0
-
-
-  def plot_traces(axis, D_breaking, G_breaking, D_making, G_making):
-      axis.clear()
-      plt_breaking =  axis.plot(D_breaking,G_breaking,linewidth=2)
-      plt_making =  axis.plot(D_making,G_making,linewidth=2)
-      axis.set_yscale("log")
-      axis.set_xlim(0, max(max(D_making),max(D_breaking)))
-      axis.set_ylim(adw_display.Gmin, adw_display.Gmax)
-      axis.set_title("Conductance trace")
-      axis.set_xlabel('Displacement (nm)')
-      axis.set_ylabel('Conductance (G0)')
-      axis.set_aspect(1)
-      #axis.xticks(power(zeros(nGbins) + 10.0, range(-8,2,4)))
-      #axis.yticks(range(-10,1,10))
-
-  def plot_counts(axis, break_acc, make_acc, G_breaking, G_making, G_bins, D_bins):
-      tmp=np.histogram(G_breaking, bins=Gbins)
-      break_acc = break_acc + tmp[0]
-      tmp=np.histogram(G_making, bins=Gbins)
-      make_acc = make_acc + tmp[0]
-      # plot 1D histogram (2)
-      Gbins_plot = Gbins[0:-1]
-      Dbins_plot = Dbins[0:-1]
-      axis.clear()
-      plt_histo1D_breaking =  axis.plot(Gbins_plot, break_acc,linewidth=2)
-      plt_histo1D_making =  axis.plot(Gbins_plot,make_acc,linewidth=2)
-      axis.set_xscale("log")
-      axis.set_ylim(0, 1.2*max(max(break_acc),max(make_acc)))
-      axis.set_xlim(Gbins[0], Gbins[-1])
-      axis.set_title("1D Histogram")
-      axis.set_ylabel('Counts')
-      axis.set_xlabel('Conductance (G0)')
-      axis.set_aspect(1)
-
-      return break_acc, make_acc
+       return break_acc, make_acc
 
 
-  def plot_2d_histogram(axis, G_breaking, G_making, G_bins, D_bins):
-      index=max(find(G_breaking>0.5))
-      D_breaking = D_breaking - D_breaking[index]
+   def plot_2d_histogram(axis, G_breaking, G_making, G_bins, D_bins):
+       index=max(find(G_breaking>0.5))
+       D_breaking = D_breaking - D_breaking[index]
 
-      # plot 2D histogram (3)
-      tmp = histogram2d(G_breaking, D_breaking, bins=(Gbins, Dbins))
-      histo2D_breaking_sum = histo2D_breaking_sum + tmp[0]
+       # plot 2D histogram (3)
+       tmp = histogram2d(G_breaking, D_breaking, bins=(Gbins, Dbins))
+       histo2D_breaking_sum = histo2D_breaking_sum + tmp[0]
 
-      index1 = find(min(abs(log10(Gbins) - -2 ))==(abs(log10(Gbins) - -2 )))
-      index2 = find(min(abs(log10(Gbins) - -6 ))==(abs(log10(Gbins) - -6 )))
-      tmp = histo2D_breaking_sum[index2:index1,:]
+       index1 = find(min(abs(np.log10(Gbins) - -2 ))==(abs(np.log10(Gbins) - -2 )))
+       index2 = find(min(abs(np.log10(Gbins) - -6 ))==(abs(np.log10(Gbins) - -6 )))
+       tmp = histo2D_breaking_sum[index2:index1,:]
 
-      Cmax = 0
-      for y in range(0,index1-index2):
-          Cmax = max(max(tmp[y,:]), Cmax)
+       Cmax = 0
+       for y in range(0,index1-index2):
+           Cmax = max(max(tmp[y,:]), Cmax)
 
-      axis.clear()
-      surf = axis.contourf(Dbins_plot, Gbins_plot, histo2D_breaking_sum, linspace(0,Cmax/2,16))
-      axis.set_yscale("log")
-      axis.set_ylim(Gbins_plot[0], Gbins_plot[-1])
-      axis.set_xlim(Dbins_plot[0], Dbins_plot[-1])
-      axis.set_title("2D Histogram")
-      axis.set_xlabel('Displacement (nm)')
-      axis.set_ylabel('Conductance (G0)')
+       axis.clear()
+       surf = axis.contourf(Dbins_plot, Gbins_plot, histo2D_breaking_sum, np.linspace(0,Cmax/2,16))
+       axis.set_yscale("log")
+       axis.set_ylim(Gbins_plot[0], Gbins_plot[-1])
+       axis.set_xlim(Dbins_plot[0], Dbins_plot[-1])
+       axis.set_title("2D Histogram")
+       axis.set_xlabel('Displacement (nm)')
+       axis.set_ylabel('Conductance (G0)')
 
-      pause(1)
+       pause(1)
 
-  def stop():
-      """stop ADwin and motor"""
-      ADwin_stop_all_process()
-      ADwin_boot()
-      Faulhaber_command('v 0')
-  # Configure Plot
+   def stop():
+       """stop ADwin and motor"""
+       ADwin_stop_all_process()
+       ADwin_boot()
+       Faulhaber_command('v 0')
+   # Configure Plot
+   infile = "Measurement_deafult_config.yaml"
+   outfile = "Measurement_read_config.yaml"
+   config = yaml_build_config_from_file(infile)
+   dconfig = config.display_config
+   hconfig = config.hist_config
 
-  ## initialize histogram
-  Gbins = power(zeros(nGbins) + 10.0, linspace(log10(Gmin), log10(Gmax), nGbins)) # create conductance array
-  Dbins = linspace(xmin, xmax, nDbins) # create displacement array
+   nGbins = dconfig.get_nGbins()
+   nDbins = dconfig.get_nXbins()
+   xmin = dconfig.get_xmin()
+   xmax = dconfig.get_xmax()
+   Gmin = dconfig.get_Gmin()
+   Gmax = dconfig.get_Gmax()
+   print(Gmax)
 
-  histo1D_breaking_sum = zeros(nGbins-1)
-  histo1D_making_sum = zeros(nGbins-1)
-  histo2D_breaking_sum = zeros(shape=(nGbins-1,nDbins-1))
 
-  ## plot settings
-  rcParams['figure.figsize'] = [22, 10]
-  font = {'family' : 'normal',
-          'weight' : 'normal',
-          'size'   : 22}
-  fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
-  ax1.set_position([0.07, 0.1, 0.25, 0.8])
-  ax2.set_position([0.39, 0.1, 0.25, 0.8])
-  ax3.set_position([0.72, 0.1, 0.25, 0.8])
-  fig.set_facecolor('white')
-  matplotlib.rc('font', **font)
+   ## initialize histogram
+   Gbins = np.power(np.zeros(nGbins) + 10.0, np.linspace(np.log10(Gmin), np.log10(Gmax), nGbins)) # create conductance array
+   Dbins = np.linspace(xmin, xmax, nDbins) # create displacement array
 
-  adw = adwin_histogram_driver(adwin_histogram_config)
-  date = strftime("%y%m%d")
-  for i in range(adw_display.num_traces):
-      break_histogram, make_histogram = adw.measure_and_get_histogram()
-      if adw.error_in_measurement() :
-          continue
-      D_breaking = break_histogram[0]
-      G_breaking = break_histogram[1]
+   histo1D_breaking_sum = np.zeros(nGbins-1)
+   histo1D_making_sum = np.zeros(nGbins-1)
+   histo2D_breaking_sum = np.zeros(shape=(nGbins-1,nDbins-1))
 
-      D_making = make_histogram[0]
-      G_making = make_histogram[1]
+   ## plot settings
+   rcParams['figure.figsize'] = [22, 10]
+   font = {'family' : 'normal',
+           'weight' : 'normal',
+           'size'   : 22}
+   fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
+   ax1.set_position([0.07, 0.1, 0.25, 0.8])
+   ax2.set_position([0.39, 0.1, 0.25, 0.8])
+   ax3.set_position([0.72, 0.1, 0.25, 0.8])
+   fig.set_facecolor('white')
+   matplotlib.rc('font', **font)
 
-      plot_traces(ax1, D_breaking, G_breaking, D_making, G_making):
-      break_acc, make_acc = plot_counts(ax2, break_acc, make_acc, G_breaking, G_making, G_bins, D_bins)
-      plot_2d_histogram(ax2, G_breaking, G_making, G_bins, D_bins):
+   adw = adwin_hist_driver(hconfig)
+   date = strftime("%y%m%d")
+   for i in range(adw_display.num_traces):
+       break_histogram, make_histogram = adw.measure_and_get_histogram()
+       if adw.error_in_measurement() :
+           continue
+       D_breaking = break_histogram[0]
+       G_breaking = break_histogram[1]
 
-      filename = save_dir + 'scan_jf' + date + '_' + "%1.0f.dat" % x
-      file = open(filename, "w")
-      #make_general_header(file)
-      make_piezo_header(file)
-      save_data(file, D_breaking, G_breaking)
-      save_data(file, D_making, G_making)
-      file.close()
+       D_making = make_histogram[0]
+       G_making = make_histogram[1]
 
-#+END_SRC
+       plot_traces(ax1, D_breaking, G_breaking, D_making, G_making)
+       break_acc, make_acc = plot_counts(ax2, break_acc, make_acc, G_breaking, G_making, G_bins, D_bins)
+       plot_2d_histogram(ax2, G_breaking, G_making, G_bins, D_bins)
+
+       filename = save_dir + 'scan_jf' + date + '_' + "%1.0f.dat" % x
+       file = open(filename, "w")
+       #make_general_header(file)
+       make_piezo_header(file)
+       save_data(file, D_breaking, G_breaking)
+       save_data(file, D_making, G_making)
+       file.close()
+
+ #+END_SRC
 
 ** TODO Adwin driver-utilities
 There are several functionalities that are tied to the ADwin intrument but do not belong to it.
