@@ -711,6 +711,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
         #           range
         #############################################################
         def validate(self, val):#(ref:src-np-validation)
+            val = float(val)
             return (self._min <= val) & (val <= self._max)
         #############################################################
         ## @brief   Updates the stored value only if the new
@@ -724,7 +725,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
         #           value is within range, otherwise returns to
         #           the default value
         #############################################################
-        def update_or_dflt(self,new_val,verbose=False): #(ref:src-np-update-dflt)
+        def update_or_dflt(self,new_val,verbose=True): #(ref:src-np-update-dflt)
             if self.validate(new_val):
                 self.value = new_val
             else:
@@ -777,7 +778,6 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
         #############################################################
         def validate(self, val): # (ref:src-ip-validation)
             is_valid = super(integer_parameter,self).validate(val)
-            print(val)
             return  val and float(val).is_integer() and is_valid
         #############################################################
         ## @brief   Prints the parameter name and its value
