@@ -39,8 +39,6 @@
 #+LATEX_HEADER:
 
 
-
-
 * Introduction
 This file is a try to document and enhance the program in python to measure the samples through the mechanism of of break-junction in gold samples for the study of molecular properties.
 The reason for this is that the current program, while functional is under-documented and the full how-to is preserved through *oral tradition* which is regrettable for an investigation lab, and since the author of this document has a bit of experience in software development and documentation, this file was born.
@@ -48,7 +46,7 @@ The reason for this is that the current program, while functional is under-docum
 ** Break Junction
 The experiment is to measure the break junction
 
-**  Actuators and measuremnts
+** Actuators and measuremnts
 The program uses 2 different mechanical actuators to perform the measurements, and there are 2 different kind of samples to be measured. Finally the measurement is performed by analyzing the conductance of the sample.
 
 *** Mechanical actuators
@@ -76,7 +74,7 @@ Since the objective is to measure the transport properties, the most important p
 
 * Program Description
   :PROPERTIES:
-  :header-args+: :comments noweb
+  :header-args+: :comments no
   :END:
 
 
@@ -93,21 +91,20 @@ Obviously there is a series of additional modules which provide the interface to
    :header-args+:  :tangle   main.py
    :END:
 #+BEGIN_SRC python :exports none
-  #################################################################
-  ## @file    Main.py
-  #  @author  Joaquin Figueroa
-  #  @brief   Main file for measuring break-junction experiments
-  #
-  #  @details This is the main file for the program used to
-  #           measure samples using the break-junction technique.
-  #           This program provides a GUI to control the execution
-  #           based on providing the tools to configure a run.
-  #           The program automates the whole procedure by:
-  #           1- Automating the creation of the break junction
-  #           using the motor
-  #           2- Automating the measurement process using a piezo
-  #           actuator.
-  #################################################################
+  """ Module Main - Main file for measuring break-junction experiments
+
+      This is the main file for the program used to
+      measure samples using the break-junction technique.
+      This program provides a GUI to control the execution
+      based on providing the tools to configure a run.
+      The program automates the whole procedure by:
+      1- Automating the creation of the break junction
+         using the motor
+      2- Automating the measurement process using a piezo
+         actuator.
+  """
+  __author__ = "Joaquin Figueroa"
+
 #+END_SRC
 As with many considerable programs this one stars importing the necesary files. In this case, all the modules imported for the main file come from the modules created for the program.
 #+BEGIN_SRC python
@@ -125,7 +122,7 @@ The main loop is indeed a loop. It is intended to work in the following way.
        ## @fn    : main_exit
        #  @brief : Terminates program execution
        ############################################################
-       def main_exit(config) :
+       def main_exit(config):
            print("Program Finished successfully")
            sys.exit()
      #+END_SRC
@@ -163,7 +160,7 @@ The outcome picked by the user must be translated into a command in the program,
   #             2- only perform break-junction
   #             3- perform full measurement of the sample
   ############################################################
-  def execute_ui_cmd(ui_cmd,config) :
+  def execute_ui_cmd(ui_cmd, config):
       switch = {
           UI_CMD.EXIT    : main_exit,
           UI_CMD.M_BREAK : main_motor_break,
@@ -181,12 +178,12 @@ Finally the main loop is executed indefinitely until the user terminates the pro
   ##            the program
   ############################################################
   def main():
-      while True :
+      while True:
           ui_config = ui_get_gui_config()
           ui_cmd    = ui_config.cmd
           config    = ui_config.config
           config._b_params.print_all()
-          execute_ui_cmd(ui_cmd,config)
+          execute_ui_cmd(ui_cmd, config)
 
   if __name__ == "__main__":
       main()
@@ -240,26 +237,21 @@ The program configuration, is the interface that allows the user to modify the p
 
 # Here we put the header
 #+BEGIN_SRC python :exports none
-  #################################################################
-  ## @file    configuration.py
-  #  @author  Joaquin Figueroa
-  #  @dateMon Jan 16, 2017
-  #  @brief   Defines the whole interface to configure the program
-  #
-  #  @details This file defines the different configuration
-  #           structures and interfaces, while also providing
-  #           with the interface for the configuration file parsing
-  #
-  #           The Main purpose of this file is to generate the
-  #           necesary configurations for the different processes
-  #           performed by the program
-  #################################################################
-  import modules.adwin_driver as adwin
-  import modules.utilities as utl
-  import modules.parameters as param
-  import os
-  import sys
+  """ Module configuration - Defines the whole interface to configure the program
+
+             This file defines the different configuration
+             structures and interfaces, while also providing
+             with the interface for the configuration file parsing
+  
+             The Main purpose of this file is to generate the
+             necesary configurations for the different processes
+             performed by the program
+  """
+  __author___ = "Joaquin Figueroa"
+
   import yaml
+  import modules.adwin_driver as adwin
+  import modules.parameters as param
 #+END_SRC
 
 **** TODO Program Configuration-Process configurations
@@ -275,34 +267,37 @@ In order to provide with the complete interface, the file is separated in:
 The full configuration is the general interface for all configuratioins, as it encompasses them all.
 
 #+BEGIN_SRC python
-  class program_config:
-      def __init__(self,data=None):
+  class program_config(object):
+      def __init__(self, data=None):
           iv_data = None
           hist_data = None
           display_data = None
-          if data :
+          if data:
               iv_data = data.get('IV Configuration')
               hist_data = data.get('Histogram Configuration')
               display_data = data.get('Display Configuration')
+              save_data = data.get('Save Options')
 
           self.iv_config = iv_config(iv_data)
           self.hist_config = histogram_config(hist_data)
           self.display_config = display_config(display_data)
-      def dump_config_file(self,filename = None):
+          self.save_config = save_options(save_data)
+      def dump_config_file(self, filename=None):
           config = {}
           config['IV Configuration'] = self.iv_config.config
           config['Histogram Configuration'] = self.hist_config.config
           config['Display Configuration'] = self.display_config.config
+          config['Save Options'] = self.save_config.config
           yaml_dump(filename, config)
 
 #+END_SRC
 
 ***** IV-Measurement Configuration
 #+BEGIN_SRC python
-  class iv_config:
-      def __init__(self,data=None):
+  class iv_config(object):
+      def __init__(self, data=None):
           self.build_config_dflt()
-          if data :
+          if data:
               self.update_config_with_data(data)
 
       def build_config_dflt(self):
@@ -314,7 +309,6 @@ The full configuration is the general interface for all configuratioins, as it e
           self.start_jv = param.GLOBAL_CONSTANTS.start_jv
           self.end_jv = param.GLOBAL_CONSTANTS.end_jv
           self.max_data = param.GLOBAL_CONSTANTS.IV_max_data_points
-          self.g0 = param.GLOBAL_CONSTANTS.G0
           self.config = {}
           self.update_config()
 
@@ -323,45 +317,39 @@ The full configuration is the general interface for all configuratioins, as it e
           self.config['AveragePoints'] = self.avg_points.value
           self.config['UseLogAmplifier'] = self.use_log_amp.value
 
-      def update_config_with_data(self,data):
+      def update_config_with_data(self, data):
           self.measure_jv.update_or_dflt(data.get('JunctureVoltage'))
           self.avg_points.update_or_dflt(data.get('AveragePoints'))
           self.use_log_amp.update_or_dflt(data.get('UseLogAmplifier'))
           self.update_config()
 
-      def convert_to_adwin(self):
-          adwin_measure_jv = adwin.adwin_ADC(self.measure_jv.value)
-          measure_jv.update(convert_bin_to_V(adwin_measure_jv))
-
       def get_log_array(self):
           return self.log_ampl.get_calibration()
       def get_start_jv(self):
-          return adwin.adwin_ADC_value(self.start_jv)
+          return adwin.adwin_ADC(self.start_jv)
       def get_measure_jv(self):
-          return adwin.adwin_ADC_value(self.measure_jv.value)
-      def get_stop_jv(self):
-          return adwin.adwin_ADC_value(self.stop_jv)
+          return adwin.adwin_ADC(self.measure_jv.value)
+      def get_end_jv(self):
+          return adwin.adwin_ADC(self.end_jv)
       def get_avg_points(self):
           return self.avg_points.value
-      def get_start_jv(self):
-          return adwin.adwin_ADC_value(self.stop_jv)
 
       def get_wait_cycles(self):
           return adwin.adwin_convert_ms_to_cycles(self.wait)
       def get_max_data(self):
           return self.max_data
       def get_real_jv(self):
-          return adwin.adwin_DAC_value(sef.get_measure_jv())
+          return adwin.adwin_DAC(self.get_measure_jv())
       def get_use_log_amp(self):
           return self.use_log_amp.value
 #+END_SRC
 
 ***** Histogram-Measurement Configuration
 #+BEGIN_SRC python
-  class histogram_config:
-      def __init__(self,data=None):
+  class histogram_config(object):
+      def __init__(self, data=None):
           self.build_config_dflt()
-          if data :
+          if data:
               self.update_config_with_data(data)
 
       def build_config_dflt(self):
@@ -374,8 +362,8 @@ The full configuration is the general interface for all configuratioins, as it e
           self.break_speed = param.break_speed()
           self.make_speed = param.make_speed()
           self.G0 = param.GLOBAL_CONSTANTS.G0
-          self.G_open = 1e-5 * self.G0
-          self.G_closed =  2 * self.G0
+          self.G_break_end = 1e-5 * self.G0
+          self.G_make_end = 2 * self.G0
           self.config = {}
           self.update_config()
 
@@ -386,7 +374,7 @@ The full configuration is the general interface for all configuratioins, as it e
           self.config['MakeSpeed'] = self.make_speed.value
           self.config['UseLogAmplifier'] = self.use_log_amp.value
 
-      def update_config_with_data(self,data):
+      def update_config_with_data(self, data):
           self.measure_jv.update_or_dflt(data.get('JunctureVoltage'))
           self.avg_points.update_or_dflt(data.get('AveragePoints'))
           self.break_speed.update_or_dflt(data.get('BreakSpeed'))
@@ -394,37 +382,33 @@ The full configuration is the general interface for all configuratioins, as it e
           self.use_log_amp.update_or_dflt(data.get('UseLogAmplifier'))
           self.update_config()
 
-      def convert_to_adwin(self):
-          adwin_measure_jv = convert_V_to_bin(self.measure_jv.value)
-          measure_jv.update(convert_bin_to_V(adwin_measure_jv))
-
       def get_log_array(self):
           return self.log_ampl.get_calibration()
       def get_start_jv(self):
-          return adwin.adwin_ADC_value(self.start_jv)
+          return adwin.adwin_ADC(self.start_jv)
       def get_measure_jv(self):
-          return adwin.adwin_ADC_value(self.measure_jv.value)
-      def get_stop_jv(self):
-          return adwin.adwin_ADC_value(self.stop_jv)
+          return adwin.adwin_ADC(self.measure_jv.value)
+      def get_end_jv(self):
+          return adwin.adwin_ADC(self.end_jv)
       def get_avg_points(self):
           return self.avg_points.value
 
       def get_real_jv(self):
-          return adwin.adwin_DAC_value(sef.get_measure_jv())
+          return adwin.adwin_DAC(self.get_measure_jv())
       def get_use_log_amp(self):
           return self.use_log_amp.value
       def get_break_wait(self):
           break_speed = self.break_speed.value
           # We are taking 0->1000 to 0->10, because that's the Adwin range
-          break_steps = adwin_ADC(break_speed/100) *1e-3 # in ms
-          break_wait =  1/break_steps
-          return adwin.adwin_convert_ms_to_cycles(break_steps)
+          break_steps = adwin.adwin_ADC(break_speed/100) *1e-3 # in ms
+          break_wait = 1/break_steps
+          return adwin.adwin_convert_ms_to_cycles(break_wait)
       def get_make_wait(self):
           make_speed = self.make_speed.value
           # We are taking 0->1000 to 0->10, because that's the Adwin range
           make_steps = adwin.adwin_ADC(make_speed/100) *1e-3 # in ms
-          make_wait =  1/make_steps
-          return adwin.adwin_convert_ms_to_cycles(make_steps)
+          make_wait = 1/make_steps
+          return adwin.adwin_convert_ms_to_cycles(make_wait)
       def get_I_break_end(self):
           return  self.G_break_end*self.get_real_jv()
       def get_I_make_end(self):
@@ -434,10 +418,10 @@ The full configuration is the general interface for all configuratioins, as it e
 
 ***** Display Configuration
 #+BEGIN_SRC python
-  class display_config:
-      def __init__(self,data=None):
+  class display_config(object):
+      def __init__(self, data=None):
           self.build_config_dflt()
-          if data :
+          if data:
               self.update_config_with_data(data)
 
       def build_config_dflt(self):
@@ -448,8 +432,6 @@ The full configuration is the general interface for all configuratioins, as it e
           self.nGbins = param.display_nGbins()
           self.nXbins = param.display_nXbins()
           self.traces = param.traces()
-          self.save_dir = param.save_dir()
-          self.save_data = param.save_data()
           self.config = {}
           self.update_config()
 
@@ -462,10 +444,8 @@ The full configuration is the general interface for all configuratioins, as it e
           self.config['nGbins'] = self.nGbins.value
           self.config['nDbins'] = self.nXbins.value
           self.config['NumberTraces'] = self.traces.value
-          self.config['SaveData'] = self.save_data.value
-          self.config['SaveDir'] = self.save_dir.path
 
-      def update_config_with_data(self,data):
+      def update_config_with_data(self, data):
           self.xmin.update_or_dflt(data.get('xmin'))
           self.xmax.update_or_dflt(data.get('xmax'))
           self.Gmin.update_or_dflt(data.get('Gmin'))
@@ -473,8 +453,6 @@ The full configuration is the general interface for all configuratioins, as it e
           self.nGbins.update_or_dflt(data.get('nGbins'))
           self.nXbins.update_or_dflt(data.get('nDbins'))
           self.traces.update_or_dflt(data.get('NumberTraces'))
-          self.save_dir.update(data.get('SaveDir'))
-          self.save_data.update(data.get('SaveData'))
 
           self.update_config()
 
@@ -492,13 +470,39 @@ The full configuration is the general interface for all configuratioins, as it e
           return self.nXbins.value
       def get_traces(self):
           return self.traces.value
+#+END_SRC
+
+***** Save options
+#+BEGIN_SRC python
+  class save_options(object):
+      def __init__(self, data=None):
+          self.build_config_dflt()
+          if data:
+              self.update_config_with_data(data)
+
+      def build_config_dflt(self):
+          self.save_dir = param.save_dir()
+          self.save_data = param.save_data()
+          self.config = {}
+          self.update_config()
+
+
+      def update_config(self):
+          self.config['SaveData'] = self.save_data.value
+          self.config['SaveDir'] = self.save_dir.value
+
+      def update_config_with_data(self, data):
+          self.save_dir.update(data.get('SaveDir'))
+          self.save_data.update(data.get('SaveData'))
+
+          self.update_config()
+
       def get_save_data(self):
           return self.save_data.value
       def get_save_dir(self):
           return self.save_dir.value
 
 #+END_SRC
-
 ***** File Interface
 
  Since the program will be configured through a configuration file, it only makes sense to provide with a writer and a parser for it. Fortunately we already have most of the heavy-lifting done by YAML libraries and the parameters configurations in the UI-interface part of the program, I'd expect this part to be relatively easy to understand.
@@ -511,7 +515,7 @@ The full configuration is the general interface for all configuratioins, as it e
 
    def yaml_dump(filepath, data):
        with open(filepath, "w") as file_descriptor:
-           yaml.dump(data, file_descriptor,  default_flow_style = False, allow_unicode = True)
+           yaml.dump(data, file_descriptor, default_flow_style=False)
 
    def yaml_build_config_from_file(filepath):
        data = yaml_loader(filepath)
@@ -564,7 +568,7 @@ Also the introduction of configuration files does not mean that the program will
      AveragePoints : 32            # Number of points to average
      UseLogAmplifier: true
 
-   Histogram Configuration :
+   Histogram Configuration:
      JunctureVoltage : 0.1         # Range 0.1-0.3
      AveragePoints : 32            # Number of points to average
      BreakSpeed : 300              # Volts/s
@@ -579,7 +583,8 @@ Also the introduction of configuration files does not mean that the program will
      nGbins : 251                  # Slots for Conductance histogram
      nDbins : 161                  # Slots for Distance histogram
      NumberTraces : 5000            # Number of histograms
-     # Where to save the Data
+
+   Save Options:
      SaveData: Yes
      SaveDir : 'E:/Measurements/Fullerenos/C60 2/Molecule/'
  #+END_SRC
@@ -594,22 +599,19 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
 
 # Here we put the header
 #+BEGIN_SRC python :exports none
-  #################################################################
-  ## @file    parameters.py
-  #  @author  Joaquin Figueroa
-  #  @dateMon Jan 16, 2017
-  #  @brief   Defines configurable parameters and global constants
-  #
-  #  @details This file defines the configurable parameters of the
-  #           program with their corresponding interfaces and
-  #           validations.
-  #           Also the program provides the definitions of the
-  #           global constants of the program
-  #################################################################
+  """ Module parameters - Defines configurable parameters and global constants
+
+             This file defines the configurable parameters of the
+             program with their corresponding interfaces and
+             validations.
+             Also the program provides the definitions of the
+             global constants of the program
+  """  
+  __author__ = "Joaquin Figueroa"
+
   import modules.utilities as utl
   import modules.adwin_driver as adwin
   import os
-  import sys
 #+END_SRC
 
 **** DONE Configurable parameters definitions
@@ -624,7 +626,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
   The data directory parameter is defined in [[src-config-data-dir-class]], which provides the full interface for the data directory.
 
   - Initialization Function :: Defined at [[(src-dd-init)]]. This function uses the "reset" function
-  - Reset function :: Defined at [[(src-dd-reset)]], this function restores the default data directory,  is chosen to be a "data" subdirectory of the program root directory.
+  - Reset function :: Defined at [[(src-dd-reset)]], this function restores the default data directory, is chosen to be a "data" subdirectory of the program root directory.
   - Validation Function :: Defined at [[(src-dd-validation)]], this function returns true if the chosen path is a directory as recognyzed by the operative system.
   - Update functionality :: Defined at [[(src-dd-update)]], this function is used to change the data directory to a new chosen path in the computer.
   -  Printing function ::  Defined at [[(src-dd-print)]] and used mainly for debug purposes this function prints the chosen data directory to the console.
@@ -641,20 +643,21 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
     #           that codifies the directory, depending on the
     #           os and inspect modules
     #############################################################
-    class save_dir:
+    class save_dir(object):
         _subdir= "data"#(ref:src-dd-dflt)
         #############################################################
         ## @brief   Initilaization code
         #############################################################
         def __init__(self):#(ref:src-dd-init)
+            self.value = None
             self.reset()
         ##############################################################
         ## @brief   restores the default value of the number of traces
         ##############################################################
         def reset(self): #(ref:src-dd-reset)
             script_root = utl.get_script_root_path()
-            data_path = os.path.join(script_root,self._subdir)
-            self.path = data_path
+            data_path = os.path.join(script_root, self._subdir)
+            self.value = data_path
         ##############################################################
         ## @brief   Ensures the new target string is a directory
         ##############################################################
@@ -664,14 +667,14 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
         ## @brief   Updates the target directory only if its a
         #           directory in the filesystem
         #############################################################
-        def update(self,new_path):#(ref:src-dd-update)
+        def update(self, new_path):#(ref:src-dd-update)
             if self.validate(new_path):
-                self.path = new_path
+                self.value = new_path
         #############################################################
         ## @brief   Print the parameter.
         #############################################################
         def print_param(self):#(ref:src-dd-print)
-            print("Data Directory = %s" % self.path)
+            print("Data Directory = %s" % self.value)
   #+END_SRC
 
 ***** DONE Numerical Parameters definition
@@ -706,11 +709,12 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
         #############################################################
         ## @brief   Initilaization code
         #############################################################
-        def __init__(self,name,dflt_val,min_val,max_val):#(ref:src-np-init)
+        def __init__(self, name, dflt_val, min_val, max_val):#(ref:src-np-init)
             self._dflt = dflt_val
             self._min = min_val
             self._max = max_val
             self.name = name
+            self.value = None
             self.reset()
         #############################################################
         ## @brief   restores the default value of the parameter
@@ -728,7 +732,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
         ## @brief   Updates the stored value only if the new
         #           value is within range
         #############################################################
-        def update(self,new_val):#(ref:src-np-update)
+        def update(self, new_val):#(ref:src-np-update)
             if self.validate(new_val):
                 self.value = float(new_val)
         #############################################################
@@ -736,7 +740,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
         #           value is within range, otherwise returns to
         #           the default value
         #############################################################
-        def update_or_dflt(self,new_val,verbose=True): #(ref:src-np-update-dflt)
+        def update_or_dflt(self, new_val, verbose=True): #(ref:src-np-update-dflt)
             if self.validate(new_val):
                 self.value = float(new_val)
             else:
@@ -751,10 +755,10 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
         #############################################################
         ## @brief   Prints error message if parameter outside range
         #############################################################
-        def error_message(self,value):#(ref:src-np-error)
+        def error_message(self, value):#(ref:src-np-error)
             print("------------------------------------------------")
             print("ERROR INVALID PARAMETER VALUE:")
-            print("Value {0} is invalid for parameter {1}".format(self.name,value))
+            print("Value {0} is invalid for parameter {1}".format(self.name, value))
             print("Using default value {0}".format(self._dflt))
             print("Valid range for parameter {0} is:".format(self.name))
             print("Range min ={0}, Max ={1}".format(self._min, self._max))
@@ -778,18 +782,26 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
         #############################################################
         ## @brief   Initilaization code
         #############################################################
-        def __init__(self,name,dflt_val,min_val,max_val):
+        def __init__(self, name, dflt_val, min_val, max_val):
             _dflt = int(dflt_val)
             _min = int(min_val)
             _max = int(max_val)
-            super(integer_parameter,self).__init__(name,_dflt,_min,_max)
+            self.value = None
+            super(integer_parameter, self).__init__(name, _dflt, _min, _max)
         #############################################################
         ## @brief   Determines if a new int value is in the permited
         #           range, and integer
         #############################################################
         def validate(self, val): # (ref:src-ip-validation)
-            is_valid = super(integer_parameter,self).validate(val)
+            is_valid = super(integer_parameter, self).validate(val)
             return  val and float(val).is_integer() and is_valid
+        #############################################################
+        ## @brief   Determines if a new int value is in the permited
+        #           range, and integer
+        #############################################################
+        def update(self, new_val): # (ref:src-ip-validation)
+            super(integer_parameter, self).update(val)
+            self.value = int(self.value)
         #############################################################
         ## @brief   Prints the parameter name and its value
         #############################################################
@@ -801,7 +813,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
   Test the functionality of a generic numerical parameter. Just excecuted by using =C-c C-c=. Should all be true
   #+BEGIN_SRC python :tangle no
     import modules.ui_config as c
-    tp = c.numerical_parameter("Test", 7.8, 0.5,50)
+    tp = c.numerical_parameter("Test", 7.8, 0.5, 50)
     t1 = tp.value == 7.8
     t2 = tp.validate(-1.1) == False
     tp.update(0.12)
@@ -816,7 +828,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
     tp.reset()
     t8 = tp.value == 7.8
     t9 = tp.name == "Test"
-    return [t1,t2,t3,t4,t5,t6,t7,t8,t9]
+    return [t1, t2, t3, t4, t5, t6, t7, t8, t9]
   #+END_SRC
 
   #+RESULTS:
@@ -845,7 +857,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
              _min = 1
              _max = 99
              _name = "Juncture Voltage"
-             super(avg_points, self).__init__(_name,_dflt, _min, _max)
+             super(avg_points, self).__init__(_name, _dflt, _min, _max)
    #+END_SRC
 
 ****** DONE Juncture Voltage
@@ -871,7 +883,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
              _min = 0.0
              _max = 0.3
              _name = "Juncture Voltage"
-             super(juncture_voltage, self).__init__(_name,_dflt, _min, _max)
+             super(juncture_voltage, self).__init__(_name, _dflt, _min, _max)
    #+END_SRC
 
 ******* DONE juncture voltage test                                 :noexport:
@@ -893,7 +905,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
      jv.reset()
      t8 = jv.value == 0.1
      t9 = jv.name == "Juncture Voltage"
-     return [t1,t2,t3,t4,t5,t6,t7,t8,t9]
+     return [t1, t2, t3, t4, t5, t6, t7, t8, t9]
    #+END_SRC
 
     #+RESULTS:
@@ -922,7 +934,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
              _min = 30.0
              _max = 300.0
              _name = "Piezo Speed"
-             super(break_speed, self).__init__(_name,_dflt, _min, _max)
+             super(break_speed, self).__init__(_name, _dflt, _min, _max)
    #+END_SRC
 ******* DONE Piezo brk test                                        :noexport:
    Test functionality. Just executed by using =C-c C-c=. Should all be true
@@ -944,7 +956,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
      t8 = (ps.value == 300) & (ps.fixed_speed == 300.0)
      ps.update(-90)
      t9 = (ps.value == 300) & (ps.fixed_speed == 300.0)
-     return [t1,t2,t3,t4,t5,t6,t7,t8,t9]
+     return [t1, t2, t3, t4, t5, t6, t7, t8, t9]
    #+END_SRC
 
    #+RESULTS:
@@ -974,7 +986,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
              _min = 30.0
              _max = 500.0
              _name = "Piezo Speed"
-             super(make_speed, self).__init__(_name,_dflt, _min, _max)
+             super(make_speed, self).__init__(_name, _dflt, _min, _max)
    #+END_SRC
 ******* DONE Piezo make test                                       :noexport:
    Test functionality. Just executed by using =C-c C-c=. Should all be true
@@ -996,7 +1008,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
      t8 = (ps.value == 300) & (ps.fixed_speed == 300.0)
      ps.update(-90)
      t9 = (ps.value == 300) & (ps.fixed_speed == 300.0)
-     return [t1,t2,t3,t4,t5,t6,t7,t8,t9]
+     return [t1, t2, t3, t4, t5, t6, t7, t8, t9]
    #+END_SRC
 
    #+RESULTS:
@@ -1017,15 +1029,15 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
      #           from closed juncture to open and back.
      #############################################################
      class traces(integer_parameter):
-           #############################################################
-           ## @brief   Initilaization code
-           #############################################################
-           def __init__(self):
-               _dflt = int(5000)
-               _min = int(1)
-               _max = int(20000)
-               _name = "Number of Traces"
-               super(traces, self).__init__(_name,_dflt, _min, _max)
+         #############################################################
+         ## @brief   Initilaization code
+         #############################################################
+         def __init__(self):
+             _dflt = int(5000)
+             _min = int(1)
+             _max = int(20000)
+             _name = "Number of Traces"
+             super(traces, self).__init__(_name, _dflt, _min, _max)
    #+END_SRC
 ******* DONE number traces test                                    :noexport:
    #+BEGIN_SRC python :tangle no
@@ -1044,7 +1056,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
      t7 = tr.value == 8000
      tr.reset()
      t8 = tr.value == 5000
-     return [t1,t2,t3,t4,t5,t6,t7,t8]
+     return [t1, t2, t3, t4, t5, t6, t7, t8]
    #+END_SRC
 
    #+RESULTS:
@@ -1072,7 +1084,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
              _min = -0.9
              _max = -0.1
              _name = "display_xmin"
-             super(display_xmin, self).__init__(_name,_dflt, _min, _max)
+             super(display_xmin, self).__init__(_name, _dflt, _min, _max)
    #+END_SRC
 ****** DONE Display xmax
    To display the measurements on real time, we show the histogram, and we define the maximum value for the *X-axis*, since we plot in *distance* value, we define the minimun as:
@@ -1097,7 +1109,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
              _min = 0.9
              _max = 3.9
              _name = "display_xmax"
-             super(display_xmax, self).__init__(_name,_dflt, _min, _max)
+             super(display_xmax, self).__init__(_name, _dflt, _min, _max)
    #+END_SRC
 ****** DONE Display Gmin
    To display the measurements on real time, we show the histogram, and we define the minimum value for the *Y-axis*, since we plot in *conductance* value, we define the minimun as:
@@ -1122,7 +1134,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
              _min = 1e-9
              _max = 1e-6
              _name = "display_Gmin"
-             super(display_Gmin, self).__init__(_name,_dflt, _min, _max)
+             super(display_Gmin, self).__init__(_name, _dflt, _min, _max)
    #+END_SRC
 ****** DONE Display Gmax
    To display the measurements on real time, we show the histogram, and we define the maximum value for the *Y-axis*, since we plot in *Conductance* value, we define the maximum as:
@@ -1147,7 +1159,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
              _min = 1
              _max = 100
              _name = "display_Gmax"
-             super(display_Gmax, self).__init__(_name,_dflt, _min, _max)
+             super(display_Gmax, self).__init__(_name, _dflt, _min, _max)
    #+END_SRC
 
 ****** DONE Display num-X-slots
@@ -1173,7 +1185,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
              _min = 99
              _max = 999
              _name = "display_nDbins"
-             super(display_nXbins, self).__init__(_name,_dflt, _min, _max)
+             super(display_nXbins, self).__init__(_name, _dflt, _min, _max)
    #+END_SRC
 
 ****** DONE Display num-G-slots
@@ -1199,7 +1211,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
              _min = 99
              _max = 999
              _name = "display_nGbins"
-             super(display_nGbins, self).__init__(_name,_dflt, _min, _max)
+             super(display_nGbins, self).__init__(_name, _dflt, _min, _max)
    #+END_SRC
 
 
@@ -1231,9 +1243,10 @@ This parameter class is defined in a very similar fashion as the generic numeric
       #############################################################
       ## @brief   Initilaization code
       #############################################################
-      def __init__(self,name,dflt = True):#(ref:src-bool-init)
-          self._name = name
+      def __init__(self, name, dflt=True):#(ref:src-bool-init)
           self._dflt = dflt
+          self.name = name
+          self.value = None
           self.reset()
       ##############################################################
       ## @brief   restores the default value of the number of traces
@@ -1257,16 +1270,16 @@ This parameter class is defined in a very similar fashion as the generic numeric
       #           value is within range, otherwise returns to
       #           the default value
       #############################################################
-      def update_or_dflt(self,new_val): #(ref:src-np-update-dflt)
+      def update_or_dflt(self, new_val): #(ref:src-np-update-dflt)
           if self.validate(new_val):
               self.value = new_val
           else:
-                  self.reset()
+              self.reset()
       #############################################################
       ## @brief   Print the parameter.
       #############################################################
       def print_param(self):#(ref:src-bool-print)
-          print("{0} is = {1}".format(self.name, self.value))
+          print("{0} is = {1}".format(self._name, self.value))
 
 #+END_SRC
 ****** DONE Histogram Save Data
@@ -1290,7 +1303,7 @@ The user may decide not to save the data, for example if is just checking the co
       #############################################################
       def __init__(self):
           name = "Save Data"
-          super(save_data,self).__init__(name)
+          super(save_data, self).__init__(name)
 #+END_SRC
 
 ****** DONE Use logarithmic amplifier
@@ -1312,10 +1325,10 @@ The user may decide not to use the logarithmic amplifier with the ADwin, so we p
       #############################################################
       def __init__(self):
           name = "Use Logaritmic amplifier"
-          super(use_log_amp,self).__init__(name)
+          super(use_log_amp, self).__init__(name)
 #+END_SRC
 
-**** TODO Non-Configurable parameters definitions
+**** DONE Non-Configurable parameters definitions
 There are parameters that con modify the behavior of the run, but are not expected to be modified by the user, therefore are hardcoded in the program. The code fragment [[src-parameters-global-constants]] shows the constant definitions which are:
 - G0 :: Conductance of a "1-gold-atom" channel
 - Start Juncture voltage :: The voltage of the juncture before starting the measurement. The juncture voltage is modified in order to measure
@@ -1324,7 +1337,7 @@ There are parameters that con modify the behavior of the run, but are not expect
 #+name: src-parameters-global-constants
 #+BEGIN_SRC python
   # Non configurable parameters
-  class GLOBAL_CONSTANTS:
+  class GLOBAL_CONSTANTS(object):
       G0 = 7.74809173e-5          # Quantum Conductance
       start_jv = 0
       end_jv = 0
@@ -1338,28 +1351,42 @@ While not really a parameter, the ADwin uses an array to calibrate the measureme
 #+CAPTION: Logarithmic amplifier configuration for use in measurements
 #+name: src-log-amplifier-class
 #+BEGIN_SRC python
-    class adwin_log_amplifier:
-        def __init__(self):
-            calibration_dir = adwin.ADW_GCONST.PROGRAM_DIR
-            root_path = utl.get_script_root_path()
-            program_path = os.path.join(root_path,calibration_dir)
-            filename = "calibrationIO.txt"
-            calibration_file = os.path.join(program_path,filename)
-            if (os.path.isfile(calibration_file)):
-                self.read_data_file(calibration_file)
-            else:
-                raise Exception("Bad file, check %s" %calibration_file)
-        def read_data_file(self, filename):
-            # reads matrix from data file. As optional input a column can be specified
-            data=[]
-            file = open(filename)
-            for line in file:
-                line_list = [float(x) for x in line.split()]
-            data.append(line_list)
-            self.data = data
-        def get_calibration(self):
-            return self.data
+  class adwin_log_amplifier(object):
+      def __init__(self):
+          calibration_dir = adwin.ADW_GCONST.PROGRAM_DIR
+          root_path = utl.get_script_root_path()
+          program_path = os.path.join(root_path, calibration_dir)
+          filename = "calibrationIO.txt"
+          calibration_file = os.path.join(program_path, filename)
+          if (os.path.isfile(calibration_file)):
+              self.read_data_file(calibration_file)
+          else:
+              raise Exception("Bad file, check %s" %calibration_file)
+      def read_data_file(self, filename):
+          # reads matrix from data file. As optional input a column can be specified
+          data=[]
+          my_file = open(filename)
+          for line in my_file:
+              line_list = [float(x) for x in line.split()]
+              data.append(line_list)
+          self.data = data
+      def get_calibration(self, Column=2):
+          data = self.data
+          retlist = []
+          for i in range(len(data)):
+              retlist.append(data[i][Column])
+          return retlist
 #+END_SRC
+
+****** Logamp testing                                              :noexport:
+
+#+BEGIN_SRC python :tangle test_logampl.py
+import modules.parameters as param
+log_ampl = param.adwin_log_amplifier()
+calibration = log_ampl.get_calibration()
+#+END_SRC
+
+#+RESULTS:
 
 *** TODO UI-Program Interface                                 :Heavyrefactor:
     :PROPERTIES:
@@ -1368,25 +1395,20 @@ While not really a parameter, the ADwin uses an array to calibrate the measureme
     :END:
    # As with any module there is a section for the imports and the file headers, but these are unninteresting for any reader, thus they are put in comments and not exported to a PDF/HTML result
 #+BEGIN_SRC python :exports none
-  #################################################################
-  ## @file    ui_config.py
-  #  @author  Joaquin Figueroa
-  #  @date    Fri Aug 12 2016
-  #  @brief   Provides the definitions and parameters for the UI
-  #
-  #  @details This file provides a all the necessary helper
-  #           functions to interface the different parameters
-  #           with the program.
-  #################################################################
+  """ Module ui_config - Provides the definitions and parameters for the UI
+  
+             This file provides a all the necessary helper
+             functions to interface the different parameters
+             with the program.
+  """  
+  __author__ = "Joaquin Figueroa"
+
   from PyQt4 import QtGui
   from PyQt4 import QtCore
   from modules.ui_gui import run_gui
   import modules.utilities as utl
   import os
   import sys
-  <<ui-basic-params-defaults>>
-  <<ui-advanced-params-defaults>>
-  <<ui-presentation-params-defaults>>
 #+END_SRC
 
 Therefore the output of the UI execution is a class of 2 values with one value being the command to be executed, and the other the configuration for the measurements, which has a default initialization, but also provides functions to replace the original values with new ones
@@ -1398,7 +1420,7 @@ Therefore the output of the UI execution is a class of 2 values with one value b
    #           1- Command to be executed (exit, measure)
    #           2- Configuration for the measurements
    ############################################################
-   class UI_CONFIG:
+   class UI_CONFIG(object):
        def __init__(self):
            self.cmd    = UI_CMD.EXIT
            self.config = UI_CONFIG_PARAMS()
@@ -1424,47 +1446,12 @@ Therefore the output of the UI execution is a class of 2 values with one value b
    #  @brief  UI calss to encode the possible commands for the
    #         program
    ############################################################
-   class UI_CMD:
+   class UI_CMD(object):
        EXIT    = 0
        M_BREAK = 1
        MEASURE = 2
  #+END_SRC
 
-**** TODO Configuration-structure
-Test configuration structure, I meed need to refactor this.
-#+BEGIN_SRC python
-  class iv_config:
-      log_array = 0
-      start_jv= 0
-      measure_jv= 0
-      end_jv= 0
-      wait= 0
-      avg= 0
-      max_data= 0
-      g0= 0
-
-  class histo_config:
-      log_array = 0
-      start_jv= 0
-      measure_jv= 0
-      end_jv= 0
-      break_wait= 0
-      make_wait= 0
-      avg= 0
-      i_brk = 0
-      i_mk = 0
-      start_piezo_v = 0
-      g0= 0
-
-  class display_config:
-      number_traces = 5000
-      nGbins = 251
-      nDbins = 161
-      xmin = -0.5                 # nm
-      xmax = 2                    # nm
-      Gmin = 1e-7                 # G0
-      Gmax = 10                   # G0
-#+END_SRC
 **** TODO UI Configuration Parameters
 The UI configuration is a list of variables which are used through the measurements for configuring the experiments or for controlling the presentation of the results, for simplicity the variables are classified in groups
 - Basic parameters :: These are the parameters that control the run and define it see [[UI-Basic parameters ]]
@@ -1477,7 +1464,7 @@ The UI configuration is a list of variables which are used through the measureme
   #  @details This class stores all configuration values to be
   #           used for the measurements.
   ############################################################
-  class UI_CONFIG_PARAMS:
+  class UI_CONFIG_PARAMS(object):
       def __init__(self):
           self._b_params = basic_params()
           self._a_params = adv_params()
@@ -1500,7 +1487,7 @@ Before describing each parameter group, is clear that most parameters are numeri
 
 **** TODO UI-Advanced parameters
 #+BEGIN_SRC python
-  class adv_params:
+  class adv_params(object):
         def __init__(self):
               self.asdf = 1
 #+END_SRC
@@ -1538,7 +1525,7 @@ todoSAVE_DIRECTORY_DFLT = "./Data"
 #+END_SRC
 
 #+BEGIN_SRC python
-  class presentation:
+  class presentation(object):
         def __init__(self):
               self.asdf = 1
 #+END_SRC
@@ -1559,7 +1546,7 @@ The basic parameters are:
 
 
 #+BEGIN_SRC python
-  class basic_params:
+  class basic_params(object):
         def __init__(self):
               self.juncture = juncture_voltage()
               self.piezo_speed = piezo_speed()
@@ -1585,18 +1572,16 @@ The basic parameters are:
     :END:
 # As with any module there is a section for the imports and the file headers, but these are unninteresting for any reader, thus they are put in comments and not exported to a PDF/HTML result
 #+BEGIN_SRC python :exports none
-  #################################################################
-  ## @file    ui_gui.py
-  #  @author  Joaquin Figueroa
-  #  @date    Fri Aug 12 2016
-  #  @brief   Provides the GUI for configuring the experiment
-  #
-  #  @details This file provides a GUI for the user to be able to
-  #           configure the experiment and run it.
-  #################################################################
+  """ Module ui_gui - Provides the GUI for configuring the experiment
+
+             This file provides a GUI for the user to be able to
+             configure the experiment and run it.
+  """
+  __author__ = "Joaquin Figueroa"
+
   from PyQt4 import QtGui
   from PyQt4 import QtCore
-  import ui_config as conf
+  import modules.configuration as conf
   import sys
   <<ui-basic-params-defaults>>
   <<ui-advanced-params-defaults>>
@@ -1759,28 +1744,32 @@ Since the configuration parameters are split in different groups so it is the la
   ############################################################
   def ui_create_config_layout(ui_config_window):
       # Define each group layout
-      basic_param_layout = ui_basic_param_layout(ui_config_window)
-      adv_param_layout = ui_adv_param_layout(ui_config_window)
-      presentation_param_layout = ui_presentation_param_layout(ui_config_window)
+      iv_param_layout = ui_iv_param_layout(ui_config_window)
+      hist_param_layout = ui_hist_param_layout(ui_config_window)
+      display_param_layout = ui_display_param_layout(ui_config_window)
+      save_opts_layout = ui_save_opts_layout(ui_config_window)
       # Define the labels
-      basic_label = QtGui.QLabel("---- Basic Parameters ----")
-      adv_label = QtGui.QLabel("---- Advanced Parameters ----")
-      presentation_label = QtGui.QLabel("---- Presentation Parameters ----")
+      iv_label = QtGui.QLabel("---- Adwin IV-measurement Parameters ----")
+      hist_label = QtGui.QLabel("---- Adwin histogram Parameters ----")
+      display_label = QtGui.QLabel("---- Adwin display Parameters ----")
+      save_label = QtGui.QLabel("---- Save Options  ----")
       # Configure the layout
       vbox = QtGui.QVBoxLayout()
       vbox.addStretch(1)
-      vbox.addWidget(basic_label)
-      vbox.addLayout(basic_param_layout)
-      vbox.addWidget(adv_label)
-      vbox.addLayout(adv_param_layout)
-      vbox.addWidget(presentation_label)
-      vbox.addLayout(presentation_param_layout)
+      vbox.addWidget(iv_label)
+      vbox.addLayout(iv_param_layout)
+      vbox.addWidget(hist_label)
+      vbox.addLayout(hist_param_layout)
+      vbox.addWidget(display_label)
+      vbox.addLayout(display_param_layout)
+      vbox.addWidget(save_label)
+      vbox.addLayout(save_opts_layout)
       return vbox
 #+END_SRC
 
-***** TODO Basic parameters layout
+***** TODO IV parameters layout
 #+BEGIN_SRC python
-  def ui_basic_param_layout(window):
+  def ui_iv_param_layout(window):
       basic_params = window.ui_config.config._b_params ## Fix this
       # Num parameters fields
       jv_label, jv_text = num_param_label_textbox(basic_params.juncture)
@@ -1789,33 +1778,35 @@ Since the configuration parameters are split in different groups so it is the la
       # Change directory dialog and fields
       dir_label = QtGui.QLabel(basic_params.save_dir.path)
       dir_btn = QtGui.QPushButton('Change Directory')
-      dir_btn.clicked.connect(lambda: showDialog(window,dir_label))
+      dir_btn.clicked.connect(lambda: showDialog(window, dir_label))
       # Add fields to the layout
       grid = QtGui.QGridLayout()
       grid.setSpacing(10)
 
-      grid.addWidget(jv_label,1,0)
-      grid.addWidget(jv_text,1,1)
+      grid.addWidget(jv_label, 1, 0)
+      grid.addWidget(jv_text, 1, 1)
 
-      grid.addWidget(ps_label,2,0)
-      grid.addWidget(ps_text,2,1)
+      grid.addWidget(ps_label, 2, 0)
+      grid.addWidget(ps_text, 2, 1)
 
-      grid.addWidget(tr_label,3,0)
-      grid.addWidget(tr_text,3,1)
+      grid.addWidget(tr_label, 3, 0)
+      grid.addWidget(tr_text, 3, 1)
 
-      grid.addWidget(dir_label,4,0)
-      grid.addWidget(dir_btn,4,1)
+      grid.addWidget(dir_label, 4, 0)
+      grid.addWidget(dir_btn, 4, 1)
 
       return grid
 #+END_SRC
 
 ***** TODO Advanced parameters layout
-
-***** TODO Presentation parameters layout
 #+BEGIN_SRC python
 
   def ui_adv_param_layout(window):
       return ui_basic_param_layout(window)
+
+#+END_SRC
+***** TODO Presentation parameters layout
+#+BEGIN_SRC python
 
   def ui_presentation_param_layout(window):
       return ui_basic_param_layout(window)
@@ -1887,7 +1878,7 @@ To provide the GUI for a parameter, a label and a text-box are needed, however f
 
 ****** Change directory dialog
 #+BEGIN_SRC python
-  def showDialog(window,dir_label):
+  def showDialog(window, dir_label):
       save_dir = window.ui_config.config._b_params.save_dir
       fname = QtGui.QFileDialog.getExistingDirectory(window, 'Open file',
               save_dir.path)
@@ -1925,19 +1916,19 @@ To provide the GUI for a parameter, a label and a text-box are needed, however f
    :END:
 As with many programs, there are some general purpose functionalities that do not fit cleanly in other sections or files. This section is for these types of utilities.
 #+BEGIN_SRC python :exports none
-  #################################################################
-  ## @file    utilities.py
-  #  @author  Joaquin Figueroa
-  #  @brief   General purpose utilities
-  #
-  #  @details This file stores several general purpose utilities
-  #           that do not fit cleanly anywhere else. Obviously
-  #           grat care has been tanke to ensure that this file
-  #           is kept small
-  #################################################################
+  """ Module utilies - General purpose utilities
+
+             This file stores several general purpose utilities
+             that do not fit cleanly anywhere else. Obviously
+             grat care has been tanke to ensure that this file
+             is kept small
+  """  
+  __author__ = "Joaquin Figueroa"
+
   import os
   import inspect
 #+END_SRC
+
 *** Path utilities.
 Although Python already provides with a good interface to interface with the filesystem, without going into the specifics, there is still a need to provide some specific functionality for the program considering the usage of several files in the filesystem relative to the script root, thus to provide with the appropriate interface, this archive provides:
 - Determine script root :: This program uses several files in paths relative to the script root, therefore is necessary to provide a functionality to determine the script root.
@@ -1956,7 +1947,23 @@ Although Python already provides with a good interface to interface with the fil
       return script_root_path
 #+END_SRC
 
+*** TODO manipulation taken from original program
+#+BEGIN_SRC python
+  def convert_to_list(data):
+      # convert to list
+      data2=[]
+      for i in range(0, len(data)):
+          data2.append(int(data[i])) 
+      return data2
+    
+  def convert_to_list_float(data):
+      # convert to list
+      data2=[]
+      for i in range(0, len(data)):
+          data2.append(data[i]) 
+      return data2
 
+#+END_SRC
 * TODO Adwin Driver
   :PROPERTIES:
   :header-args+: :tangle modules/adwin_driver.py
@@ -1973,21 +1980,20 @@ The adwin driver is mostly a convenience layer between the ADwin and the Python 
 
 ** DONE Adwin driver-header
 #+BEGIN_SRC python
-  #################################################################
-  ## @file    adwin_driver.py
-  #  @author  Joaquin Figueroa
-  #  @date    Fri Nov 4, 2016
-  #  @brief   Provides the interfaces for the Adwin
-  #
-  #  @details This file provides  the Adwin interface,
-  #           which defines high and low level functionalities.
-  #           The user should use onlythe high level functionality
-  #           if possible.
-  #################################################################
-  import ADwin
+  """ Module adwin_driver -  Provides the interfaces for the Adwin
+             This file provides  the Adwin interface,
+             which defines high and low level functionalities.
+             The user should use onlythe high level functionality
+             if possible.
+  """  
+  __author__ = "Joaquin Figueroa"
+
+
   import os
+  import ADwin
   import numpy as np
   import modules.utilities as utl
+  import modules.parameters as param
 #+END_SRC
 ** TODO Adwin driver-base class
 The Adwin base class, provides with the minimum data structure and global parameters in order to define a proper driver for ADwin measurement process. This part of the file is split in:
@@ -2021,7 +2027,7 @@ As previously stated the base-class  parameters hold information necessary for t
   #           PROCESS_DELAY -> number of ADwin clock between each operation
   #                            set to 400, in order to operate every 10 us
   ###########################################################################
-  class ADW_GCONST:
+  class ADW_GCONST(object):
       # Interface with computer
       ADDRESS = 0x150
       BOOT_SCRIPT_DFLT = 'C:\ADwin\ADwin9.btl'
@@ -2050,54 +2056,58 @@ Is important to note that any parameter used by this abstract driver, should be 
       #############################################################
       ## @brief   Initilaization code
       #############################################################
-      def __init__(self):
+      def __init__(self, process_number, process_file):
           self._adwin_subdir= ADW_GCONST.PROGRAM_DIR
-          self.adw = ADwin.ADwin(ADW_GCONST.ADDRESS,1)
+          self.adw = ADwin.ADwin(ADW_GCONST.ADDRESS, 1)
           self.adw.Boot(ADW_GCONST.BOOT_SCRIPT_DFLT)
+          self.process_number = process_number
+          self.filename = process_file
       #############################################################
       ## @brief   Load the measurement program. Basic interface
       #############################################################
-      def load_process(self, filename):
+      def load_process(self):
+          filename = self.filename
           root_path = utl.get_script_root_path()
-          program_path = os.path.join(root_path,self._adwin_subdir)
-          process_file = os.path.join(program_path,filename)
+          program_path = os.path.join(root_path, self._adwin_subdir)
+          process_file = os.path.join(program_path, filename)
           if (os.path.isfile(process_file)):
               self.adw.Load_Process(process_file)
-          else :
+          else:
               raise Exception("Bad file, check %s" %process_file)
       #############################################################
       ## @brief   Starts the measurement process
       #############################################################
-      def start_process(self, process_number):
-          self.adw.Start_Process(process_number)
+      def start_process(self):
+          self.adw.Start_Process(self.process_number)
       #############################################################
       ## @brief   Stop the measurement process
       #############################################################
-      def stop_process(self, process_number):
-          self.adw.Stop_Process(process_number)
+      def stop_process(self):
+          self.adw.Stop_Process(self.process_number)
       #############################################################
       ## @brief   Show information on the adwin and process
       #############################################################
-      def analyze(self, process_number):
+      def analyze(self):
           version = self.adw.Test_Version()
           processor = self.adw.Processor_Type()
-          status = self.Process_Status(process_number)
-          print("Version %s " % name)
-          print("Processor type: %s " % name)
-          self.print_status(status, process_number)
+          print("Version {0}".format(version))
+          print("Processor type: {0}".format(processor))
+          self.print_status()
       #############################################################
       ## @brief   Minor utility to print the status information
       #############################################################
-      def print_status(status, process_number):
+      def print_status(self):
+          process_number = self.process_number
+          status = self.adw.Process_Status(process_number)
           if (status == 0):
-              print("Process %1.0f is not running" % process_number)
+              print("Process {0} is not running".format(process_number))
           if status == 1:
-              print("Process %1.0f is running" % process_number)
+              print("Process {0} is running".format(process_number))
           if status < 0:
-              print("Process %1.0f is stopped" % process_number)
+              print("Process {0} is stopped".format(process_number))
 #+END_SRC
 ** TODO Adwin driver-IV measurement class
-The Adwin IV measurement class provides a single interface, which controls the process to perform continuous measurements of the current/voltage characteristics of the sample,  while providing a high level interface to interact with the instrument. To define the class we need
+The Adwin IV measurement class provides a single interface, which controls the process to perform continuous measurements of the current/voltage characteristics of the sample, while providing a high level interface to interact with the instrument. To define the class we need
 - Parameters :: Defined in [[Adwin driver-IV parameters]]. These parameters define the indices required to interact with the internal program.
 - Driver class :: Defined in  [[Adwin IV-measurement driver]]. This is the class definition which provides with the necessary interface to interact with the instrument.
 
@@ -2113,12 +2123,11 @@ The variables are identified with an index according to the instrument documenta
 #+CAPTION: Top level view of the Adwin parameters and related constants. For details see the corresponding sections
 #+name: src-adwin-parameters
 #+BEGIN_SRC python
-  class ADW_IV_CONST:
-        PROCESS_NUMBER = 1
-        <<src-adwin-iv-param>>
-        <<src-adwin-iv-fparam>>
-        <<src-adwin-iv-aparam>>
-
+  class ADW_IV_CONST(object):
+      PROCESS_NUMBER = 1
+      <<src-adwin-iv-param>>
+      <<src-adwin-iv-fparam>>
+      <<src-adwin-iv-aparam>>
 #+END_SRC
 
 **** DONE Adwin driver-IV int parameters
@@ -2206,31 +2215,12 @@ Code fragment [[adwin-driver-iv-interface]] shows the initialization code for th
       ## @brief   Initilaization code
       #############################################################
       def __init__(self, config):
-          super(adwin_iv_driver,self).__init__()
-          self.load_process()
-          self.configure_process(config)
+          process_number = ADW_IV_CONST.PROCESS_NUMBER
+          filename = "iv_measurement_process.T9{0}".format(process_number)
+          super(adwin_iv_driver, self).__init__(process_number, filename)
           self.config = config
-      #############################################################
-      ## @brief   Load the IV measurement program.
-      #############################################################
-      def load_process(self):
-          filename = "iv_measurement_process.T".format(ADW_IV_CONST.PROCESS_NUMBER)
-          super(adwin_iv_driver,self).load_process(filename)
-      #############################################################
-      ## @brief   Starts the measurement process
-      #############################################################
-      def start_process(self):
-          super(adwin_iv_driver,self).start_process(ADW_IV_CONST.PROCESS_NUMBER)
-      #############################################################
-      ## @brief   Stop the measurement process
-      #############################################################
-      def stop_process(self):
-          super(adwin_iv_driver,self).stop_process(ADW_IV_CONST.PROCESS_NUMBER)
-      #############################################################
-      ## @brief   Print debug information if necessary
-      #############################################################
-      def analyze(self):
-          super(adwin_iv_driver,self).analyze(ADW_IV_CONST.PROCESS_NUMBER)
+          self.load_process()
+          self.configure_process()
       #############################################################
       ## @brief   Set all parameters to start measuring
       #############################################################
@@ -2239,15 +2229,15 @@ Code fragment [[adwin-driver-iv-interface]] shows the initialization code for th
           log_array = c.get_log_array()
           length = len(log_array)
           self.adw.Set_Processdelay(ADW_IV_CONST.PROCESS_NUMBER,
-                                    ADW_GCONST.PROCES_DELAY )
-          self.adw.SetDataFloat(log_array,
-                                ADW_IV_CONST.LOG_AMPL,1,length)
+                                    ADW_GCONST.PROCESS_DELAY )
           self.adw.Set_Par(ADW_IV_CONST.START_JV, c.get_start_jv())
           self.adw.Set_Par(ADW_IV_CONST.MEASURE_JV, c.get_measure_jv())
           self.adw.Set_Par(ADW_IV_CONST.END_JV, c.get_end_jv())
           self.adw.Set_Par(ADW_IV_CONST.WAIT, c.get_wait_cycles())
           self.adw.Set_Par(ADW_IV_CONST.AVG, c.get_avg_points())
           self.adw.Set_Par(ADW_IV_CONST.MAX_DATA, c.get_max_data())
+          self.adw.SetData_Float(log_array,
+                                ADW_IV_CONST.LOG_AMPL, 1, length)
       <<src-adwin-iv-driver-api>>
 #+END_SRC
 
@@ -2257,16 +2247,16 @@ Code fragment [[adwin-driver-iv-interface]] shows the initialization code for th
      :END:
 This section provides with the functions required to obtain the measurements from the instrument. The main functionality is to obtain the conductance measurement, as a fraction of the "1 Gold atom conductance" usually noted as *G0*
 #+name: src-adwin-iv-driver-api
-#+BEGIN_SRC python
+#+BEGIN_SRC python :tangle no
   #############################################################
   ## @brief   Return the current measured by the ADwin
   #############################################################
   def get_current(self):
-      if self.config.get_use_log_ampl() :
-          current = self.adw.getFPar(ADW_IV_CONST.I_CH1_AMPL)
-      else :
-          digital_current = self.adw.getFPar(ADW_IV_CONST.I_CH1)
-          current = adwin_DAC_value(digital_current) /self.config.linear_gain
+      if self.config.get_use_log_ampl():
+          current = self.adw.Get_FPar(ADW_IV_CONST.I_CH1_AMPL)
+      else:
+          digital_current = self.adw.Get_FPar(ADW_IV_CONST.I_CH1)
+          current = adwin_DAC(digital_current) /self.config.linear_gain
       return current
   #############################################################
   ## @brief   Return the conductance measured by the ADwin
@@ -2289,7 +2279,7 @@ In a similar way as shown in [[Adwin driver-IV parameters]] the parameters are g
 - Array variables :: shown in code fragment [[src-adwin-hist-aparam]] These correspond to the indices for the array variables.
 
 #+BEGIN_SRC python
-  class ADW_HIST_CONST:
+  class ADW_HIST_CONST(object):
       PROCESS_NUMBER = 2
       <<src-adwin-hist-param>>
       <<src-adwin-hist-fparam>>
@@ -2303,6 +2293,9 @@ The Int parameters are used to define the indices to the corresponding integer v
 - BREAK_WAIT   :: Used for setting  the number of cycles to wait before measuring the current, after modifying the piezoelectric voltage during the breaking analysis, and in turn the position of the piezoelectric. This time is considered as a stabilization time, to avoid measuring before the piezoelectric is stable in its new position
 - MAKE_WAIT   :: Used for setting  the number of cycles to wait before measuring the current, after modifying the piezoelectric voltage during the make histogram analysis. As with the *BREAK_WAIT* this is considered a stabilization time.
 - AVG :: Used as the index to set the number of measurements to be performed before taking an average in each piezoelectric point.
+- PROCESS_STATUS :: Used as output, to check the current status of the histogram measurement process
+- END_STATUS :: Flag used to communicate the python program that the measurement process is ended
+- ERROR_STATUS :: Used as flag to let the python program know that there was an error in the measurement and the data should not be stored
 - BREAK_IDX  ::  Used as the variable where the length of the array of break-histogram is stored and read by the program .
 - MAKE_IDX  ::  Used as the variable where the length of the array of break-histogram is stored and read by the program .
 
@@ -2320,8 +2313,9 @@ The Int parameters are used to define the indices to the corresponding integer v
   MAKE_WAIT   = 18
   AVG         = 19
   # outputs for the ADWIN histogram measurement
-  END_STATUS  = 12
-  ERROR_STATUS  = 13
+  PROCESS_STATUS  = 12
+  END_STATUS  = 13
+  ERROR_STATUS  = 14
   BREAK_IDX   = 20
   MAKE_IDX    = 21
 #+END_SRC
@@ -2387,34 +2381,13 @@ In a similar manner as used in [[Adwin IV driver-Initialization Code]] the code 
       #############################################################
       ## @brief   Initilaization code
       #############################################################
-      def __init__(self,config):
-          super(adwin_hist_driver,self).__init__()
+      def __init__(self, config):
+          process_number = ADW_HIST_CONST.PROCESS_NUMBER
+          filename = "hist_measurement_process.T9{0}".format(process_number)
+          super(adwin_hist_driver, self).__init__(process_number, filename)
+          self.config = config
           self.load_process()
           self.configure_process()
-          self.config = config
-      #############################################################
-      ## @brief   Load the histogram  measurement program.
-      #############################################################
-      def load_process(self):
-          filename = "hist_measurement_process.T%d" % ADW_HIST_CONST.PROCESS_NUMBER
-          super(adwin_hist_driver,self).load_process(filename)
-      #############################################################
-      ## @brief   Starts the measurement process
-      #############################################################
-      def start_process(self):
-          self.adw.Set_Par(ADW_HIST_CONST.ERROR_STATUS, 0)
-          self.adw.Set_Par(ADW_HIST_CONST.END_STATUS, 0)
-          super(adwin_hist_driver,self).start_process(ADW_HIST_CONST.PROCESS_NUMBER)
-      #############################################################
-      ## @brief   Stop the measurement process
-      #############################################################
-      def stop_process(self):
-          super(adwin_hist_driver,self).stop_process(ADW_HIST_CONST.PROCESS_NUMBER)
-      #############################################################
-      ## @brief   Print debug information if necessary
-      #############################################################
-      def analyze(self):
-          super(adwin_hist_driver,self).analyze(ADW_HIST_CONST.PROCESS_NUMBER)
       #############################################################
       ## @brief   Set all parameters to start measuring
       #############################################################
@@ -2423,17 +2396,17 @@ In a similar manner as used in [[Adwin IV driver-Initialization Code]] the code 
           log_array = c.get_log_array()
           length = len(log_array)
           self.adw.Set_Processdelay(ADW_HIST_CONST.PROCESS_NUMBER,
-                                    ADW_GCONST.PROCES_DELAY )
-          self.adw.SetDataFloat(log_array,
-                                ADW_HIST_CONST.LOG_AMPL,1,length)
+                                    ADW_GCONST.PROCESS_DELAY )
           self.adw.Set_Par(ADW_HIST_CONST.START_JV, c.get_start_jv())
           self.adw.Set_Par(ADW_HIST_CONST.MEASURE_JV, c.get_measure_jv())
           self.adw.Set_Par(ADW_HIST_CONST.END_JV, c.get_end_jv())
           self.adw.Set_Par(ADW_HIST_CONST.AVG, c.get_avg_points())
           self.adw.Set_Par(ADW_HIST_CONST.BREAK_WAIT, c.get_break_wait())
           self.adw.Set_Par(ADW_HIST_CONST.MAKE_WAIT, c.get_make_wait())
-          self.adw.Set_Par(ADW_HIST_CONST.I_MIN_BRK, c.get_I_break_end())
-          self.adw.Set_Par(ADW_HIST_CONST.I_MAX_BRK, c.get_I_make_end()) #
+          self.adw.Set_FPar(ADW_HIST_CONST.I_MIN_BRK, c.get_I_break_end())
+          self.adw.Set_FPar(ADW_HIST_CONST.I_MAX_MK, c.get_I_make_end()) #
+          self.adw.SetData_Float(log_array,
+                                ADW_HIST_CONST.LOG_AMPL, 1, length)
       <<src-adwin-hist-driver-api>>
 #+END_SRC
 
@@ -2445,16 +2418,15 @@ This section provides with the functions required to obtain the histogram measur
 - Make histogram :: Queries the data array from the ADwin that holds the make histogram and returns it
 - Break histogram :: Queries the data array from the ADwin that holds the break histogram and returns it
 #+name: src-adwin-hist-driver-api
-#+BEGIN_SRC python
-
+#+BEGIN_SRC python :tangle no
   def measure_and_get_histogram(self):
       self.start_process()
-      while not self.process_ended() :
-          state = self.adw.get_Par(ADW_HIST_CONST.STATE_PARAM)
+      while self.process_running():
+          state = self.adw.Get_Par(ADW_HIST_CONST.PROCESS_STATUS)
           if state == 1:
-              print("Run number: %1.0f \nbreaking 1"% x)
+              print("Run number: {0} \nbreaking 1".format(state))
           if state == 2:
-              print("Run number: %1.0f \nmaking 1"% x)
+              print("Run number: {0} \nmaking 1".format(state))
       os.system('cls')
       self.stop_process()
       break_histogram = self.get_break_histogram()
@@ -2463,10 +2435,12 @@ This section provides with the functions required to obtain the histogram measur
       return break_histogram, make_histogram
 
   def get_break_histogram(self):
+      G0 = self.config.G0
+      real_jv = self.config.get_real_jv()
       length = self.adw.Get_Par(ADW_HIST_CONST.BREAK_IDX) -1
       current_hist = self.adw.GetData_Float(ADW_HIST_CONST.BRK_HIST, 1, length)
-      conductance_hist = current_hist/(self.config.measure_jv * self.config.G0) #TODO FIX
-      ret_hist = convert_to_list_float(conductance_hist)
+      conductance_hist = current_hist/(real_jv * G0)
+      ret_hist = utl.convert_to_list_float(conductance_hist)
       return ret_hist
 
   def get_break_voltage(self):
@@ -2474,31 +2448,33 @@ This section provides with the functions required to obtain the histogram measur
       voltage_hist = self.adw.GetData_Float(ADW_HIST_CONST.BRK_VOLT, 1, length)
       new_voltage_hist = np.zeros(length)
       for idx in range(length):
-          new_v = convert_bin_to_v(voltage_hist[idx])
+          new_v = adwin_DAC(voltage_hist[idx])
           new_voltage_hist[idx] = new_v
-      ret_hist = convert_to_list_float(new_voltage_hist)
+      ret_hist = utl.convert_to_list_float(new_voltage_hist)
       return ret_hist
 
   def get_make_histogram(self):
+      G0 = self.config.G0
+      real_jv = self.config.get_real_jv()
       length = self.adw.Get_Par(ADW_HIST_CONST.MAKE_IDX) -1
       current_hist = self.adw.GetData_Float(ADW_HIST_CONST.MK_HIST, 1, length)
-      conductance_hist = current_hist/(self.config.measure_jv * self.config.G0) #TODO FIX
-      ret_hist = convert_to_list_float(conductance_hist)
+      conductance_hist = current_hist/(real_jv * G0)
+      ret_hist = utl.convert_to_list_float(conductance_hist)
       return ret_hist
 
   def get_make_voltage(self):
-      length = self.adw.Get_Par(ADW_HIST_CONST.MK_IDX) -1
+      length = self.adw.Get_Par(ADW_HIST_CONST.MAKE_IDX) -1
       voltage_hist = self.adw.GetData_Float(ADW_HIST_CONST.MK_VOLT, 1, length)
       new_voltage_hist = np.zeros(length)
       for idx in range(length):
-          new_v = convert_bin_to_v(voltage_hist[idx])
+          new_v = adwin_DAC(voltage_hist[idx])
           new_voltage_hist[idx] = new_v
-      ret_hist = convert_to_list_float(new_voltage_hist)
+      ret_hist = utl.convert_to_list_float(new_voltage_hist)
       return ret_hist
 
-  def process_ended():
-      return self.adw.Get_Par(ADW_HIST_CONST.END_STATUS) == 2
-  def measurement_without_errors(self):
+  def process_running(self):
+      return not self.adw.Get_Par(ADW_HIST_CONST.END_STATUS) != 2
+  def successful_measurement(self):
       return not self.adw.Get_Par(ADW_HIST_CONST.ERROR_STATUS) == 0
   def error_in_breaking(self):
       return self.adw.Get_Par(ADW_HIST_CONST.ERROR_STATUS) & 1 == 1
@@ -2506,150 +2482,185 @@ This section provides with the functions required to obtain the histogram measur
       return (self.adw.Get_Par(ADW_HIST_CONST.ERROR_STATUS) >> 1) & 1 == 1
 #+END_SRC
 
-**** TODO ADwin Histogram test                                     :noexport:
-     :PROPERTIES:
-     :header-args+: :tangle adwin_histogram_test.py
-     :END:
- Small test program for the ADwin hisotgram measurement.
- #+BEGIN_SRC python
-   from modules.adwin_driver import *
-   from modules.configuration import *
-   import numpy as np
-   from pylab import *
+*** TODO ADwin Histogram testing                                   :noexport:
+    :PROPERTIES:
+    :header-args+: :tangle adwin_histogram_test.py
+    :END:
+Small test program for the ADwin hisotgram measurement.
+#+BEGIN_SRC python
+  from time import strftime
+  import numpy as np
+  import pylab as pl
+  import matplotlib.pyplot as plt
+  from modules.adwin_driver import *
+  from modules.configuration import *
+  def save_data(*arg): 
+      # write date to file. first argument is file id, all others are data arrays
 
-   def plot_traces(axis, D_breaking, G_breaking, D_making, G_making):
-       axis.clear()
-       plt_breaking =  axis.plot(D_breaking,G_breaking,linewidth=2)
-       plt_making =  axis.plot(D_making,G_making,linewidth=2)
-       axis.set_yscale("log")
-       axis.set_xlim(0, max(max(D_making),max(D_breaking)))
-       axis.set_ylim(adw_display.Gmin, adw_display.Gmax)
-       axis.set_title("Conductance trace")
-       axis.set_xlabel('Displacement (nm)')
-       axis.set_ylabel('Conductance (G0)')
-       axis.set_aspect(1)
-       #axis.xticks(power(np.zeros(nGbins) + 10.0, range(-8,2,4)))
-       #axis.yticks(range(-10,1,10))
+      filename = arg[0]    
+      filename.write('@ \n')
 
-   def plot_counts(axis, break_acc, make_acc, G_breaking, G_making, G_bins, D_bins):
-       tmp=np.histogram(G_breaking, bins=Gbins)
-       break_acc = break_acc + tmp[0]
-       tmp=np.histogram(G_making, bins=Gbins)
-       make_acc = make_acc + tmp[0]
-       # plot 1D histogram (2)
-       Gbins_plot = Gbins[0:-1]
-       Dbins_plot = Dbins[0:-1]
-       axis.clear()
-       plt_histo1D_breaking =  axis.plot(Gbins_plot, break_acc,linewidth=2)
-       plt_histo1D_making =  axis.plot(Gbins_plot,make_acc,linewidth=2)
-       axis.set_xscale("log")
-       axis.set_ylim(0, 1.2*max(max(break_acc),max(make_acc)))
-       axis.set_xlim(Gbins[0], Gbins[-1])
-       axis.set_title("1D Histogram")
-       axis.set_ylabel('Counts')
-       axis.set_xlabel('Conductance (G0)')
-       axis.set_aspect(1)
+      for i in range(0,len(arg[1])):
+          string = ""
+          for j in range (1,len(arg)): 
+              temp = arg[j]
+              if j == 1:
+                  string = string +  "%5.8f\t" % (temp[i])
+              else:
+                  string = string +  "%5.8e\t" % (temp[i])
 
-       return break_acc, make_acc
+          string = string + "\n"
+          filename.write(string)
+
+      return None
 
 
-   def plot_2d_histogram(axis, G_breaking, G_making, G_bins, D_bins):
-       index=max(find(G_breaking>0.5))
-       D_breaking = D_breaking - D_breaking[index]
+  def plot_traces(axis, D_breaking, G_breaking, D_making, G_making, dconfig):
+      axis.clear()
+      plt_breaking = axis.plot(D_breaking, G_breaking, linewidth=2)
+      plt_making = axis.plot(D_making, G_making, linewidth=2)
+      axis.set_yscale("log")
+      axis.set_xlim(0, max(max(D_making), max(D_breaking)))
+      axis.set_ylim(dconfig.Gmin, dconfig.Gmax)
+      axis.set_title("Conductance trace")
+      axis.set_xlabel('Displacement (nm)')
+      axis.set_ylabel('Conductance (G0)')
+      axis.set_aspect(1)
+      #axis.xticks(power(np.zeros(nGbins) + 10.0, range(-8, 2, 4)))
+      #axis.yticks(range(-10, 1, 10))
 
-       # plot 2D histogram (3)
-       tmp = histogram2d(G_breaking, D_breaking, bins=(Gbins, Dbins))
-       histo2D_breaking_sum = histo2D_breaking_sum + tmp[0]
+  def plot_counts(axis, break_acc, make_acc, G_breaking, G_making, Gbins, Dbins):
+      tmp=np.histogram(G_breaking, bins=Gbins)
+      break_acc = break_acc + tmp[0]
+      tmp=np.histogram(G_making, bins=Gbins)
+      make_acc = make_acc + tmp[0]
+      # plot 1D histogram (2)
+      Gbins_plot = Gbins[0:-1]
+      Dbins_plot = Dbins[0:-1]
+      axis.clear()
+      plt_histo1D_breaking = axis.plot(Gbins_plot, break_acc, linewidth=2)
+      plt_histo1D_making = axis.plot(Gbins_plot, make_acc, linewidth=2)
+      axis.set_xscale("log")
+      axis.set_ylim(0, 1.2*max(max(break_acc), max(make_acc)))
+      axis.set_xlim(Gbins[0], Gbins[-1])
+      axis.set_title("1D Histogram")
+      axis.set_ylabel('Counts')
+      axis.set_xlabel('Conductance (G0)')
+      axis.set_aspect(1)
 
-       index1 = find(min(abs(np.log10(Gbins) - -2 ))==(abs(np.log10(Gbins) - -2 )))
-       index2 = find(min(abs(np.log10(Gbins) - -6 ))==(abs(np.log10(Gbins) - -6 )))
-       tmp = histo2D_breaking_sum[index2:index1,:]
-
-       Cmax = 0
-       for y in range(0,index1-index2):
-           Cmax = max(max(tmp[y,:]), Cmax)
-
-       axis.clear()
-       surf = axis.contourf(Dbins_plot, Gbins_plot, histo2D_breaking_sum, np.linspace(0,Cmax/2,16))
-       axis.set_yscale("log")
-       axis.set_ylim(Gbins_plot[0], Gbins_plot[-1])
-       axis.set_xlim(Dbins_plot[0], Dbins_plot[-1])
-       axis.set_title("2D Histogram")
-       axis.set_xlabel('Displacement (nm)')
-       axis.set_ylabel('Conductance (G0)')
-
-       pause(1)
-
-   def stop():
-       """stop ADwin and motor"""
-       ADwin_stop_all_process()
-       ADwin_boot()
-       Faulhaber_command('v 0')
-   # Configure Plot
-   infile = "Measurement_deafult_config.yaml"
-   outfile = "Measurement_read_config.yaml"
-   config = yaml_build_config_from_file(infile)
-   dconfig = config.display_config
-   hconfig = config.hist_config
-
-   nGbins = dconfig.get_nGbins()
-   nDbins = dconfig.get_nXbins()
-   xmin = dconfig.get_xmin()
-   xmax = dconfig.get_xmax()
-   Gmin = dconfig.get_Gmin()
-   Gmax = dconfig.get_Gmax()
-   print(Gmax)
+      return break_acc, make_acc
 
 
-   ## initialize histogram
-   Gbins = np.power(np.zeros(nGbins) + 10.0, np.linspace(np.log10(Gmin), np.log10(Gmax), nGbins)) # create conductance array
-   Dbins = np.linspace(xmin, xmax, nDbins) # create displacement array
+  def plot_2D_histogram(axis, G_breaking, G_making, Gbins, D_breaking, Dbins, histo2D_breaking_sum):
+      index=max(pl.find(G_breaking>0.5))
+      D_breaking = D_breaking - D_breaking[index]
+      Gbins_plot = Gbins[0:-1]
+      Dbins_plot = Dbins[0:-1]
 
-   histo1D_breaking_sum = np.zeros(nGbins-1)
-   histo1D_making_sum = np.zeros(nGbins-1)
-   histo2D_breaking_sum = np.zeros(shape=(nGbins-1,nDbins-1))
+      # plot 2D histogram (3)
+      tmp = pl.histogram2d(G_breaking, D_breaking, bins=(Gbins, Dbins))
+      histo2D_breaking_sum = histo2D_breaking_sum + tmp[0]
 
-   ## plot settings
-   rcParams['figure.figsize'] = [22, 10]
-   font = {'family' : 'normal',
-           'weight' : 'normal',
-           'size'   : 22}
-   fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
-   ax1.set_position([0.07, 0.1, 0.25, 0.8])
-   ax2.set_position([0.39, 0.1, 0.25, 0.8])
-   ax3.set_position([0.72, 0.1, 0.25, 0.8])
-   fig.set_facecolor('white')
-   matplotlib.rc('font', **font)
+      index1 = pl.find(min(abs(np.log10(Gbins) - -2 ))==(abs(np.log10(Gbins) - -2 )))
+      index2 = pl.find(min(abs(np.log10(Gbins) - -6 ))==(abs(np.log10(Gbins) - -6 )))
+      tmp = histo2D_breaking_sum[index2:index1, :]
 
-   adw = adwin_hist_driver(hconfig)
-   date = strftime("%y%m%d")
-   for i in range(adw_display.num_traces):
-       break_histogram, make_histogram = adw.measure_and_get_histogram()
-       if adw.error_in_measurement() :
-           continue
-       D_breaking = break_histogram[0]
-       G_breaking = break_histogram[1]
+      Cmax = 0
+      for y in range(0, index1-index2):
+          Cmax = max(max(tmp[y, :]), Cmax)
 
-       D_making = make_histogram[0]
-       G_making = make_histogram[1]
+      axis.clear()
+      surf = axis.contourf(Dbins_plot, Gbins_plot, histo2D_breaking_sum, np.linspace(0, Cmax/2, 16))
+      axis.set_yscale("log")
+      axis.set_ylim(Gbins_plot[0], Gbins_plot[-1])
+      axis.set_xlim(Dbins_plot[0], Dbins_plot[-1])
+      axis.set_title("2D Histogram")
+      axis.set_xlabel('Displacement (nm)')
+      axis.set_ylabel('Conductance (G0)')
 
-       plot_traces(ax1, D_breaking, G_breaking, D_making, G_making)
-       break_acc, make_acc = plot_counts(ax2, break_acc, make_acc, G_breaking, G_making, G_bins, D_bins)
-       plot_2d_histogram(ax2, G_breaking, G_making, G_bins, D_bins)
+      pl.pause(1)
 
-       filename = save_dir + 'scan_jf' + date + '_' + "%1.0f.dat" % x
-       file = open(filename, "w")
-       #make_general_header(file)
-       make_piezo_header(file)
-       save_data(file, D_breaking, G_breaking)
-       save_data(file, D_making, G_making)
-       file.close()
+  def stop():
+      """stop ADwin and motor"""
+      ADwin_stop_all_process()
+      ADwin_boot()
+  #    Faulhaber_command('v 0')
+  # Configure Plot
+  infile = "Measurement_deafult_config.yaml"
+  outfile = "Measurement_read_config.yaml"
+  config = yaml_build_config_from_file(infile)
+  dconfig = config.display_config
+  hconfig = config.hist_config
+  sconfig = config.save_config
 
- #+END_SRC
+  save_dir = sconfig.get_save_dir()
+
+  traces = dconfig.get_traces()
+  nGbins = dconfig.get_nGbins()
+  nDbins = dconfig.get_nXbins()
+  xmin = dconfig.get_xmin()
+  xmax = dconfig.get_xmax()
+  Gmin = dconfig.get_Gmin()
+  Gmax = dconfig.get_Gmax()
+
+
+
+  ## initialize histogram
+  Gbins = np.power(np.zeros(nGbins) + 10.0, np.linspace(np.log10(Gmin), np.log10(Gmax), nGbins)) # create conductance array
+  Dbins = np.linspace(xmin, xmax, nDbins) # create displacement array
+
+  histo1D_breaking_sum = np.zeros(nGbins-1)
+  histo1D_making_sum = np.zeros(nGbins-1)
+  histo2D_breaking_sum = np.zeros(shape=(nGbins-1, nDbins-1))
+
+  ## plot settings
+  pl.rcParams['figure.figsize'] = [22, 10]
+  font = {'family' : 'normal',
+          'weight' : 'normal',
+          'size'   : 22}
+  fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
+  ax1.set_position([0.07, 0.1, 0.25, 0.8])
+  ax2.set_position([0.39, 0.1, 0.25, 0.8])
+  ax3.set_position([0.72, 0.1, 0.25, 0.8])
+  fig.set_facecolor('white')
+  #matplotlib.rc('font', **font)
+
+  adw = adwin_hist_driver(hconfig)
+  date = strftime("%y%m%d")
+  break_histogram, make_histogram = adw.measure_and_get_histogram()
+  D_breaking = break_histogram[0]
+  G_breaking = break_histogram[1]
+
+  D_making = make_histogram[0]
+  G_making = make_histogram[1]
+
+  break_acc = np.histogram(G_breaking, bins=Gbins)[0]
+  make_acc = np.histogram(G_making, bins=Gbins)[0]
+  for i in range(traces):
+      break_histogram, make_histogram = adw.measure_and_get_histogram()
+      if not adw.successful_measurement():
+          continue
+      D_breaking = break_histogram[0]
+      G_breaking = break_histogram[1]
+
+      D_making = make_histogram[0]
+      G_making = make_histogram[1]
+
+      plot_traces(ax1, D_breaking, G_breaking, D_making, G_making, dconfig)
+      break_acc, make_acc = plot_counts(ax2, break_acc, make_acc, G_breaking, G_making, Gbins, Dbins)
+      plot_2D_histogram(ax2, G_breaking, G_making, Gbins, D_breaking, Dbins, histo2D_breaking_sum)
+      filename = save_dir + 'scan_jf' + date + '_' + "%1.0f.dat" % i
+      save_file = open(filename, "w")
+      #make_general_header(file)
+      #make_piezo_header(file)
+      save_data(save_file, D_breaking, G_breaking)
+      save_data(save_file, D_making, G_making)
+      save_file.close()
+
+#+END_SRC
 
 ** TODO Adwin driver-utilities
 There are several functionalities that are tied to the ADwin intrument but do not belong to it.
-
 *** TODO Adwin converters
 The Adwin can perform DAC conversion at its output. Is this conversion used for setting the output voltages of the instrument, either to control the Piezoelectric device or to set the juncture voltage. However the instrument cannot be configured with any values, so in order to set the target values in the instrument, we need to perform the same process with the driver and pass the instrument with the corresponding digital value.
 
@@ -2660,29 +2671,17 @@ In summary, to set a value in the Adwin we need to take the target value, and co
       # converts ADC/DAC voltage to bin number, given the voltage range and the ADW_GCONST.RESOLUTION as int (adwin digitia representation)
       step=2*ADW_GCONST.OUTPUT_RANGE/(2**ADW_GCONST.RESOLUTION-1)
       voltage=np.arange(-ADW_GCONST.OUTPUT_RANGE, ADW_GCONST.OUTPUT_RANGE+step, step)
-      try:
-          l = len(V)
-          N_bin = zeros(l)
-          for i in range(0,len(V)):
-              diff = abs(voltage-V[i])
-              N_bin[i] = diff.argmin()
-      except:
-          diff = abs(voltage - V)
-          N_bin = diff.argmin()
+      diff = abs(voltage - analog_value)
+      digital_value = diff.argmin() # Is an index
 
-      return N_bin, convert_bin_to_V(N_bin)
+      return digital_value
 
   def adwin_DAC(digital_value):
       # converts ADC/DAC bins to voltage, given the voltage range and the resolution (in bits)
       step = 2 * ADW_GCONST.OUTPUT_RANGE / (2**ADW_GCONST.RESOLUTION-1)
+      # voltage is array of analog/idx conversion
       voltage = np.arange(-ADW_GCONST.OUTPUT_RANGE, ADW_GCONST.OUTPUT_RANGE+step, step)
-      try:
-          N_bin = int(N_bin)
-          data = voltage[N_bin]
-      except:
-          data=zeros(len(N_bin))
-          for i in range(0,len(N_bin)):
-             data[i]=voltage[N_bin[i]]
+      data = voltage[int(digital_value)] 
 
       return data
 
@@ -2695,12 +2694,25 @@ In summary, to set a value in the Adwin we need to take the target value, and co
       # Wait is in ms, but we need to wait number of cycles.
       # Each cycle is 10 us => wait/cycle_time
       cycle_time = ADW_GCONST.HIGH_PERIOD * ADW_GCONST.PROCESS_DELAY
-      wait_cycles = int(self.wait*1e-3 /cycle_time ) # Because ms
+      wait_cycles = int(time*1e-3 /cycle_time ) # Because ms
+      return wait_cycles
 #+END_SRC
+*** TODO Adwin reset
+#+BEGIN_SRC python
+def ADwin_stop_all_process():
+   for i in range(1,11):
+        adw.Stop_Process(i)
+        #print 'Process %1.0f has been stopped' % i
+   return None
 
+def ADwin_boot():
+  # create a new adwin drive, which will reboot the Adwin, and stop all executions
+  clean_adwin_driver = adwin_driver(1,"")
+  
+#+END_SRC
 * DONE Adwin Measurements
   :PROPERTIES:
-  :header-args+: :comments noweb
+  :header-args+: :comments no
   :END:
 The Adwin instrument is capable of controlling the piezo actuator and to take measurements by using its several hardware interfaces. Thus is the ADwin which actually performs the measurements by using different *process* or sub-routines, written in basic, and then handing the data back to the main program. These sub-routines must be compiled and then loaded into the instrument, so any program that process the data, is reduced to query the results of the measurements.
 
@@ -2779,13 +2791,13 @@ As in many programs, a header is required. In the Adwin case, this is necessary 
   ' FPAR_3 -> Current measured in channel 2
   ' FPAR_4 -> Current measured in channel 2 through Amplifier
   ' ---- Measurement end ----
-  ' PAR_12 -> Set to 2 when the measurement process is finished
+  ' PAR_12 -> State parameter, to check which case we are
+  ' PAR_13 -> Set to 1 when the measurement process is finished
 
 
   '******
   ' Aux variables
   '******
-  ' state -> Used to select the measurement process
   ' waitcounter -> Used to wait for stabilization before measuring (JV)
   ' avgcounter -> Used to select how many points will be averaged
   ' datacounter -> Used to count how many data points will be stored in total
@@ -2799,11 +2811,10 @@ In an Adwin program the local variables must be declared before the =INIT= block
 #+CAPTION: Variable declarations
 #+NAME: src-adwin-iv-declarations
 #+BEGIN_SRC basic
-DIM measuflag as long
 DIM waitcounter, avgcounter, datacounter  as long
 DIM juncture_voltage as long
 DIM current1_acc, current2_acc as long
-DIM current1_ampl_acc, current2_ampl_acc as float
+DIM current1_amp_acc, current2_amp_acc as float
 ' Set DATA_10 as amplifier array
 DIM DATA_10[65536] as float
 #+END_SRC
@@ -2813,18 +2824,19 @@ In the ADwin =INIT= block the variables defined are set to their default values.
 #+CAPTION: Adwin I/V analysis =INIT= block
 #+NAME: src-adwin-iv-init
 #+BEGIN_SRC basic
-  state = 0
-  waitcounter = 0
-  avgcounter = 0
-  datacounter = 0
-  current1_acc = 0
-  current2_acc = 0
-  current1_amp_acc = 0
-  current2_amp_acc = 0
-  ' Set juncture voltage at output and prepare measurement
-  juncture_voltage = PAR_1
-  DAC(1, juncture_voltage)
-  set_MUX(1010000000b) 'use MUX
+  INIT:
+    PAR_12 = 0
+    waitcounter = 0
+    avgcounter = 0
+    datacounter = 0
+    current1_acc = 0
+    current2_acc = 0
+    current1_amp_acc = 0
+    current2_amp_acc = 0
+    ' Set juncture voltage at output and prepare measurement
+    juncture_voltage = PAR_1
+    DAC(1, juncture_voltage)
+    set_MUX(1010000000b) 'use MUX
 #+END_SRC
 
 *** DONE Adwin IV-Event Block
@@ -2842,7 +2854,7 @@ The =Event= Block is separated in different functionalities
 #+BEGIN_SRC basic
   EVENT:
 
-    SELECTCASE state
+    SELECTCASE PAR_12
       CASE 0 'output desired voltage on DAC1
         <<src-adwin-iv-set-jv>>
 
@@ -2868,9 +2880,9 @@ The =Event= Block is separated in different functionalities
   ' PAR_2 -> Target juncture voltage
   IF(juncture_voltage < PAR_2) THEN INC(juncture_voltage)
   IF(juncture_voltage > PAR_2) THEN DEC(juncture_voltage)
-  DAC(1,juncture_voltage)
-  IF  (juncture_voltage = PAR_2) THEN state = 1
-  ' state = 1 => we have to wait
+  DAC(1, juncture_voltage)
+  IF  (juncture_voltage = PAR_2) THEN PAR_12 = 1
+  ' PAR_12 = 1 => we have to wait
 #+END_SRC
 
 **** DONE Adwin IV-Event stabilize system
@@ -2881,7 +2893,7 @@ The =Event= Block is separated in different functionalities
 #+NAME: src-adwin-iv-wait
 #+BEGIN_SRC basic
   IF(waitcounter = PAR_7) THEN
-    state = 2
+    PAR_12 = 2
   ELSE
     waitcounter = waitcounter + 1
   ENDIF
@@ -2897,15 +2909,15 @@ The =Event= Block is separated in different functionalities
   WAIT_EOC(00011b)
   current1_acc = current1_acc + READADC(1)
   current2_acc = current2_acc + READADC(2)
-  current1_ampl_acc = current1_ampl_acc + DATA_10[READADC(1)+1]
-  current2_ampl_acc = current2_ampl_acc + DATA_10[READADC(2)+1]
+  current1_amp_acc = current1_amp_acc + DATA_10[READADC(1)+1]
+  current2_amp_acc = current2_amp_acc + DATA_10[READADC(2)+1]
   avgcounter = avgcounter + 1
 
   IF(avgcounter = PAR_8) THEN
     FPAR_1 = current1_acc / PAR_8
     FPAR_3 = current2_acc / PAR_8
-    FPAR_2 = current1_ampl_acc / PAR_8
-    FPAR_4 = current2_ampl_acc / PAR_8
+    FPAR_2 = current1_amp_acc / PAR_8
+    FPAR_4 = current2_amp_acc / PAR_8
     datacounter = datacounter + 1
     avgcounter = 0
     current1_acc = 0
@@ -2914,8 +2926,8 @@ The =Event= Block is separated in different functionalities
     current2_amp_acc = 0
   ENDIF
 
-  IF (datacounter = PAR_10) THEN state = 3
-  IF (PAR_11 = 1) THEN state =3
+  IF (datacounter = PAR_10) THEN PAR_12 = 3
+  IF (PAR_11 = 1) THEN PAR_12 =3
 #+END_SRC
 **** DONE Adwin IV-Event reset juncture voltage
      :PROPERTIES:
@@ -2926,13 +2938,13 @@ The =Event= Block is separated in different functionalities
 #+BEGIN_SRC basic
   IF(juncture_voltage < PAR_3 ) THEN INC(juncture_voltage)
   IF(juncture_voltage > PAR_3) THEN DEC(juncture_voltage)
-  DAC(1,juncture_voltage)
-  IF  (juncture_voltage = PAR_3) THEN PAR_12 = 2 ' check for end measurement
+  DAC(1, juncture_voltage)
+  IF  (juncture_voltage = PAR_3) THEN PAR_13 = 1 ' check for end measurement
 #+END_SRC
 
 ** DONE Adwin Measure-Generate piezo histogram
    :PROPERTIES:
-   :header-args+:  :tangle   adwin_programs/piezo_histogram.bas
+   :header-args+:  :tangle   adwin_programs/hist_measurement_process.bas
    :header-args+:  :noweb    tangle
    :END:
 Since the Adwin controls the piezoelectric device and take measurements, it makes sense  to provide a single program that operates the piezoelectric device , and then takes the corresponding measurements for each setting. After all the measurements are taken, the data is stored for analysis in the external program. The histogram program is split in several groups, similarly as the ones shown in [[Adwin Measure IV process]].
@@ -2984,8 +2996,10 @@ As in many programs, a header is required. In the Adwin case, this is necessary 
   ' Outputs
   '******
   ' ---- Measurement end ----
-  ' PAR_12 -> Set to 2 when the measurement process is finished
-  ' PAR_13 -> Set to 1 when there is a problem in the measurement
+  ' ---- Measurement end ----
+  ' PAR_12 -> State parameter, to check which case we are       
+  ' PAR_13 -> Set to 1 when the measurement process is finished
+  ' PAR_14 -> Set to 1 when there is a problem in the measurement
   ' ---- Current Measurements ----
   ' DATA_1 -> Array of measured currents for each data point -> breaking
   ' DATA_2 -> Array of set Piezo voltage for each data point -> breaking
@@ -2997,7 +3011,6 @@ As in many programs, a header is required. In the Adwin case, this is necessary 
   '******
   ' Aux Variables
   '******
-  ' state -> Determines which process of the histogram is being used
   ' breakwait -> Used to wait for stabilization during breaking
   ' makewait -> Used to wait for stabilization during making
   ' avgcounter -> Used to count the measurements to average for a data point
@@ -3015,7 +3028,6 @@ In an Adwin program the local variables must be declared before the =INIT= block
 #+CAPTION: Variable declarations
 #+NAME: src-adwin-hist-declarations
 #+BEGIN_SRC basic
-  DIM state as long
   DIM breakwait, makewait as long
   DIM avgcounter  as long
   DIM juncture_voltage as long
@@ -3023,9 +3035,12 @@ In an Adwin program the local variables must be declared before the =INIT= block
   DIM piezo_V, piezo_min, piezo_max as long
   DIM avgcurrent as float
   ' Output histogram
-  DIM histoindex_make histoindex_break as long
-  DIM DATA_1[1048576] as float  'Break histogram
-  DIM DATA_2[1048576] as float  'Make histogram
+  DIM break_hist_flag, make_hist_flag as long
+  DIM histoindex_make, histoindex_break as long
+  DIM DATA_1[1048576] as float  'Break Conductances
+  DIM DATA_2[1048576] as float  'Break Voltages
+  DIM DATA_3[1048576] as float  'Make Conductances
+  DIM DATA_4[1048576] as float  'Make Voltages
   ' Set DATA_10 as amplifier array
   DIM DATA_10[65536] as float
 #+END_SRC
@@ -3035,22 +3050,23 @@ In the ADwin =INIT= block the variables defined are set to their default values.
 #+CAPTION: Adwin histogram analysis =INIT= block
 #+NAME: src-adwin-hist-init
 #+BEGIN_SRC basic
-  state = 0
-  breakwait = 0
-  makewait = 0
-  avgcounter = 0
-  avgcurrent = 0
-  break_acc = 0
-  make_acc = 0
-  piezo_V = PAR_5
-  piezo_min = 32771
-  piezo_max = 65533
-  PAR_20 = 1                      ' Break index
-  PAR_21 = 1                      'Make index
-  ' Set juncture voltage at output and prepare measurement
-  juncture_voltage = PAR_1
-  DAC(1, juncture_voltage)
-  set_MUX(1010000000b) 'use MUX
+  INIT:
+    PAR_12 = 0
+    breakwait = 0
+    makewait = 0
+    avgcounter = 0
+    avgcurrent = 0
+    break_acc = 0
+    make_acc = 0
+    piezo_V = PAR_5
+    piezo_min = 32771
+    piezo_max = 65533
+    PAR_20 = 1                      ' Break index
+    PAR_21 = 1                      'Make index
+    ' Set juncture voltage at output and prepare measurement
+    juncture_voltage = PAR_1
+    DAC(1, juncture_voltage)
+    set_MUX(1010000000b) 'use MUX
 #+END_SRC
 
 *** DONE Adwin histogram-Event Block
@@ -3072,7 +3088,7 @@ The =Event= Block is separated in different functionalities
 #+BEGIN_SRC basic
   EVENT:
 
-    SELECTCASE state
+    SELECTCASE PAR_12
       CASE 0 'output desired voltage on DAC1
         <<src-adwin-hist-set-jv>>
 
@@ -3124,10 +3140,10 @@ This section describes the algorithm used to store the break histogram shown in 
       break_acc = 0
       inc(piezo_V)
       IF (piezo_V >= piezo_max) THEN
-        state = 2 ' Go to make histogram
-        PAR_13 = 1
+        PAR_12 = 2 ' Go to make histogram
+        PAR_14 = 1
       ENDIF
-      DAC(2,piezo_V)
+      DAC(2, piezo_V)
       break_hist_flag = 1 ' Go to next stage
 
     CASE 1  ' Wait for stabilization (ref:adw-brk-wt)
@@ -3152,8 +3168,9 @@ This section describes the algorithm used to store the break histogram shown in 
       PAR_20 = PAR_20 + 1
       break_hist_flag = 0
       IF (avgcurrent <= FPAR_10) THEN
-        state = 2 ' Go to make histogram
+        PAR_12 = 2 ' Go to make histogram
       ENDIF
+  ENDSELECT
 #+END_SRC
 
 **** DONE Adwin histogram-Event make histogram
@@ -3180,13 +3197,13 @@ This section describes the algorithm used to store the make histogram shown in t
       make_acc = 0
       DEC(piezo_V)
       IF (piezo_V <= piezo_min) THEN
-        state = 3 ' Go to end process
+        PAR_12 = 3 ' Go to end process
         IF (avgcurrent >= FPAR_11) THEN
-          PAR_13 = PAR_13 + 2 ' Go to end process
+          PAR_14 = PAR_14 + 2 ' Go to end process
         ENDIF
 
       ENDIF
-      DAC(2,piezo_V)
+      DAC(2, piezo_V)
       make_hist_flag = 1 ' Go to next stage
 
     CASE 1  ' Wait for stabilization (ref:adw-mk-wt)
@@ -3210,6 +3227,7 @@ This section describes the algorithm used to store the make histogram shown in t
       DATA_4[PAR_21] = piezo_V
       PAR_21 = PAR_21 + 1
       make_hist_flag = 0
+  ENDSELECT
 #+END_SRC
 **** DONE Adwin histogram-Event reset juncture voltage
      :PROPERTIES:
@@ -3281,7 +3299,7 @@ The constants are:
       baud_rate = 9600 #(ref:fh-const-br)
       pitch = 150 #(ref:fh-const-pitch)
       gearbox = 246 #(ref:fh-const-gear)
-      max_pos =  5000000#(ref:fh-const-max)
+      max_pos = 5000000#(ref:fh-const-max)
       min_pos = -7000000#(ref:fh-const-min)
       max_speed = 800#in RPM(ref:fh-const-max-speed)
       max_accel = 40#in RPM/s(ref:fh-const-accel)
@@ -3323,14 +3341,14 @@ The Faulhaber motor, can only operate at seconds rates, however the control loop
       def __init__(self, start_pos, start_speed):
           self.start_pos = start_pos
           self.current_speed = start_speed
-          self.previous_pos = [start_pos,start_pos,start_pos]
+          self.previous_pos = [start_pos, start_pos, start_pos]
       def update_position(self, new_pos):
           self.previous_pos.append(new_pos)
           self.previous_pos.pop(0)
       # Depends on numpy abs to work on array
       def is_motor_stopped(self):
           a = self.previous_pos
-          delta = sum(abs([a.(2) - a.(1),a.(1)-a.(0)]))
+          delta = sum(abs([a.[2] - a.[1], a.[1]-a.[0]]))
           return delta==0
       def update_current_speed(self, new_speed):
           self.current_speed = new_speed
@@ -3437,7 +3455,7 @@ As previously stated this section defines the basic functions of the Faulhaber m
       #################################################################
       ## @brief   Sets the target speed of the motor
       #################################################################
-      def _set_target_speed(self,speed):
+      def _set_target_speed(self, speed):
           target_speed_str = "v %d" %speed
           self.state.update_speed(speed)
           self.motor_ctrl.write(target_speed_str)
@@ -3478,7 +3496,7 @@ As previously stated this section defines the basic functions of the Faulhaber m
        #################################################################
        def _init_state(self):
            start_pos = self._query_current_axis_position()
-           self.state = faulhaber_state(start_pos,0)
+           self.state = faulhaber_state(start_pos, 0)
      #+END_SRC
 
 *** Faulhaber Program Interface
@@ -3650,7 +3668,7 @@ The motor break-restore algorithm tries to set the conductance to a target value
           data_set = self.measure(data_set, config)
           G = data_set.get_conductance()
           if(abs(G_target - G) < tolerance):
-              data_set = self.stop_motor(data_set,config)
+              data_set = self.stop_motor(data_set, config)
               G = data_set.get_conductance()
               if(abs(G_target - G) < tolerance):
                   break
@@ -3663,7 +3681,7 @@ The motor break-restore algorithm tries to set the conductance to a target value
           else:
               self.set_fine_break_speed()
               sleep(config.get_ctrl_delay())
-              data_set = self.stop_motor(data_set,config)
+              data_set = self.stop_motor(data_set, config)
               if(make_loop):
                   loop_counter = loop_counter +1
                   make_loop = False
@@ -3690,13 +3708,10 @@ This section is for the interface with each measurement instrument.
  #+END_SRC
 
 ** colorize
-#+BEGIN_SRC emacs-lisp
+#+BEGIN_SRC emacs-lisp :results none
   (add-to-list 'org-latex-packages-alist '("" "listings"))
   (setq org-latex-listings t)
 #+END_SRC
-
-#+RESULTS:
-: t
 
 ** Basic-mode
 #+BEGIN_SRC emacs-lisp :results none
@@ -3739,12 +3754,12 @@ This section is for the interface with each measurement instrument.
        ( , basic-comments                 . font-lock-comment-face)
        ("\"\\.\\*\\?" . font-lock-string-face)
        ;; ; : , ; { } =>  @ $ = are all special elements
-       (":\\|,\\|;\\|{\\|}\\|=>\\|@\\|$\\|=" . font-lock-constant-face)
-       ( ,(regexp-opt basic-keywords 'words) . font-lock-keyword-face)
-       ( ,(regexp-opt basic-events 'words) . font-lock-preprocessor-face)
-       ( ,(regexp-opt basic-types 'words) . font-lock-type-face)
-       ( ,(regexp-opt basic-functions 'words) . font-lock-function-name-face)
-       ( ,"\\(F?PAR\\|DATA\\)_[0-9]+" . font-lock-builtin-face)
+       (":\\|, \\|;\\|{\\|}\\|=>\\|@\\|$\\|=" . font-lock-constant-face)
+       ( , (regexp-opt basic-keywords 'words) . font-lock-keyword-face)
+       ( , (regexp-opt basic-events 'words) . font-lock-preprocessor-face)
+       ( , (regexp-opt basic-types 'words) . font-lock-type-face)
+       ( , (regexp-opt basic-functions 'words) . font-lock-function-name-face)
+       ( , "\\(F?PAR\\|DATA\\)_[0-9]+" . font-lock-builtin-face)
        )))
 
   (define-derived-mode basic-mode prog-mode "Basic"
