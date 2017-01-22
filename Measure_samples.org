@@ -2298,6 +2298,31 @@ This section provides with the functions required to obtain the measurements fro
       return self.get_real_conductance()/param.GLOBAL_CONSTANTS.G0
 #+END_SRC
 
+*** Adwin IV testing                                               :noexport:
+#+BEGIN_SRC python :tangle test_adwin_iv.py
+  from time import strftime
+  import numpy as np
+  import pylab as pl
+  import matplotlib.pyplot as plt
+  from modules.adwin_driver import *
+  from modules.configuration import *
+
+
+  # Configure Plot
+  infile = "Measurement_deafult_config.yaml"
+  outfile = "Measurement_read_config.yaml"
+  config = yaml_build_config_from_file(infile)
+  dconfig = config.display_config
+  hconfig = config.hist_config
+  iv_config = config.iv_config
+
+
+  adw = adwin_iv_driver(iv_config)
+  adw.start_process()
+  for i in range(100):
+      print(adw.get_conductance())
+#+END_SRC
+
 ** TODO Adwin driver-histogram class
 *** DONE Adwin driver-histogram parameters
 In a similar way as shown in [[Adwin driver-IV parameters]] the parameters are grouped in 3 categories
@@ -2463,7 +2488,13 @@ This section provides with the functions required to obtain the histogram measur
 
       return break_histogram, make_histogram
 
+
   def get_break_histogram(self):
+      break_conductance = self.get_break_conductance()
+      break_voltage = self.get_break_voltage()
+      return adwin_histogram(break_conductance, break_voltage)
+
+  def get_break_conductance(self):
       G0 = self.config.G0
       real_jv = self.config.get_real_jv()
       length = self.adw.Get_Par(ADW_HIST_CONST.BREAK_IDX) -1
@@ -2483,6 +2514,11 @@ This section provides with the functions required to obtain the histogram measur
       return ret_hist
 
   def get_make_histogram(self):
+      make_conductance = self.get_make_conductance()
+      make_voltage = self.get_make_voltage()
+      return adwin_histogram(make_conductance, make_voltage)
+
+  def get_make_conductance(self):    
       G0 = self.config.G0
       real_jv = self.config.get_real_jv()
       length = self.adw.Get_Par(ADW_HIST_CONST.MAKE_IDX) -1
@@ -2509,11 +2545,28 @@ This section provides with the functions required to obtain the histogram measur
       return self.adw.Get_Par(ADW_HIST_CONST.ERROR_STATUS) & 1 == 1
   def error_in_making(self):
       return (self.adw.Get_Par(ADW_HIST_CONST.ERROR_STATUS) >> 1) & 1 == 1
+
+
+  class adwin_histogram(object):
+      def __init__(self, conductance, voltage):
+          self.conductance = conductance
+          self.voltage = voltage
+          self.length = min(len(self.conductance), len(self.voltage))
+      def get_conductance(self):
+          return self.conductance
+      def get_voltage(self):
+          return self.voltage
+      def get_voltage_conductance_pair(self, idx):
+          return self.conductance[idx], self.voltage[idx]
+      def print_histogram(self):
+          for idx in self.length:
+              G, V = get_voltage_conductance_pair(idx)
+              print("Index = {0}, G = {1}, V = {2}".format(idx,G,V))
 #+END_SRC
 
 *** TODO ADwin Histogram testing                                   :noexport:
     :PROPERTIES:
-    :header-args+: :tangle adwin_histogram_test.py
+    :header-args+: :tangle test_adwin_histogram.py
     :END:
 Small test program for the ADwin hisotgram measurement.
 #+BEGIN_SRC python
@@ -2523,97 +2576,8 @@ Small test program for the ADwin hisotgram measurement.
   import matplotlib.pyplot as plt
   from modules.adwin_driver import *
   from modules.configuration import *
-  def save_data(*arg): 
-      # write date to file. first argument is file id, all others are data arrays
-
-      filename = arg[0]    
-      filename.write('@ \n')
-
-      for i in range(0,len(arg[1])):
-          string = ""
-          for j in range (1,len(arg)): 
-              temp = arg[j]
-              if j == 1:
-                  string = string +  "%5.8f\t" % (temp[i])
-              else:
-                  string = string +  "%5.8e\t" % (temp[i])
-
-          string = string + "\n"
-          filename.write(string)
-
-      return None
 
 
-  def plot_traces(axis, D_breaking, G_breaking, D_making, G_making, dconfig):
-      axis.clear()
-      plt_breaking = axis.plot(D_breaking, G_breaking, linewidth=2)
-      plt_making = axis.plot(D_making, G_making, linewidth=2)
-      axis.set_yscale("log")
-      axis.set_xlim(0, max(max(D_making), max(D_breaking)))
-      axis.set_ylim(dconfig.Gmin, dconfig.Gmax)
-      axis.set_title("Conductance trace")
-      axis.set_xlabel('Displacement (nm)')
-      axis.set_ylabel('Conductance (G0)')
-      axis.set_aspect(1)
-      #axis.xticks(power(np.zeros(nGbins) + 10.0, range(-8, 2, 4)))
-      #axis.yticks(range(-10, 1, 10))
-
-  def plot_counts(axis, break_acc, make_acc, G_breaking, G_making, Gbins, Dbins):
-      tmp=np.histogram(G_breaking, bins=Gbins)
-      break_acc = break_acc + tmp[0]
-      tmp=np.histogram(G_making, bins=Gbins)
-      make_acc = make_acc + tmp[0]
-      # plot 1D histogram (2)
-      Gbins_plot = Gbins[0:-1]
-      Dbins_plot = Dbins[0:-1]
-      axis.clear()
-      plt_histo1D_breaking = axis.plot(Gbins_plot, break_acc, linewidth=2)
-      plt_histo1D_making = axis.plot(Gbins_plot, make_acc, linewidth=2)
-      axis.set_xscale("log")
-      axis.set_ylim(0, 1.2*max(max(break_acc), max(make_acc)))
-      axis.set_xlim(Gbins[0], Gbins[-1])
-      axis.set_title("1D Histogram")
-      axis.set_ylabel('Counts')
-      axis.set_xlabel('Conductance (G0)')
-      axis.set_aspect(1)
-
-      return break_acc, make_acc
-
-
-  def plot_2D_histogram(axis, G_breaking, G_making, Gbins, D_breaking, Dbins, histo2D_breaking_sum):
-      index=max(pl.find(G_breaking>0.5))
-      D_breaking = D_breaking - D_breaking[index]
-      Gbins_plot = Gbins[0:-1]
-      Dbins_plot = Dbins[0:-1]
-
-      # plot 2D histogram (3)
-      tmp = pl.histogram2d(G_breaking, D_breaking, bins=(Gbins, Dbins))
-      histo2D_breaking_sum = histo2D_breaking_sum + tmp[0]
-
-      index1 = pl.find(min(abs(np.log10(Gbins) - -2 ))==(abs(np.log10(Gbins) - -2 )))
-      index2 = pl.find(min(abs(np.log10(Gbins) - -6 ))==(abs(np.log10(Gbins) - -6 )))
-      tmp = histo2D_breaking_sum[index2:index1, :]
-
-      Cmax = 0
-      for y in range(0, index1-index2):
-          Cmax = max(max(tmp[y, :]), Cmax)
-
-      axis.clear()
-      surf = axis.contourf(Dbins_plot, Gbins_plot, histo2D_breaking_sum, np.linspace(0, Cmax/2, 16))
-      axis.set_yscale("log")
-      axis.set_ylim(Gbins_plot[0], Gbins_plot[-1])
-      axis.set_xlim(Dbins_plot[0], Dbins_plot[-1])
-      axis.set_title("2D Histogram")
-      axis.set_xlabel('Displacement (nm)')
-      axis.set_ylabel('Conductance (G0)')
-
-      pl.pause(1)
-
-  def stop():
-      """stop ADwin and motor"""
-      ADwin_stop_all_process()
-      ADwin_boot()
-  #    Faulhaber_command('v 0')
   # Configure Plot
   infile = "Measurement_deafult_config.yaml"
   outfile = "Measurement_read_config.yaml"
@@ -2622,70 +2586,11 @@ Small test program for the ADwin hisotgram measurement.
   hconfig = config.hist_config
   sconfig = config.save_config
 
-  save_dir = sconfig.get_save_dir()
-
-  traces = dconfig.get_traces()
-  nGbins = dconfig.get_nGbins()
-  nDbins = dconfig.get_nXbins()
-  xmin = dconfig.get_xmin()
-  xmax = dconfig.get_xmax()
-  Gmin = dconfig.get_Gmin()
-  Gmax = dconfig.get_Gmax()
-
-
-
-  ## initialize histogram
-  Gbins = np.power(np.zeros(nGbins) + 10.0, np.linspace(np.log10(Gmin), np.log10(Gmax), nGbins)) # create conductance array
-  Dbins = np.linspace(xmin, xmax, nDbins) # create displacement array
-
-  histo1D_breaking_sum = np.zeros(nGbins-1)
-  histo1D_making_sum = np.zeros(nGbins-1)
-  histo2D_breaking_sum = np.zeros(shape=(nGbins-1, nDbins-1))
-
-  ## plot settings
-  pl.rcParams['figure.figsize'] = [22, 10]
-  font = {'family' : 'normal',
-          'weight' : 'normal',
-          'size'   : 22}
-  fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
-  ax1.set_position([0.07, 0.1, 0.25, 0.8])
-  ax2.set_position([0.39, 0.1, 0.25, 0.8])
-  ax3.set_position([0.72, 0.1, 0.25, 0.8])
-  fig.set_facecolor('white')
-  #matplotlib.rc('font', **font)
 
   adw = adwin_hist_driver(hconfig)
   date = strftime("%y%m%d")
   break_histogram, make_histogram = adw.measure_and_get_histogram()
-  D_breaking = break_histogram[0]
-  G_breaking = break_histogram[1]
-
-  D_making = make_histogram[0]
-  G_making = make_histogram[1]
-
-  break_acc = np.histogram(G_breaking, bins=Gbins)[0]
-  make_acc = np.histogram(G_making, bins=Gbins)[0]
-  for i in range(traces):
-      break_histogram, make_histogram = adw.measure_and_get_histogram()
-      if not adw.successful_measurement():
-          continue
-      D_breaking = break_histogram[0]
-      G_breaking = break_histogram[1]
-
-      D_making = make_histogram[0]
-      G_making = make_histogram[1]
-
-      plot_traces(ax1, D_breaking, G_breaking, D_making, G_making, dconfig)
-      break_acc, make_acc = plot_counts(ax2, break_acc, make_acc, G_breaking, G_making, Gbins, Dbins)
-      plot_2D_histogram(ax2, G_breaking, G_making, Gbins, D_breaking, Dbins, histo2D_breaking_sum)
-      filename = save_dir + 'scan_jf' + date + '_' + "%1.0f.dat" % i
-      save_file = open(filename, "w")
-      #make_general_header(file)
-      #make_piezo_header(file)
-      save_data(save_file, D_breaking, G_breaking)
-      save_data(save_file, D_making, G_making)
-      save_file.close()
-
+  break_histogram.print_histogram()
 #+END_SRC
 
 ** TODO Adwin driver-utilities
@@ -2729,9 +2634,9 @@ In summary, to set a value in the Adwin we need to take the target value, and co
 #+END_SRC
 *** TODO Adwin reset
 #+BEGIN_SRC python
-def ADwin_stop():
-  """ create a new adwin drive, which will reboot the Adwin, and stop all executions"""
-  clean_adwin_driver = adwin_driver(1,"")
+  def ADwin_stop():
+      """ create a new adwin drive, which will reboot the Adwin, and stop all executions"""
+      adwin_driver(1,"")            # This reboots the Adwin, killing the process
 #+END_SRC
 * DONE Adwin Measurements
   :PROPERTIES:
