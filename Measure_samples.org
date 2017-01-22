@@ -250,8 +250,8 @@ The program configuration, is the interface that allows the user to modify the p
   __author___ = "Joaquin Figueroa"
 
   import yaml
-  import modules.adwin_driver as adwin
-  import modules.parameters as param
+  import adwin_driver as adwin
+  import parameters as param
 #+END_SRC
 
 **** TODO Program Configuration-Process configurations
@@ -272,6 +272,7 @@ The full configuration is the general interface for all configuratioins, as it e
           iv_data = None
           hist_data = None
           display_data = None
+          save_data = None
           if data:
               iv_data = data.get('IV Configuration')
               hist_data = data.get('Histogram Configuration')
@@ -313,9 +314,9 @@ The full configuration is the general interface for all configuratioins, as it e
           self.update_config()
 
       def update_config(self):
-          self.config['JunctureVoltage'] = self.measure_jv.value
-          self.config['AveragePoints'] = self.avg_points.value
-          self.config['UseLogAmplifier'] = self.use_log_amp.value
+          self.config['JunctureVoltage'] = self.measure_jv.get_value()
+          self.config['AveragePoints'] = self.avg_points.get_value()
+          self.config['UseLogAmplifier'] = self.use_log_amp.get_value()
 
       def update_config_with_data(self, data):
           self.measure_jv.update_or_dflt(data.get('JunctureVoltage'))
@@ -328,11 +329,11 @@ The full configuration is the general interface for all configuratioins, as it e
       def get_start_jv(self):
           return adwin.adwin_ADC(self.start_jv)
       def get_measure_jv(self):
-          return adwin.adwin_ADC(self.measure_jv.value)
+          return adwin.adwin_ADC(self.measure_jv.get_value())
       def get_end_jv(self):
           return adwin.adwin_ADC(self.end_jv)
       def get_avg_points(self):
-          return self.avg_points.value
+          return self.avg_points.get_value()
 
       def get_wait_cycles(self):
           return adwin.adwin_convert_ms_to_cycles(self.wait)
@@ -341,7 +342,7 @@ The full configuration is the general interface for all configuratioins, as it e
       def get_real_jv(self):
           return adwin.adwin_DAC(self.get_measure_jv())
       def get_use_log_amp(self):
-          return self.use_log_amp.value
+          return self.use_log_amp.get_value()
 #+END_SRC
 
 ***** Histogram-Measurement Configuration
@@ -363,16 +364,16 @@ The full configuration is the general interface for all configuratioins, as it e
           self.make_speed = param.make_speed()
           self.G0 = param.GLOBAL_CONSTANTS.G0
           self.G_break_end = 1e-5 * self.G0
-          self.G_make_end = 2 * self.G0
+          self.G_make_end = 20 * self.G0
           self.config = {}
           self.update_config()
 
       def update_config(self):
-          self.config['JunctureVoltage'] = self.measure_jv.value
-          self.config['AveragePoints'] = self.avg_points.value
-          self.config['BreakSpeed'] = self.break_speed.value
-          self.config['MakeSpeed'] = self.make_speed.value
-          self.config['UseLogAmplifier'] = self.use_log_amp.value
+          self.config['JunctureVoltage'] = self.measure_jv.get_value()
+          self.config['AveragePoints'] = self.avg_points.get_value()
+          self.config['BreakSpeed'] = self.break_speed.get_value()
+          self.config['MakeSpeed'] = self.make_speed.get_value()
+          self.config['UseLogAmplifier'] = self.use_log_amp.get_value()
 
       def update_config_with_data(self, data):
           self.measure_jv.update_or_dflt(data.get('JunctureVoltage'))
@@ -387,32 +388,38 @@ The full configuration is the general interface for all configuratioins, as it e
       def get_start_jv(self):
           return adwin.adwin_ADC(self.start_jv)
       def get_measure_jv(self):
-          return adwin.adwin_ADC(self.measure_jv.value)
+          return adwin.adwin_ADC(self.measure_jv.get_value())
       def get_end_jv(self):
           return adwin.adwin_ADC(self.end_jv)
       def get_avg_points(self):
-          return self.avg_points.value
+          return self.avg_points.get_value()
 
       def get_real_jv(self):
           return adwin.adwin_DAC(self.get_measure_jv())
       def get_use_log_amp(self):
-          return self.use_log_amp.value
+          return self.use_log_amp.get_value()
       def get_break_wait(self):
-          break_speed = self.break_speed.value
           # We are taking 0->1000 to 0->10, because that's the Adwin range
-          break_steps = adwin.adwin_ADC(break_speed/100) *1e-3 # in ms
-          break_wait = 1/break_steps
+          break_speed = self.break_speed.get_value()/100 # in V/seg 
+          zero_v_steps = adwin.adwin_ADC(0)              # in V/seg (for range)
+          break_steps_seg = (adwin.adwin_ADC(break_speed) -zero_v_steps) # in seg
+          break_steps_ms = break_steps_seg * 1e-3
+
+          break_wait = 1/break_steps # in ms
           return adwin.adwin_convert_ms_to_cycles(break_wait)
       def get_make_wait(self):
-          make_speed = self.make_speed.value
           # We are taking 0->1000 to 0->10, because that's the Adwin range
-          make_steps = adwin.adwin_ADC(make_speed/100) *1e-3 # in ms
-          make_wait = 1/make_steps
+          make_speed = self.make_speed.get_value()/100
+          zero_v_steps = adwin.adwin_ADC(0) 
+          make_steps_seg = (adwin.adwin_ADC(make_speed) -zero_v_steps) # in seg
+          make_steps_ms = make_steps_seg *1e-3 # in ms
+
+          make_wait = 1/make_steps # in ms
           return adwin.adwin_convert_ms_to_cycles(make_wait)
       def get_I_break_end(self):
-          return  self.G_break_end*self.get_real_jv()
+          return  self.G_break_end * self.get_real_jv()
       def get_I_make_end(self):
-          return  self.G_make_end*self.get_real_jv()
+          return  self.G_make_end * self.get_real_jv()
 
 #+END_SRC
 
@@ -437,13 +444,13 @@ The full configuration is the general interface for all configuratioins, as it e
 
 
       def update_config(self):
-          self.config['xmin'] = self.xmin.value
-          self.config['xmax'] = self.xmax.value
-          self.config['Gmin'] = self.Gmin.value
-          self.config['Gmax'] = self.Gmax.value
-          self.config['nGbins'] = self.nGbins.value
-          self.config['nDbins'] = self.nXbins.value
-          self.config['NumberTraces'] = self.traces.value
+          self.config['xmin'] = self.xmin.get_value()
+          self.config['xmax'] = self.xmax.get_value()
+          self.config['Gmin'] = self.Gmin.get_value()
+          self.config['Gmax'] = self.Gmax.get_value()
+          self.config['nGbins'] = self.nGbins.get_value()
+          self.config['nDbins'] = self.nXbins.get_value()
+          self.config['NumberTraces'] = self.traces.get_value()
 
       def update_config_with_data(self, data):
           self.xmin.update_or_dflt(data.get('xmin'))
@@ -457,19 +464,19 @@ The full configuration is the general interface for all configuratioins, as it e
           self.update_config()
 
       def get_xmin(self):
-          return self.xmin.value
+          return self.xmin.get_value()
       def get_xmax(self):
-          return self.xmax.value
+          return self.xmax.get_value()
       def get_Gmin(self):
-          return self.Gmin.value
+          return self.Gmin.get_value()
       def get_Gmax(self):
-          return self.Gmax.value
+          return self.Gmax.get_value()
       def get_nGbins(self):
-          return self.nGbins.value
+          return self.nGbins.get_value()
       def get_nXbins(self):
-          return self.nXbins.value
+          return self.nXbins.get_value()
       def get_traces(self):
-          return self.traces.value
+          return self.traces.get_value()
 #+END_SRC
 
 ***** Save options
@@ -488,8 +495,8 @@ The full configuration is the general interface for all configuratioins, as it e
 
 
       def update_config(self):
-          self.config['SaveData'] = self.save_data.value
-          self.config['SaveDir'] = self.save_dir.value
+          self.config['SaveData'] = self.save_data.get_value()
+          self.config['SaveDir'] = self.save_dir.get_value()
 
       def update_config_with_data(self, data):
           self.save_dir.update(data.get('SaveDir'))
@@ -498,9 +505,9 @@ The full configuration is the general interface for all configuratioins, as it e
           self.update_config()
 
       def get_save_data(self):
-          return self.save_data.value
+          return self.save_data.get_value()
       def get_save_dir(self):
-          return self.save_dir.value
+          return self.save_dir.get_value()
 
 #+END_SRC
 ***** File Interface
@@ -609,8 +616,8 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
   """  
   __author__ = "Joaquin Figueroa"
 
-  import modules.utilities as utl
-  import modules.adwin_driver as adwin
+  import utilities as utl
+  import adwin_driver as adwin
   import os
 #+END_SRC
 
@@ -670,6 +677,11 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
         def update(self, new_path):#(ref:src-dd-update)
             if self.validate(new_path):
                 self.value = new_path
+        #############################################################
+        ## @brief   Returns the value of the parameter
+        #############################################################
+        def get_value(self): # (ref:src-dd-validation)
+            return self.value
         #############################################################
         ## @brief   Print the parameter.
         #############################################################
@@ -748,6 +760,11 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
                 if verbose:
                     self.error_message(new_val)
         #############################################################
+        ## @brief   returns the value
+        #############################################################
+        def get_value(self):        #(ref:src-np-update-dflt)
+            return self.value
+        #############################################################
         ## @brief   Prints the parameter name and its value
         #############################################################
         def print_param(self):#(ref:src-np-print)
@@ -803,6 +820,12 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
             super(integer_parameter, self).update(val)
             self.value = int(self.value)
         #############################################################
+        ## @brief   Determines if a new int value is in the permited
+        #           range, and integer
+        #############################################################
+        def get_value(self): # (ref:src-ip-validation)
+            return int(super(integer_parameter, self).get_value())
+        #############################################################
         ## @brief   Prints the parameter name and its value
         #############################################################
         def print_param(self): # (ref:src-ip-print)
@@ -812,7 +835,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
 ****** DONE Numerical Parameter Test                               :noexport:
   Test the functionality of a generic numerical parameter. Just excecuted by using =C-c C-c=. Should all be true
   #+BEGIN_SRC python :tangle no
-    import modules.ui_config as c
+    import modules.parameters as c
     tp = c.numerical_parameter("Test", 7.8, 0.5, 50)
     t1 = tp.value == 7.8
     t2 = tp.validate(-1.1) == False
@@ -889,7 +912,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
 ******* DONE juncture voltage test                                 :noexport:
    Test functionality. Just excecuted by using =C-c C-c=. Should all be true
    #+BEGIN_SRC python :tangle no
-     import modules.ui_config as c
+     import modules.parameters as c
      jv = c.juncture_voltage()
      t1 = jv.value == 0.1
      t2 = jv.validate(1.1) == False
@@ -939,7 +962,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
 ******* DONE Piezo brk test                                        :noexport:
    Test functionality. Just executed by using =C-c C-c=. Should all be true
    #+BEGIN_SRC python :tangle no
-     import modules.ui_config as c
+     import modules.parameters as c
      ps = c.break_speed()
      t1 = (ps.value == 300.0) & (ps.fixed_speed == 300.0)
      t2 = ps.validate(331.1) == False
@@ -991,7 +1014,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
 ******* DONE Piezo make test                                       :noexport:
    Test functionality. Just executed by using =C-c C-c=. Should all be true
    #+BEGIN_SRC python :tangle no
-     import modules.ui_config as c
+     import modules.parameters as c
      ps = c.make_speed()
      t1 = (ps.value == 300.0) & (ps.fixed_speed == 300.0)
      t2 = ps.validate(531.1) == False
@@ -1041,7 +1064,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
    #+END_SRC
 ******* DONE number traces test                                    :noexport:
    #+BEGIN_SRC python :tangle no
-     import modules.ui_config as c
+     import modules.parameters as c
      tr = c.traces()
      t1 = tr.value == 5000
      t2 = tr.validate(40000) == False
@@ -1060,7 +1083,6 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
    #+END_SRC
 
    #+RESULTS:
-   | True | True | True | True | True | True | True | True |
 ****** DONE Display xmin
    To display the measurements on real time, we show the histogram, and we define the minimum value for the *X-axis*, since we plot in *distance* value, we define the minimun as:
 
@@ -1266,6 +1288,11 @@ This parameter class is defined in a very similar fashion as the generic numeric
           if self.validate(new_value):
               self.value = new_value
       #############################################################
+      ## @brief   Returns the value of the parameter
+      #############################################################
+      def get_value(self): # (ref:src-bool-value)
+          return self.value
+      #############################################################
       ## @brief   Updates the stored value only if the new
       #           value is within range, otherwise returns to
       #           the default value
@@ -1342,7 +1369,7 @@ There are parameters that con modify the behavior of the run, but are not expect
       start_jv = 0
       end_jv = 0
       IV_settling_time = 10       # ms
-      IV_max_data_points = 5000   # seg
+      IV_max_data_points = 50000000 
 #+END_SRC
 
 ***** TODO Logaritmic amplifier calibration
@@ -1405,8 +1432,8 @@ calibration = log_ampl.get_calibration()
 
   from PyQt4 import QtGui
   from PyQt4 import QtCore
-  from modules.ui_gui import run_gui
-  import modules.utilities as utl
+  from ui_gui import run_gui
+  import utilities as utl
   import os
   import sys
 #+END_SRC
@@ -1581,7 +1608,7 @@ The basic parameters are:
 
   from PyQt4 import QtGui
   from PyQt4 import QtCore
-  import modules.configuration as conf
+  import configuration as conf
   import sys
   <<ui-basic-params-defaults>>
   <<ui-advanced-params-defaults>>
@@ -1872,7 +1899,7 @@ To provide the GUI for a parameter, a label and a text-box are needed, however f
       textbox = QtGui.QLineEdit()
       param_validator = QValidator_num_param(parameter)
       textbox.setValidator(param_validator)
-      textbox.setText(str(parameter.value))
+      textbox.setText(str(parameter.get_value()))
       return (label, textbox)
 #+END_SRC
 
@@ -1990,10 +2017,11 @@ The adwin driver is mostly a convenience layer between the ADwin and the Python 
 
 
   import os
-  import ADwin
   import numpy as np
-  import modules.utilities as utl
-  import modules.parameters as param
+  import pylab as pl
+  import ADwin
+  import utilities as utl
+  import parameters as param
 #+END_SRC
 ** TODO Adwin driver-base class
 The Adwin base class, provides with the minimum data structure and global parameters in order to define a proper driver for ADwin measurement process. This part of the file is split in:
@@ -2252,7 +2280,7 @@ This section provides with the functions required to obtain the measurements fro
   ## @brief   Return the current measured by the ADwin
   #############################################################
   def get_current(self):
-      if self.config.get_use_log_ampl():
+      if self.config.get_use_log_amp():
           current = self.adw.Get_FPar(ADW_IV_CONST.I_CH1_AMPL)
       else:
           digital_current = self.adw.Get_FPar(ADW_IV_CONST.I_CH1)
@@ -2419,15 +2447,16 @@ This section provides with the functions required to obtain the histogram measur
 - Break histogram :: Queries the data array from the ADwin that holds the break histogram and returns it
 #+name: src-adwin-hist-driver-api
 #+BEGIN_SRC python :tangle no
-  def measure_and_get_histogram(self):
+  def measure_and_get_histogram(self, trace=1):
       self.start_process()
       while self.process_running():
           state = self.adw.Get_Par(ADW_HIST_CONST.PROCESS_STATUS)
           if state == 1:
-              print("Run number: {0} \nbreaking 1".format(state))
+              print("Run number: {0} \nbreaking 1".format(trace))
           if state == 2:
-              print("Run number: {0} \nmaking 1".format(state))
+              print("Run number: {0} \nmaking 1".format(trace))
       os.system('cls')
+      pl.pause(0.1) 
       self.stop_process()
       break_histogram = self.get_break_histogram()
       make_histogram = self.get_make_histogram()
@@ -2689,26 +2718,20 @@ In summary, to set a value in the Adwin we need to take the target value, and co
       return adwin_DAC(adwin_ADC(analog_value))
 
 
-  def adwin_convert_ms_to_cycles(time):
+  def adwin_convert_ms_to_cycles(time_ms):
       # Stabilization cycles before starting measurement
       # Wait is in ms, but we need to wait number of cycles.
-      # Each cycle is 10 us => wait/cycle_time
-      cycle_time = ADW_GCONST.HIGH_PERIOD * ADW_GCONST.PROCESS_DELAY
-      wait_cycles = int(time*1e-3 /cycle_time ) # Because ms
+      # Each cycle is 10 us (in seg) => seg
+      cycle_time = ADW_GCONST.HIGH_PERIOD * ADW_GCONST.PROCESS_DELAY 
+      time_seg = time_ms * 1e-3
+      wait_cycles = int(time_seg /cycle_time ) # Because ms
       return wait_cycles
 #+END_SRC
 *** TODO Adwin reset
 #+BEGIN_SRC python
-def ADwin_stop_all_process():
-   for i in range(1,11):
-        adw.Stop_Process(i)
-        #print 'Process %1.0f has been stopped' % i
-   return None
-
-def ADwin_boot():
-  # create a new adwin drive, which will reboot the Adwin, and stop all executions
+def ADwin_stop():
+  """ create a new adwin drive, which will reboot the Adwin, and stop all executions"""
   clean_adwin_driver = adwin_driver(1,"")
-  
 #+END_SRC
 * DONE Adwin Measurements
   :PROPERTIES:
@@ -2747,15 +2770,16 @@ As in many programs, a header is required. In the Adwin case, this is necessary 
  #+BEGIN_SRC basic
    '<ADbasic Header, Headerversion 001.001>
    ' Process_Number                 = 1
-   ' Initial_Processdelay           = 1000
+   ' Initial_Processdelay           = 400
    ' Eventsource                    = Timer
    ' Control_long_Delays_for_Stop   = No
    ' Priority                       = High
    ' Version                        = 1
-   ' ADbasic_Version                = 5.0.8
+   ' ADbasic_Version                = 6.0.0
    ' Optimize                       = Yes
    ' Optimize_Level                 = 1
-   ' Info_Last_Save                 = TUD203025  TUD203025\LocalAdmin
+   ' Stacksize                      = 1000
+   ' Info_Last_Save                 = USUARIO-PC  Usuario-pc\Usuario
    '<Header End>
 
    ' This program provides a continous measurement of the current at the sample
@@ -2960,15 +2984,16 @@ As in many programs, a header is required. In the Adwin case, this is necessary 
  #+BEGIN_SRC basic
    '<ADbasic Header, Headerversion 001.001>
    ' Process_Number                 = 2
-   ' Initial_Processdelay           = 1000
+   ' Initial_Processdelay           = 400
    ' Eventsource                    = Timer
    ' Control_long_Delays_for_Stop   = No
    ' Priority                       = High
    ' Version                        = 1
-   ' ADbasic_Version                = 5.0.8
+   ' ADbasic_Version                = 6.0.0
    ' Optimize                       = Yes
    ' Optimize_Level                 = 1
-   ' Info_Last_Save                 = TUD205822  TUD205822\LocalAdmin
+   ' Stacksize                      = 1000
+   ' Info_Last_Save                 = USUARIO-PC  Usuario-pc\Usuario
    '<Header End>
 #+END_SRC
 
@@ -2987,8 +3012,8 @@ As in many programs, a header is required. In the Adwin case, this is necessary 
   ' PAR_18 -> Stabilizing time for making
   ' PAR_19 -> Number of data point to average for each measurement
   ' ---- Measurement Modifiers ----
-  ' FPAR_10 -> Minimum current to abort measurement - Breaking
-  ' FPAR_11 -> Maximum current to abort measurement - Making
+  ' FPAR_10 -> Maximum current at breaking end - Greater => not broken 
+  ' FPAR_11 -> Minimum current at making  - Smaller => not closed
   ' ---- Amplifier -----
   ' DATA_10 -> Amplifier table for calibration
 
@@ -3031,16 +3056,16 @@ In an Adwin program the local variables must be declared before the =INIT= block
   DIM breakwait, makewait as long
   DIM avgcounter  as long
   DIM juncture_voltage as long
-  DIM break_acc, make_acc  as long
+  DIM break_acc, make_acc  as float
   DIM piezo_V, piezo_min, piezo_max as long
   DIM avgcurrent as float
   ' Output histogram
   DIM break_hist_flag, make_hist_flag as long
   DIM histoindex_make, histoindex_break as long
-  DIM DATA_1[1048576] as float  'Break Conductances
-  DIM DATA_2[1048576] as float  'Break Voltages
-  DIM DATA_3[1048576] as float  'Make Conductances
-  DIM DATA_4[1048576] as float  'Make Voltages
+  DIM DATA_1[65533] as float  'Break Conductances
+  DIM DATA_2[65533] as float  'Break Voltages
+  DIM DATA_3[65533] as float  'Make Conductances
+  DIM DATA_4[65533] as float  'Make Voltages
   ' Set DATA_10 as amplifier array
   DIM DATA_10[65536] as float
 #+END_SRC
@@ -3052,17 +3077,20 @@ In the ADwin =INIT= block the variables defined are set to their default values.
 #+BEGIN_SRC basic
   INIT:
     PAR_12 = 0
+    PAR_14 = 0
+    break_hist_flag = 0
+    make_hist_flag = 0      
     breakwait = 0
     makewait = 0
     avgcounter = 0
     avgcurrent = 0
     break_acc = 0
     make_acc = 0
-    piezo_V = PAR_5
-    piezo_min = 32771
-    piezo_max = 65533
-    PAR_20 = 1                      ' Break index
-    PAR_21 = 1                      'Make index
+    piezo_V = 32768               ' Start at 0 [V]
+    piezo_min = 32768             ' 0  [V] at adwin output
+    piezo_max = 65532             ' 10 [V] at adwin output
+    PAR_20 = 1                    ' Break index
+    PAR_21 = 1                    ' Make index
     ' Set juncture voltage at output and prepare measurement
     juncture_voltage = PAR_1
     DAC(1, juncture_voltage)
@@ -3138,10 +3166,10 @@ This section describes the algorithm used to store the break histogram shown in 
       breakwait = 0
       avgcounter = 0
       break_acc = 0
-      inc(piezo_V)
+      INC(piezo_V)
       IF (piezo_V >= piezo_max) THEN
         PAR_12 = 2 ' Go to make histogram
-        PAR_14 = 1
+        PAR_14 = PAR_14 + 1 ' Error in breaking
       ENDIF
       DAC(2, piezo_V)
       break_hist_flag = 1 ' Go to next stage
@@ -3198,7 +3226,7 @@ This section describes the algorithm used to store the make histogram shown in t
       DEC(piezo_V)
       IF (piezo_V <= piezo_min) THEN
         PAR_12 = 3 ' Go to end process
-        IF (avgcurrent >= FPAR_11) THEN
+        IF (avgcurrent <= FPAR_11) THEN
           PAR_14 = PAR_14 + 2 ' Go to end process
         ENDIF
 
