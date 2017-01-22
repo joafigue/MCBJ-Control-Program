@@ -109,9 +109,10 @@ Obviously there is a series of additional modules which provide the interface to
 As with many considerable programs this one stars importing the necesary files. In this case, all the modules imported for the main file come from the modules created for the program.
 #+BEGIN_SRC python
   import sys
-  from modules.ui_config import *
+  from modules.ui_gui import run_gui, UI_CMD
   from modules.motor_break import *
   from modules.piezo_measure import *
+
 #+END_SRC
 
 The main loop is indeed a loop. It is intended to work in the following way.
@@ -179,10 +180,8 @@ Finally the main loop is executed indefinitely until the user terminates the pro
   ############################################################
   def main():
       while True:
-          ui_config = ui_get_gui_config()
+          ui_config, config = run_gui()
           ui_cmd    = ui_config.cmd
-          config    = ui_config.config
-          config._b_params.print_all()
           execute_ui_cmd(ui_cmd, config)
 
   if __name__ == "__main__":
@@ -817,7 +816,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
         #           range, and integer
         #############################################################
         def update(self, new_val): # (ref:src-ip-validation)
-            super(integer_parameter, self).update(val)
+            super(integer_parameter, self).update(new_val)
             self.value = int(self.value)
         #############################################################
         ## @brief   Determines if a new int value is in the permited
@@ -954,9 +953,9 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
          #############################################################
          def __init__(self):
              _dflt = 300.0
-             _min = 30.0
-             _max = 300.0
-             _name = "Piezo Speed"
+             _min = 10.0
+             _max = 600.0
+             _name = "Piezo Speed Breaking"
              super(break_speed, self).__init__(_name, _dflt, _min, _max)
    #+END_SRC
 ******* DONE Piezo brk test                                        :noexport:
@@ -1007,8 +1006,8 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
          def __init__(self):
              _dflt = 500.0
              _min = 30.0
-             _max = 500.0
-             _name = "Piezo Speed"
+             _max = 800.0
+             _name = "Piezo Speed Making"
              super(make_speed, self).__init__(_name, _dflt, _min, _max)
    #+END_SRC
 ******* DONE Piezo make test                                       :noexport:
@@ -1306,7 +1305,7 @@ This parameter class is defined in a very similar fashion as the generic numeric
       ## @brief   Print the parameter.
       #############################################################
       def print_param(self):#(ref:src-bool-print)
-          print("{0} is = {1}".format(self._name, self.value))
+          print("{0} is = {1}".format(self.name, self.value))
 
 #+END_SRC
 ****** DONE Histogram Save Data
@@ -1415,183 +1414,6 @@ calibration = log_ampl.get_calibration()
 
 #+RESULTS:
 
-*** TODO UI-Program Interface                                 :Heavyrefactor:
-    :PROPERTIES:
-    :header-args+: :tangle   modules/ui_config.py
-    :header-args+: :noweb    tangle
-    :END:
-   # As with any module there is a section for the imports and the file headers, but these are unninteresting for any reader, thus they are put in comments and not exported to a PDF/HTML result
-#+BEGIN_SRC python :exports none
-  """ Module ui_config - Provides the definitions and parameters for the UI
-  
-             This file provides a all the necessary helper
-             functions to interface the different parameters
-             with the program.
-  """  
-  __author__ = "Joaquin Figueroa"
-
-  from PyQt4 import QtGui
-  from PyQt4 import QtCore
-  from ui_gui import run_gui
-  import utilities as utl
-  import os
-  import sys
-#+END_SRC
-
-Therefore the output of the UI execution is a class of 2 values with one value being the command to be executed, and the other the configuration for the measurements, which has a default initialization, but also provides functions to replace the original values with new ones
- #+BEGIN_SRC python
-   ############################################################
-   ## @class   UI_CONFIG
-   #  @details This class has the return type of the UI class
-   #           The return type has:
-   #           1- Command to be executed (exit, measure)
-   #           2- Configuration for the measurements
-   ############################################################
-   class UI_CONFIG(object):
-       def __init__(self):
-           self.cmd    = UI_CMD.EXIT
-           self.config = UI_CONFIG_PARAMS()
-
-       ############################################################
-       ## @brief   Updates the ui_cmd with a new one
-       ############################################################
-       def update_cmd(self, new_cmd):
-           self.cmd = new_cmd
-
-       ############################################################
-       ## @brief   Updates the config with a new one
-       ############################################################
-       def update_config(self, new_config):
-           self.config = new_config
- #+END_SRC
-
-**** DONE UI command
- Now the command to be executed has only a few possible values, which are used to, as previously explained, to terminate the program, or execute one of the routines.
- #+BEGIN_SRC python
-   ############################################################
-   ## @class  CMD
-   #  @brief  UI calss to encode the possible commands for the
-   #         program
-   ############################################################
-   class UI_CMD(object):
-       EXIT    = 0
-       M_BREAK = 1
-       MEASURE = 2
- #+END_SRC
-
-**** TODO UI Configuration Parameters
-The UI configuration is a list of variables which are used through the measurements for configuring the experiments or for controlling the presentation of the results, for simplicity the variables are classified in groups
-- Basic parameters :: These are the parameters that control the run and define it see [[UI-Basic parameters ]]
-- Advanced parameters :: There are more advanced parameters that influence the run, but have minor impact (usually) when compared with the other parameters, and the user is rarely ever expected to modify them. See [[UI-Advanced parameters]]
-- Presentation parameters :: The results of the experiment is processed in graph; some of the parameters for the graph can be tweaked to improve the readability of them. See [[UI-Presentation]]
-
-#+BEGIN_SRC python
-  ############################################################
-  ## @class   UI_CONFIG
-  #  @details This class stores all configuration values to be
-  #           used for the measurements.
-  ############################################################
-  class UI_CONFIG_PARAMS(object):
-      def __init__(self):
-          self._b_params = basic_params()
-          self._a_params = adv_params()
-          self._p_params = presentation()
-
-      <<ui-config-bp-interface>>
-      <<ui-config-ap-interface>>
-      <<ui-config-pp-interface>>
-#+END_SRC
-
-Finally the interface with the rest of the program is defined through a single method
-
-#+BEGIN_SRC python
-  def ui_get_gui_config():
-      retval = run_gui()
-      return retval
-#+END_SRC
-
-Before describing each parameter group, is clear that most parameters are numerical, therefore it makes sense to define a class which encapsulates the common functionality for the numerical parameters. This class is defined in [[Numerical Parameters definition]]
-
-**** TODO UI-Advanced parameters
-#+BEGIN_SRC python
-  class adv_params(object):
-        def __init__(self):
-              self.asdf = 1
-#+END_SRC
-
-#+NAME: ui-config-ap-interface
-#+BEGIN_SRC python
-
-#+END_SRC
-
-#+name: ui-advanced-params-defaults
-#+BEGIN_SRC python :exports none
-piezo_start_V = 0.0         # V
-high_G = 30.0              # G0
-inter_G = 20.0              # G0
-low_G = 10.0              # G0
-piezo_speed_breaking1 = 300.0        # V/s
-piezo_speed_breaking2 = 300.0        # V/s (30 to 300) Este es el que se puede cambiar
-piezo_speed_making = 500.0        # V/s
-#post_breaking_voltage = 230.0       #
-post_breaking_voltage = 300.0       # cambia cuanto abro despues de que rompo
-nGbins = 251
-nDbins = 161
-xmin = -0.5 # nm
-xmax = 2    # nm
-Gmin = 1e-7 # G0
-Gmax = 10   # G0
-#+END_SRC
-
-**** TODO UI-Presentation
-#+name: ui-presentation-params-defaults
-#+BEGIN_SRC python :exports none
-todoJUNCTURE_VOLTAGE_DFLT = 0  #[V]
-todoPIEZO_SPEED_DFLT = 0       #[V/S]
-todoSAVE_DIRECTORY_DFLT = "./Data"
-#+END_SRC
-
-#+BEGIN_SRC python
-  class presentation(object):
-        def __init__(self):
-              self.asdf = 1
-#+END_SRC
-
-#+NAME: ui-config-pp-interface
-#+BEGIN_SRC python
-
-#+END_SRC
-**** TODO UI-Basic parameters
-The basic parameters used to configure the measurement are parameters that are the most likely to be modified by the used, and whose side effects are better understood. These parameters usually deal with the speed and number of data points.
-In a more traditional object oriented paradigm, each parameter is controlled by its own class, which defines their default values, range, validation functions and how each parameter is updated.
-
-The basic parameters are:
-- Juncture Voltage :: This represents the voltage applied to the junture. See [[Juncture Voltage]]
-- Piezo Speed Breaking :: This parameters defines the voltage rate which is applied to the piezoelectric, which has a direct impact on the juncture. See [[Piezo Speed Breaking]]
-- Number of traces :: Traces are each process of opening and closing the juncture using the piezoelectric device. Each trace is a full cycle, and the number of traces represent the number of measurements to be taken. See [[Number of traces]]
-- Data directory :: The results of the experiment are stored in a specific directory. See [[Data directory]]
-
-
-#+BEGIN_SRC python
-  class basic_params(object):
-        def __init__(self):
-              self.juncture = juncture_voltage()
-              self.piezo_speed = piezo_speed()
-              self.traces = traces()
-              self.save_dir = save_dir()
-        def restore_defaults(self):
-              self.juncture.reset()
-              self.piezo_speed.reset()
-              self.traces.reset()
-              self.save_dir.reset()
-        def print_all(self):
-              print("--- Basic Parameters ---")
-              self.juncture.print_param()
-              self.piezo_speed.print_param()
-              self.traces.print_param()
-              self.save_dir.print_param()
-#+END_SRC
-
 *** TODO UI-GUI                                                :Needrefactor:
     :PROPERTIES:
     :header-args+: :tangle   modules/ui_gui.py
@@ -1610,12 +1432,9 @@ The basic parameters are:
   from PyQt4 import QtCore
   import configuration as conf
   import sys
-  <<ui-basic-params-defaults>>
-  <<ui-advanced-params-defaults>>
-  <<ui-presentation-params-defaults>>
 #+END_SRC
 
-The Graphical user interface consist of a window that allows the user to tweak with each of the parameters defined in [[UI-Program Interface]], plus buttons for deciding which action to take.
+The Graphical user interface consist of a window that allows the user to tweak with each of the parameters defined in [[Confgurable parameters definitions]], plus buttons for deciding which action to take.
 
 This program uses [[https://wiki.python.org/moin/PyQt][PyQt4]] as a GUI framework. To run a GUI, first is necessary to create an "application", then instantiate a widget, which corresponds to the specific UI that is being implemented to finally "execute" the "application". For a reference on how this is done under PyQt a tutorial can be found on [[http://zetcode.com/gui/pyqt4/]].
 
@@ -1627,7 +1446,7 @@ This program uses [[https://wiki.python.org/moin/PyQt][PyQt4]] as a GUI framewor
       app = QtGui.QApplication(sys.argv) # Create "aplication"
       config_window = ui_config_window() # Instantiate widget
       app.exec_()                        # Execute appliaction
-      return config_window.ui_config
+      return config_window.ui_config, config_window.config
 #+END_SRC
 
 **** TODO Configuration Window
@@ -1674,8 +1493,8 @@ The widget provides a callback defined in line [[(ui-close-cb)]] to be used by t
       #           Also ensures the layout of the UI elements
       ############################################################
       def initUI(self):    #(ref:fn-initUI)
-          self.ui_config = conf.UI_CONFIG() #(ref:ui-config)
-
+          self.ui_config = gui_cmd()
+          self.config = conf.program_config() #(ref:ui-config)
           buttons_layout = ui_create_buttons_layout(self) #(ref:ui-buttons)
           config_layout  = ui_create_config_layout(self)  #(ref:ui-config)
           vbox = QtGui.QVBoxLayout()
@@ -1720,17 +1539,17 @@ Finally the buttons created are added to the layout of the button section of the
       # Quit Button
       quit_button = QtGui.QPushButton("Quit")
       quit_button.clicked.connect(
-          lambda: widget.close_with_cmd(conf.UI_CMD.EXIT)) (ref:lambda-btn)
+          lambda: widget.close_with_cmd(UI_CMD.EXIT)) (ref:lambda-btn)
       quit_button.setToolTip("Terminates the program")
       # Break Button
       break_button = QtGui.QPushButton("Only break")
       break_button.clicked.connect(
-          lambda: widget.close_with_cmd(conf.UI_CMD.M_BREAK))
+          lambda: widget.close_with_cmd(UI_CMD.M_BREAK))
       break_button.setToolTip("Use the motor to create a break junction.")
       # Measure Button
       measure_button = QtGui.QPushButton("Full Measure")
       measure_button.clicked.connect(
-          lambda: widget.close_with_cmd(conf.UI_CMD.MEASURE))
+          lambda: widget.close_with_cmd(UI_CMD.MEASURE))
       measure_button.setToolTip(
           "Performs measurement using the motor and piezo")
 
@@ -1750,9 +1569,10 @@ Finally the buttons created are added to the layout of the button section of the
 **** TODO Configuration Parameters Layout
 Since the configuration parameters are split in different groups so it is the layout of the configuration window, leaving a vertical section of the window to each group. The top level of the configuration parameters layout is shown in [[config-param-layout]], using the same techniques already used for the buttons. The rest of the description of the configuration parameters GUI is described in different sections:
 
-- Basic parameters :: The layout for the basic parameters is described in [[Basic parameters layout]]
-- Advanced parameters :: The layout for the advanced parameters is described in [[Advanced parameters layout]]
-- Presentation parameters :: The layout for the presentation parameters is described in [[Presentation parameters layout]]
+- IV/Conductance parameters :: The layout for the basic parameters is described in [[IV parameters layout]]
+- histogram parameters :: The layout for the advanced parameters is described in [[Histogram parameters layout]]
+- display parameters :: The layout for the presentation parameters is described in [[Display parameters layout]]
+- Save parameters :: parameters that are used to determine if and where the data will be saved. Is described in [[Save parameters layout]]
 - Utilities :: Some utilities shared by all the different layouts are described in [[Configuration parameters layout utilities]]
 
 #+CAPTION: Configuration parameters layout
@@ -1769,12 +1589,12 @@ Since the configuration parameters are split in different groups so it is the la
   #           Each group is preceded by a small label
   #           identifying the group
   ############################################################
-  def ui_create_config_layout(ui_config_window):
+  def ui_create_config_layout(ui_window):
       # Define each group layout
-      iv_param_layout = ui_iv_param_layout(ui_config_window)
-      hist_param_layout = ui_hist_param_layout(ui_config_window)
-      display_param_layout = ui_display_param_layout(ui_config_window)
-      save_opts_layout = ui_save_opts_layout(ui_config_window)
+      iv_param_layout = ui_iv_param_layout(ui_window)
+      hist_param_layout = ui_hist_param_layout(ui_window)
+      display_param_layout = ui_display_param_layout(ui_window)
+      save_opts_layout = ui_save_opts_layout(ui_window)
       # Define the labels
       iv_label = QtGui.QLabel("---- Adwin IV-measurement Parameters ----")
       hist_label = QtGui.QLabel("---- Adwin histogram Parameters ----")
@@ -1797,15 +1617,11 @@ Since the configuration parameters are split in different groups so it is the la
 ***** TODO IV parameters layout
 #+BEGIN_SRC python
   def ui_iv_param_layout(window):
-      basic_params = window.ui_config.config._b_params ## Fix this
+      iv_params = window.config.iv_config
       # Num parameters fields
-      jv_label, jv_text = num_param_label_textbox(basic_params.juncture)
-      ps_label, ps_text = num_param_label_textbox(basic_params.piezo_speed)
-      tr_label, tr_text = num_param_label_textbox(basic_params.traces)
-      # Change directory dialog and fields
-      dir_label = QtGui.QLabel(basic_params.save_dir.path)
-      dir_btn = QtGui.QPushButton('Change Directory')
-      dir_btn.clicked.connect(lambda: showDialog(window, dir_label))
+      jv_label, jv_text = num_param_label_textbox(iv_params.measure_jv)
+      avg_label, avg_text = num_param_label_textbox(iv_params.avg_points)
+
       # Add fields to the layout
       grid = QtGui.QGridLayout()
       grid.setSpacing(10)
@@ -1813,30 +1629,104 @@ Since the configuration parameters are split in different groups so it is the la
       grid.addWidget(jv_label, 1, 0)
       grid.addWidget(jv_text, 1, 1)
 
-      grid.addWidget(ps_label, 2, 0)
-      grid.addWidget(ps_text, 2, 1)
-
-      grid.addWidget(tr_label, 3, 0)
-      grid.addWidget(tr_text, 3, 1)
-
-      grid.addWidget(dir_label, 4, 0)
-      grid.addWidget(dir_btn, 4, 1)
+      grid.addWidget(avg_label, 2, 0)
+      grid.addWidget(avg_text, 2, 1)
 
       return grid
 #+END_SRC
 
-***** TODO Advanced parameters layout
+***** TODO Histogram parameters layout
 #+BEGIN_SRC python
+  def ui_hist_param_layout(window):
+      hist_params = window.config.hist_config
+      # Num parameters fields
+      jv_label, jv_text = num_param_label_textbox(hist_params.measure_jv)
+      avg_label, avg_text = num_param_label_textbox(hist_params.avg_points)
+      brk_label, brk_text = num_param_label_textbox(hist_params.break_speed)
+      mk_label, mk_text = num_param_label_textbox(hist_params.make_speed)
 
-  def ui_adv_param_layout(window):
-      return ui_basic_param_layout(window)
+      # Add fields to the layout
+      grid = QtGui.QGridLayout()
+      grid.setSpacing(10)
+
+      grid.addWidget(jv_label, 1, 0)
+      grid.addWidget(jv_text, 1, 1)
+
+      grid.addWidget(avg_label, 2, 0)
+      grid.addWidget(avg_text, 2, 1)
+
+      grid.addWidget(brk_label, 3, 0)
+      grid.addWidget(brk_text, 3, 1)
+
+      grid.addWidget(mk_label, 4, 0)
+      grid.addWidget(mk_text, 4, 1)
+      return grid
 
 #+END_SRC
-***** TODO Presentation parameters layout
-#+BEGIN_SRC python
 
-  def ui_presentation_param_layout(window):
-      return ui_basic_param_layout(window)
+***** TODO Display parameters layout
+#+BEGIN_SRC python
+  def ui_display_param_layout(window):
+      display_params = window.config.display_config
+      # Num parameters fields
+      xmin_label, xmin_text = num_param_label_textbox(display_params.xmin)
+      xmax_label, xmax_text = num_param_label_textbox(display_params.xmax)
+      Gmin_label, Gmin_text = num_param_label_textbox(display_params.Gmin)
+      Gmax_label, Gmax_text = num_param_label_textbox(display_params.Gmax)
+
+      nGbins_label, nGbins_text = num_param_label_textbox(display_params.nGbins)
+      nXbins_label, nXbins_text = num_param_label_textbox(display_params.nXbins)
+      traces_label, traces_text = num_param_label_textbox(display_params.traces)
+
+      # Add fields to the layout
+      grid = QtGui.QGridLayout()
+      grid.setSpacing(10)
+
+      grid.addWidget(xmin_label, 1, 0)
+      grid.addWidget(xmin_text, 1, 1)
+
+      grid.addWidget(xmax_label, 2, 0)
+      grid.addWidget(xmax_text, 2, 1)
+
+      grid.addWidget(Gmin_label, 3, 0)
+      grid.addWidget(Gmin_text, 3, 1)
+
+      grid.addWidget(Gmax_label, 4, 0)
+      grid.addWidget(Gmax_text, 4, 1)
+
+    
+      grid.addWidget(nGbins_label, 5, 0)
+      grid.addWidget(nGbins_text, 5, 1)
+
+      grid.addWidget(nXbins_label, 6, 0)
+      grid.addWidget(nXbins_text, 6, 1)
+
+    
+      grid.addWidget(traces_label, 7, 0)
+      grid.addWidget(traces_text, 7, 1)
+
+      return grid
+
+#+END_SRC
+
+***** TODO Save options parameters layout
+#+BEGIN_SRC python
+  def ui_save_opts_layout(window):
+      save_opts = window.config.save_config
+
+      # Change directory dialog and fields
+      dir_label = QtGui.QLabel(save_opts.save_dir.get_value())
+      dir_btn = QtGui.QPushButton('Change Directory')
+      dir_btn.clicked.connect(lambda: showDialog(window, save_opts, dir_label))
+
+      # Add fields to the layout
+      grid = QtGui.QGridLayout()
+      grid.setSpacing(10)
+
+
+      grid.addWidget(dir_label, 1, 0)
+      grid.addWidget(dir_btn, 1, 1)
+      return grid
 
 #+END_SRC
 
@@ -1864,26 +1754,26 @@ The overloading is performed by adding a parameter to the validator in the initi
   #           parameter.
   #############################################################
   class QValidator_num_param(QtGui.QValidator):
-          #############################################################
-          ## @brief   Initialization function, with the parameter
-          #############################################################
-          def __init__(self, param): #(ref:src-qvalidator-np-init)
-              QtGui.QValidator.__init__(self)
-              self.param = param
-          #############################################################
-          ## @brief   Validate function using the parameter validation
-          #           Ensures data is a number.
-          #############################################################
-          def validate(self, text, pos):#(ref:src-qvalidator-np-val)
-                  try:
-                          num = float(text)
-                  except ValueError:
-                          return (QtGui.QValidator.Invalid, pos)
+      #############################################################
+      ## @brief   Initialization function, with the parameter
+      #############################################################
+      def __init__(self, param): #(ref:src-qvalidator-np-init)
+          QtGui.QValidator.__init__(self)
+          self.param = param
+      #############################################################
+      ## @brief   Validate function using the parameter validation
+      #           Ensures data is a number.
+      #############################################################
+      def validate(self, text, pos):#(ref:src-qvalidator-np-val)
+          try:
+              num = float(text)
+          except ValueError:
+              return (QtGui.QValidator.Invalid, pos)
 
-                  if self.param.validate(num):
-                          self.param.update(num)
-                          return (QtGui.QValidator.Acceptable, pos)
-                  return (QtGui.QValidator.Invalid, pos)
+          if self.param.validate(num):
+              self.param.update(num)
+              return (QtGui.QValidator.Acceptable, pos)
+          return (QtGui.QValidator.Invalid, pos)
 #+END_SRC
 
 ****** TODO Parameter labels
@@ -1903,17 +1793,38 @@ To provide the GUI for a parameter, a label and a text-box are needed, however f
       return (label, textbox)
 #+END_SRC
 
-****** Change directory dialog
+****** TODO Change directory dialog
 #+BEGIN_SRC python
-  def showDialog(window, dir_label):
-      save_dir = window.ui_config.config._b_params.save_dir
+  def showDialog(window, save_opts, dir_label):
+      save_dir = save_opts.save_dir
       fname = QtGui.QFileDialog.getExistingDirectory(window, 'Open file',
-              save_dir.path)
+                                                     save_dir.get_value())
       if(fname):
           save_dir.update(fname)
-          dir_label.setText(save_dir.path)
-          print(save_dir.path)
+          dir_label.setText(save_dir.get_value)
+          print(save_dir.get_value())
 #+END_SRC
+
+**** DONE UI command
+ Now the command to be executed has only a few possible values, which are used to, as previously explained, to terminate the program, or execute one of the routines.
+ #+BEGIN_SRC python
+   ############################################################
+   ## @class  CMD
+   #  @brief  UI calss to encode the possible commands for the
+   #         program
+   ############################################################
+   class UI_CMD(object):
+       EXIT    = 0
+       M_BREAK = 1
+       MEASURE = 2
+
+   class gui_cmd(object):
+       def __init__(self):
+           self.cmd = UI_CMD.EXIT
+       def update_cmd(self, cmd):
+           self.cmd = cmd
+ #+END_SRC
+
 
 ** TODO Motor break junction
    :PROPERTIES:
