@@ -24,12 +24,12 @@ import visa
 #  @details These are the constants used by the faulhaber
 #           interface.
 #################################################################
-class fh_const:
+class FH_CONST:
     port = "COM3" #
     baud_rate = 9600 #
     pitch = 150 #
     gearbox = 246 #
-    max_pos =  5000000#
+    max_pos = 5000000#
     min_pos = -7000000#
     max_speed = 800#in RPM
     max_accel = 40#in RPM/s
@@ -56,14 +56,14 @@ class faulhaber_state():
     def __init__(self, start_pos, start_speed):
         self.start_pos = start_pos
         self.current_speed = start_speed
-        self.previous_pos = [start_pos,start_pos,start_pos]
+        self.previous_pos = [start_pos, start_pos, start_pos]
     def update_position(self, new_pos):
         self.previous_pos.append(new_pos)
         self.previous_pos.pop(0)
     # Depends on numpy abs to work on array
     def is_motor_stopped(self):
         a = self.previous_pos
-        delta = sum(abs([a.(2) - a.(1),a.(1)-a.(0)]))
+        delta = sum(abs([a.[2] - a.[1], a.[1]-a.[0]]))
         return delta==0
     def update_current_speed(self, new_speed):
         self.current_speed = new_speed
@@ -80,44 +80,44 @@ class faulhaber_state():
 class Faulhaber_motor:
     def __init__(self): #(ref:fh-init-fn)
     ###  Beware the interface may not be completely correct
-        self.motor_ctrl = visa.SerialInstrument(fh_const.port)
-        self.motor_ctrl.baud_rate = fh_const.baud_rate
+        self.motor_ctrl = visa.SerialInstrument(FH_CONST.port)
+        self.motor_ctrl.baud_rate = FH_CONST.baud_rate
     ###  Beware the interface may not be completely correct
-        self._enable_motor()
-        self._set_pos_range()
-        self._set_respect_user_limits()
-        self._set_max_speed()
-        self._set_max_acceleration()
-        self._disable_motor()
-        self.state = self._init_state()
+        self.enable_motor()
+        self.set_pos_range()
+        self.set_respect_user_limits()
+        self.set_max_speed()
+        self.set_max_acceleration()
+        self.disable_motor()
+        self.state = self.init_state()
     # [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::faulhaber-basic-fn-interface][faulhaber-basic-fn-interface]]
     #################################################################
     ## @brief   Enables the motor
     #################################################################
-    def _enable_motor(self):
+    def enable_motor(self):
         self.motor_ctrl.write("en")
     # faulhaber-basic-fn-interface ends here
     # [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::faulhaber-basic-fn-interface][faulhaber-basic-fn-interface]]
     #################################################################
     ## @brief   Disables the motor
     #################################################################
-    def _disable_motor(self):
+    def disable_motor(self):
         self.motor_ctrl.write("di")
     # faulhaber-basic-fn-interface ends here
     # [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::faulhaber-basic-fn-interface][faulhaber-basic-fn-interface]]
     #################################################################
     ## @brief   Ensures that the motor honor the user defined limits
     #################################################################
-    def _set_respect_user_limits(self):
+    def set_respect_user_limits(self):
         self.motor_ctrl.write("APL 1")
     # faulhaber-basic-fn-interface ends here
     # [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::faulhaber-basic-fn-interface][faulhaber-basic-fn-interface]]
     #################################################################
     ## @brief   Set the maximum and minimum position for the motor axis
     #################################################################
-    def _set_pos_range(self):
-        max_pos_str = "LL %d" % fh_const.max_pos
-        min_pos_str = "LL %d" % fh_const.min_pos
+    def set_pos_range(self):
+        max_pos_str = "LL %d" % FH_CONST.max_pos
+        min_pos_str = "LL %d" % FH_CONST.min_pos
         self.motor_ctrl.write(max_pos_str)
         self.motor_ctrl.write(min_pos_str)
     # faulhaber-basic-fn-interface ends here
@@ -125,23 +125,23 @@ class Faulhaber_motor:
     #################################################################
     ## @brief   Sets the maximum speed for the motor
     #################################################################
-    def _set_max_speed(self):
-        max_speed_str = "SP %d" %fh_const.max_speed
+    def set_max_speed(self):
+        max_speed_str = "SP %d" %FH_CONST.max_speed
         self.motor_ctrl.write(max_speed_str)
     # faulhaber-basic-fn-interface ends here
     # [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::faulhaber-basic-fn-interface][faulhaber-basic-fn-interface]]
     #################################################################
     ## @brief   Sets the maximum acceleration for the motor
     #################################################################
-    def _set_max_acceleration(self):
-        max_accel_str = "SP %d" %fh_const.max_accel
+    def set_max_acceleration(self):
+        max_accel_str = "SP %d" %FH_CONST.max_accel
         self.motor_ctrl.write(max_accel_str)
     # faulhaber-basic-fn-interface ends here
     # [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::faulhaber-basic-fn-interface][faulhaber-basic-fn-interface]]
     #################################################################
     ## @brief   Sets the target speed of the motor
     #################################################################
-    def _set_target_speed(self,speed):
+    def set_target_speed(self, speed):
         target_speed_str = "v %d" %speed
         self.state.update_speed(speed)
         self.motor_ctrl.write(target_speed_str)
@@ -151,15 +151,15 @@ class Faulhaber_motor:
     ## @brief   Returns the current axis position
     #  @Note    Not to be used directly in other parts of the program
     #################################################################
-    def _query_current_axis_position(self):
+    def query_current_axis_position(self):
         pos = self.motor_ctrl.query("pos")
         try:
             pos = int(pos)
             return pos
         except:
-            self._set_target_speed(0)
+            self.set_target_speed(0)
             sleep(0.1)
-            self._disable_motor()
+            self.disable_motor()
             print("Error, Returned position was not a valid int")
             print(pos)
             raise
@@ -167,8 +167,8 @@ class Faulhaber_motor:
     #################################################################
     ## @brief   Returns the current axis position, updates the state
     #################################################################
-    def _query_position(self):
-        pos = self._query_current_axis_position()
+    def query_position(self):
+        pos = self.query_current_axis_position()
         self.state.update_position(pos)
         return pos
     # faulhaber-basic-fn-interface ends here
@@ -176,8 +176,8 @@ class Faulhaber_motor:
     #################################################################
     ## @brief   Initializes the motor state
     #################################################################
-    def _init_state(self):
-        start_pos = self._query_current_axis_position()
-        self.state = faulhaber_state(start_pos,0)
+    def init_state(self):
+        start_pos = self.query_current_axis_position()
+        self.state = faulhaber_state(start_pos, 0)
     # faulhaber-basic-fn-interface ends here
 # faulhaber-class-def ends here
