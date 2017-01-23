@@ -182,6 +182,7 @@ Finally the main loop is executed indefinitely until the user terminates the pro
       while True:
           ui_config, config = run_gui()
           ui_cmd    = ui_config.cmd
+          print(config.get_config())
           execute_ui_cmd(ui_cmd, config)
 
   if __name__ == "__main__":
@@ -283,12 +284,16 @@ The full configuration is the general interface for all configuratioins, as it e
           self.display_config = display_config(display_data)
           self.save_config = save_options(save_data)
       def dump_config_file(self, filename=None):
-          config = {}
-          config['IV Configuration'] = self.iv_config.config
-          config['Histogram Configuration'] = self.hist_config.config
-          config['Display Configuration'] = self.display_config.config
-          config['Save Options'] = self.save_config.config
+          config = self.get_config()
           yaml_dump(filename, config)
+      def get_config(self):
+          config = {}
+          config['IV Configuration'] = self.iv_config.get_config()
+          config['Histogram Configuration'] = self.hist_config.get_config()
+          config['Display Configuration'] = self.display_config.get_config()
+          config['Save Options'] = self.save_config.get_config()
+          return config
+        
 
 #+END_SRC
 
@@ -305,6 +310,7 @@ The full configuration is the general interface for all configuratioins, as it e
           self.avg_points = param.avg_points()
           self.use_log_amp = param.use_log_amp()
           self.log_ampl = param.adwin_log_amplifier()
+          self.move_motor = param.iv_move_motor()
           self.wait = param.GLOBAL_CONSTANTS.IV_settling_time
           self.start_jv = param.GLOBAL_CONSTANTS.start_jv
           self.end_jv = param.GLOBAL_CONSTANTS.end_jv
@@ -316,12 +322,18 @@ The full configuration is the general interface for all configuratioins, as it e
           self.config['JunctureVoltage'] = self.measure_jv.get_value()
           self.config['AveragePoints'] = self.avg_points.get_value()
           self.config['UseLogAmplifier'] = self.use_log_amp.get_value()
+          self.config['MoveMotor'] = self.move_motor.get_value()
 
       def update_config_with_data(self, data):
           self.measure_jv.update_or_dflt(data.get('JunctureVoltage'))
           self.avg_points.update_or_dflt(data.get('AveragePoints'))
           self.use_log_amp.update_or_dflt(data.get('UseLogAmplifier'))
+          self.move_motor.update_or_dflt(data.get('MoveMotor'))
           self.update_config()
+
+      def get_config(self):
+          self.update_config()
+          return self.config
 
       def get_log_array(self):
           return self.log_ampl.get_calibration()
@@ -381,6 +393,10 @@ The full configuration is the general interface for all configuratioins, as it e
           self.make_speed.update_or_dflt(data.get('MakeSpeed'))
           self.use_log_amp.update_or_dflt(data.get('UseLogAmplifier'))
           self.update_config()
+
+      def get_config(self):
+          self.update_config()
+          return self.config
 
       def get_log_array(self):
           return self.log_ampl.get_calibration()
@@ -462,6 +478,10 @@ The full configuration is the general interface for all configuratioins, as it e
 
           self.update_config()
 
+      def get_config(self):
+          self.update_config()
+          return self.config
+
       def get_xmin(self):
           return self.xmin.get_value()
       def get_xmax(self):
@@ -502,6 +522,10 @@ The full configuration is the general interface for all configuratioins, as it e
           self.save_data.update(data.get('SaveData'))
 
           self.update_config()
+
+      def get_config(self):
+          self.update_config()
+          return self.config
 
       def get_save_data(self):
           return self.save_data.get_value()
@@ -1335,7 +1359,7 @@ The user may decide not to save the data, for example if is just checking the co
 The user may decide not to use the logarithmic amplifier with the ADwin, so we provide the option with a simple extension
 
 #+CAPTION: Define if we should use the logaritmic amplifier
-#+NAME: src-config-use-log-class
+#+NAME: src-param-use-log-class
 #+BEGIN_SRC python
   #############################################################
   ## @class   use_log_amp
@@ -1351,6 +1375,24 @@ The user may decide not to use the logarithmic amplifier with the ADwin, so we p
       def __init__(self):
           name = "Use Logaritmic amplifier"
           super(use_log_amp, self).__init__(name)
+#+END_SRC
+
+****** IV move motor
+Sometimes, if there is a problem with the juncture, there is no need to move the motor again, therefore the user may want to disable it.
+#+CAPTION: Define if we should use the logaritmic amplifier
+#+NAME: src-param-use-log-class
+#+BEGIN_SRC python
+  #############################################################
+  ## @class   move_motor
+  #  @brief   Basically allow to turn of the motor. Used in IV
+  #############################################################
+  class iv_move_motor(bool_param):
+      #############################################################
+      ## @brief   Initilaization code
+      #############################################################
+      def __init__(self):
+          name = "Move motor during IV"
+          super(iv_move_motor, self).__init__(name)
 #+END_SRC
 
 **** DONE Non-Configurable parameters definitions
@@ -1622,9 +1664,12 @@ Since the configuration parameters are split in different groups so it is the la
       # Num parameters fields
       jv_label, jv_text = num_param_label_textbox(iv_params.measure_jv)
       avg_label, avg_text = num_param_label_textbox(iv_params.avg_points)
+      log_cb = boolean_parameter_checkbox(iv_params.use_log_amp)
+      motor_cb = boolean_parameter_checkbox(iv_params.move_motor)
 
       # Add fields to the layout
       grid = QtGui.QGridLayout()
+
       grid.setSpacing(10)
 
       grid.addWidget(jv_label, 1, 0)
@@ -1632,6 +1677,9 @@ Since the configuration parameters are split in different groups so it is the la
 
       grid.addWidget(avg_label, 2, 0)
       grid.addWidget(avg_text, 2, 1)
+
+      grid.addWidget(log_cb, 3, 0)
+      grid.addWidget(motor_cb, 3, 1)
 
       return grid
 #+END_SRC
@@ -1645,6 +1693,7 @@ Since the configuration parameters are split in different groups so it is the la
       avg_label, avg_text = num_param_label_textbox(hist_params.avg_points)
       brk_label, brk_text = num_param_label_textbox(hist_params.break_speed)
       mk_label, mk_text = num_param_label_textbox(hist_params.make_speed)
+      cb = boolean_parameter_checkbox(hist_params.use_log_amp)
 
       # Add fields to the layout
       grid = QtGui.QGridLayout()
@@ -1661,6 +1710,10 @@ Since the configuration parameters are split in different groups so it is the la
 
       grid.addWidget(mk_label, 4, 0)
       grid.addWidget(mk_text, 4, 1)
+
+
+      grid.addWidget(cb, 5, 0)
+
       return grid
 
 #+END_SRC
@@ -1720,6 +1773,8 @@ Since the configuration parameters are split in different groups so it is the la
       dir_btn = QtGui.QPushButton('Change Directory')
       dir_btn.clicked.connect(lambda: showDialog(window, save_opts, dir_label))
 
+      cb = boolean_parameter_checkbox(save_opts.save_data)
+
       # Add fields to the layout
       grid = QtGui.QGridLayout()
       grid.setSpacing(10)
@@ -1727,6 +1782,9 @@ Since the configuration parameters are split in different groups so it is the la
 
       grid.addWidget(dir_label, 1, 0)
       grid.addWidget(dir_btn, 1, 1)
+
+      grid.addWidget(cb, 2, 0)
+
       return grid
 
 #+END_SRC
@@ -1794,6 +1852,18 @@ To provide the GUI for a parameter, a label and a text-box are needed, however f
       return (label, textbox)
 #+END_SRC
 
+****** TODO Boolean parameter checkbox
+#+BEGIN_SRC python
+  def boolean_parameter_checkbox(parameter):
+      label = parameter.name
+      cb = QtGui.QCheckBox(label)
+      if parameter.get_value():
+          cb.toggle()
+      cb.stateChanged.connect(
+          lambda: parameter.update(cb.isChecked()))
+
+      return cb
+#+END_SRC
 ****** TODO Change directory dialog
 #+BEGIN_SRC python
   def showDialog(window, save_opts, dir_label):
@@ -1801,8 +1871,8 @@ To provide the GUI for a parameter, a label and a text-box are needed, however f
       fname = QtGui.QFileDialog.getExistingDirectory(window, 'Open file',
                                                      save_dir.get_value())
       if(fname):
-          save_dir.update(fname)
-          dir_label.setText(save_dir.get_value)
+          save_dir.update(str(fname))
+          dir_label.setText(save_dir.get_value())
           print(save_dir.get_value())
 #+END_SRC
 

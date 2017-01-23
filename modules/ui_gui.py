@@ -1,35 +1,14 @@
-#################################################################
-## @file    ui_gui.py
-#  @author  Joaquin Figueroa
-#  @date    Fri Aug 12 2016
-#  @brief   Provides the GUI for configuring the experiment
-#
-#  @details This file provides a GUI for the user to be able to
-#           configure the experiment and run it.
-#################################################################
+""" Module ui_gui - Provides the GUI for configuring the experiment
+
+           This file provides a GUI for the user to be able to
+           configure the experiment and run it.
+"""
+__author__ = "Joaquin Figueroa"
+
+import sys
 from PyQt4 import QtGui
 from PyQt4 import QtCore
-import modules.ui_config
-import sys
-
-piezo_start_V = 0.0         # V
-high_G = 30.0              # G0
-inter_G = 20.0              # G0
-low_G = 10.0              # G0
-piezo_speed_breaking1 = 300.0        # V/s
-piezo_speed_breaking2 = 300.0        # V/s (30 to 300) Este es el que se puede cambiar
-piezo_speed_making = 500.0        # V/s
-#post_breaking_voltage = 230.0       #
-post_breaking_voltage = 300.0       # cambia cuanto abro despues de que rompo
-nGbins = 251
-nDbins = 161
-xmin = -0.5 # nm
-xmax = 2    # nm
-Gmin = 1e-7 # G0
-Gmax = 10   # G0
-todoJUNCTURE_VOLTAGE_DFLT = 0  #[V]
-todoPIEZO_SPEED_DFLT = 0       #[V/S]
-todoDATA_DIRECTORY_DFTL = "./Data"
+import modules.configuration as conf
 
 ############################################################
 ## @brief   Runs the GUI for the program
@@ -38,7 +17,7 @@ def run_gui():
     app = QtGui.QApplication(sys.argv) # Create "aplication"
     config_window = ui_config_window() # Instantiate widget
     app.exec_()                        # Execute appliaction
-    return config_window.ui_config
+    return config_window.ui_config, config_window.config
 
 ############################################################
 ## @class   ui_config_window
@@ -67,8 +46,8 @@ class ui_config_window(QtGui.QWidget):
     #           Also ensures the layout of the UI elements
     ############################################################
     def initUI(self):    #
-        self.ui_config = modules.ui_config.UI_CONFIG() #
-
+        self.ui_config = gui_cmd()
+        self.config = conf.program_config() #
         buttons_layout = ui_create_buttons_layout(self) #
         config_layout  = ui_create_config_layout(self)  #
         vbox = QtGui.QVBoxLayout()
@@ -105,17 +84,17 @@ def ui_create_buttons_layout(widget):
     # Quit Button
     quit_button = QtGui.QPushButton("Quit")
     quit_button.clicked.connect(
-        lambda: widget.close_with_cmd(modules.ui_config.UI_CMD.EXIT)) 
+        lambda: widget.close_with_cmd(UI_CMD.EXIT)) 
     quit_button.setToolTip("Terminates the program")
     # Break Button
     break_button = QtGui.QPushButton("Only break")
     break_button.clicked.connect(
-        lambda: widget.close_with_cmd(modules.ui_config.UI_CMD.M_BREAK))
+        lambda: widget.close_with_cmd(UI_CMD.M_BREAK))
     break_button.setToolTip("Use the motor to create a break junction.")
     # Measure Button
     measure_button = QtGui.QPushButton("Full Measure")
     measure_button.clicked.connect(
-        lambda: widget.close_with_cmd(modules.ui_config.UI_CMD.MEASURE))
+        lambda: widget.close_with_cmd(UI_CMD.MEASURE))
     measure_button.setToolTip(
         "Performs measurement using the motor and piezo")
 
@@ -142,59 +121,146 @@ def ui_create_buttons_layout(widget):
 #           Each group is preceded by a small label
 #           identifying the group
 ############################################################
-def ui_create_config_layout(ui_config_window):
+def ui_create_config_layout(ui_window):
     # Define each group layout
-    basic_param_layout = ui_basic_param_layout(ui_config_window)
-    adv_param_layout = ui_adv_param_layout(ui_config_window)
-    presentation_param_layout = ui_presentation_param_layout(ui_config_window)
+    iv_param_layout = ui_iv_param_layout(ui_window)
+    hist_param_layout = ui_hist_param_layout(ui_window)
+    display_param_layout = ui_display_param_layout(ui_window)
+    save_opts_layout = ui_save_opts_layout(ui_window)
     # Define the labels
-    basic_label = QtGui.QLabel("---- Basic Parameters ----")
-    adv_label = QtGui.QLabel("---- Advanced Parameters ----")
-    presentation_label = QtGui.QLabel("---- Presentation Parameters ----")
+    iv_label = QtGui.QLabel("---- Adwin IV-measurement Parameters ----")
+    hist_label = QtGui.QLabel("---- Adwin histogram Parameters ----")
+    display_label = QtGui.QLabel("---- Adwin display Parameters ----")
+    save_label = QtGui.QLabel("---- Save Options  ----")
     # Configure the layout
     vbox = QtGui.QVBoxLayout()
     vbox.addStretch(1)
-    vbox.addWidget(basic_label)
-    vbox.addLayout(basic_param_layout)
-    vbox.addWidget(adv_label)
-    vbox.addLayout(adv_param_layout)
-    vbox.addWidget(presentation_label)
-    vbox.addLayout(presentation_param_layout)
+    vbox.addWidget(iv_label)
+    vbox.addLayout(iv_param_layout)
+    vbox.addWidget(hist_label)
+    vbox.addLayout(hist_param_layout)
+    vbox.addWidget(display_label)
+    vbox.addLayout(display_param_layout)
+    vbox.addWidget(save_label)
+    vbox.addLayout(save_opts_layout)
     return vbox
 
-def ui_basic_param_layout(window):
-    basic_params = window.ui_config.config._b_params ## Fix this
+def ui_iv_param_layout(window):
+    iv_params = window.config.iv_config
     # Num parameters fields
-    jv_label, jv_text = num_param_label_textbox(basic_params.juncture)
-    ps_label, ps_text = num_param_label_textbox(basic_params.piezo_speed)
-    tr_label, tr_text = num_param_label_textbox(basic_params.traces)
-    # Change directory dialog and fields
-    dir_label = QtGui.QLabel(basic_params.data_dir.path)
-    dir_btn = QtGui.QPushButton('Change Directory')
-    dir_btn.clicked.connect(lambda: showDialog(window,dir_label))
+    jv_label, jv_text = num_param_label_textbox(iv_params.measure_jv)
+    avg_label, avg_text = num_param_label_textbox(iv_params.avg_points)
+    log_cb = boolean_parameter_checkbox(iv_params.use_log_amp)
+    motor_cb = boolean_parameter_checkbox(iv_params.move_motor)
+
+    # Add fields to the layout
+    grid = QtGui.QGridLayout()
+
+    grid.setSpacing(10)
+
+    grid.addWidget(jv_label, 1, 0)
+    grid.addWidget(jv_text, 1, 1)
+
+    grid.addWidget(avg_label, 2, 0)
+    grid.addWidget(avg_text, 2, 1)
+
+    grid.addWidget(log_cb, 3, 0)
+    grid.addWidget(motor_cb, 3, 1)
+
+    return grid
+
+def ui_hist_param_layout(window):
+    hist_params = window.config.hist_config
+    # Num parameters fields
+    jv_label, jv_text = num_param_label_textbox(hist_params.measure_jv)
+    avg_label, avg_text = num_param_label_textbox(hist_params.avg_points)
+    brk_label, brk_text = num_param_label_textbox(hist_params.break_speed)
+    mk_label, mk_text = num_param_label_textbox(hist_params.make_speed)
+    cb = boolean_parameter_checkbox(hist_params.use_log_amp)
+
     # Add fields to the layout
     grid = QtGui.QGridLayout()
     grid.setSpacing(10)
 
-    grid.addWidget(jv_label,1,0)
-    grid.addWidget(jv_text,1,1)
+    grid.addWidget(jv_label, 1, 0)
+    grid.addWidget(jv_text, 1, 1)
 
-    grid.addWidget(ps_label,2,0)
-    grid.addWidget(ps_text,2,1)
+    grid.addWidget(avg_label, 2, 0)
+    grid.addWidget(avg_text, 2, 1)
 
-    grid.addWidget(tr_label,3,0)
-    grid.addWidget(tr_text,3,1)
+    grid.addWidget(brk_label, 3, 0)
+    grid.addWidget(brk_text, 3, 1)
 
-    grid.addWidget(dir_label,4,0)
-    grid.addWidget(dir_btn,4,1)
+    grid.addWidget(mk_label, 4, 0)
+    grid.addWidget(mk_text, 4, 1)
+
+
+    grid.addWidget(cb, 5, 0)
 
     return grid
 
-def ui_adv_param_layout(window):
-    return ui_basic_param_layout(window)
+def ui_display_param_layout(window):
+    display_params = window.config.display_config
+    # Num parameters fields
+    xmin_label, xmin_text = num_param_label_textbox(display_params.xmin)
+    xmax_label, xmax_text = num_param_label_textbox(display_params.xmax)
+    Gmin_label, Gmin_text = num_param_label_textbox(display_params.Gmin)
+    Gmax_label, Gmax_text = num_param_label_textbox(display_params.Gmax)
 
-def ui_presentation_param_layout(window):
-    return ui_basic_param_layout(window)
+    nGbins_label, nGbins_text = num_param_label_textbox(display_params.nGbins)
+    nXbins_label, nXbins_text = num_param_label_textbox(display_params.nXbins)
+    traces_label, traces_text = num_param_label_textbox(display_params.traces)
+
+    # Add fields to the layout
+    grid = QtGui.QGridLayout()
+    grid.setSpacing(10)
+
+    grid.addWidget(xmin_label, 1, 0)
+    grid.addWidget(xmin_text, 1, 1)
+
+    grid.addWidget(xmax_label, 2, 0)
+    grid.addWidget(xmax_text, 2, 1)
+
+    grid.addWidget(Gmin_label, 3, 0)
+    grid.addWidget(Gmin_text, 3, 1)
+
+    grid.addWidget(Gmax_label, 4, 0)
+    grid.addWidget(Gmax_text, 4, 1)
+
+
+    grid.addWidget(nGbins_label, 5, 0)
+    grid.addWidget(nGbins_text, 5, 1)
+
+    grid.addWidget(nXbins_label, 6, 0)
+    grid.addWidget(nXbins_text, 6, 1)
+
+
+    grid.addWidget(traces_label, 7, 0)
+    grid.addWidget(traces_text, 7, 1)
+
+    return grid
+
+def ui_save_opts_layout(window):
+    save_opts = window.config.save_config
+
+    # Change directory dialog and fields
+    dir_label = QtGui.QLabel(save_opts.save_dir.get_value())
+    dir_btn = QtGui.QPushButton('Change Directory')
+    dir_btn.clicked.connect(lambda: showDialog(window, save_opts, dir_label))
+
+    cb = boolean_parameter_checkbox(save_opts.save_data)
+
+    # Add fields to the layout
+    grid = QtGui.QGridLayout()
+    grid.setSpacing(10)
+
+
+    grid.addWidget(dir_label, 1, 0)
+    grid.addWidget(dir_btn, 1, 1)
+
+    grid.addWidget(cb, 2, 0)
+
+    return grid
 
 #############################################################
 ## @class   QValidator_num_param
@@ -237,14 +303,40 @@ def num_param_label_textbox(parameter):
     textbox = QtGui.QLineEdit()
     param_validator = QValidator_num_param(parameter)
     textbox.setValidator(param_validator)
-    textbox.setText(str(parameter.value))
+    textbox.setText(str(parameter.get_value()))
     return (label, textbox)
 
-def showDialog(window,dir_label):
-    data_dir = window.ui_config.config._b_params.data_dir
+def boolean_parameter_checkbox(parameter):
+    label = parameter.name
+    cb = QtGui.QCheckBox(label)
+    if parameter.get_value():
+        cb.toggle()
+    cb.stateChanged.connect(
+        lambda: parameter.update(cb.isChecked()))
+
+    return cb
+
+def showDialog(window, save_opts, dir_label):
+    save_dir = save_opts.save_dir
     fname = QtGui.QFileDialog.getExistingDirectory(window, 'Open file',
-            data_dir.path)
+                                                   save_dir.get_value())
     if(fname):
-        data_dir.update(fname)
-        dir_label.setText(data_dir.path)
-        print(data_dir.path)
+        save_dir.update(str(fname))
+        dir_label.setText(save_dir.get_value())
+        print(save_dir.get_value())
+
+############################################################
+## @class  CMD
+#  @brief  UI calss to encode the possible commands for the
+#         program
+############################################################
+class UI_CMD(object):
+    EXIT    = 0
+    M_BREAK = 1
+    MEASURE = 2
+
+class gui_cmd(object):
+    def __init__(self):
+        self.cmd = UI_CMD.EXIT
+    def update_cmd(self, cmd):
+        self.cmd = cmd
