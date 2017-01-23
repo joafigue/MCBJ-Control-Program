@@ -615,9 +615,8 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
   """  
   __author__ = "Joaquin Figueroa"
 
-  import utilities as utl
-  import adwin_driver as adwin
   import os
+  import utilities as utl
 #+END_SRC
 
 **** DONE Configurable parameters definitions
@@ -878,7 +877,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
              _dflt = 32
              _min = 1
              _max = 99
-             _name = "Juncture Voltage"
+             _name = "Average Points"
              super(avg_points, self).__init__(_name, _dflt, _min, _max)
    #+END_SRC
 
@@ -1355,21 +1354,23 @@ The user may decide not to use the logarithmic amplifier with the ADwin, so we p
 #+END_SRC
 
 **** DONE Non-Configurable parameters definitions
-There are parameters that con modify the behavior of the run, but are not expected to be modified by the user, therefore are hardcoded in the program. The code fragment [[src-parameters-global-constants]] shows the constant definitions which are:
-- G0 :: Conductance of a "1-gold-atom" channel
-- Start Juncture voltage :: The voltage of the juncture before starting the measurement. The juncture voltage is modified in order to measure
-- End Juncture voltage :: The voltage of the juncture after the end of the measurement. The juncture voltage moved back to a rest value
-#+caption: Global constants
-#+name: src-parameters-global-constants
-#+BEGIN_SRC python
-  # Non configurable parameters
-  class GLOBAL_CONSTANTS(object):
-      G0 = 7.74809173e-5          # Quantum Conductance
-      start_jv = 0
-      end_jv = 0
-      IV_settling_time = 10       # ms
-      IV_max_data_points = 50000000 
-#+END_SRC
+
+***** Global constants
+ There are parameters that can modify the behavior of the run, but are not expected to be modified by the user, therefore are hardcoded in the program. The code fragment [[src-parameters-global-constants]] shows the constant definitions which are:
+ - G0 :: Conductance of a "1-gold-atom" channel
+ - Start Juncture voltage :: The voltage of the juncture before starting the measurement. The juncture voltage is modified in order to measure
+ - End Juncture voltage :: The voltage of the juncture after the end of the measurement. The juncture voltage moved back to a rest value
+ #+caption: Global constants
+ #+name: src-parameters-global-constants
+ #+BEGIN_SRC python
+   # Non configurable parameters
+   class GLOBAL_CONSTANTS(object):
+       G0 = 7.74809173e-5          # Quantum Conductance
+       start_jv = 0
+       end_jv = 0
+       IV_settling_time = 10       # ms
+       IV_max_data_points = 50000000 
+ #+END_SRC
 
 ***** TODO Logaritmic amplifier calibration
 While not really a parameter, the ADwin uses an array to calibrate the measurements through a logarithmic amplifier; such array is read from a file on the system and need to be available for measurements.
@@ -1379,7 +1380,7 @@ While not really a parameter, the ADwin uses an array to calibrate the measureme
 #+BEGIN_SRC python
   class adwin_log_amplifier(object):
       def __init__(self):
-          calibration_dir = adwin.ADW_GCONST.PROGRAM_DIR
+          calibration_dir = ADW_GCONST.PROGRAM_DIR
           root_path = utl.get_script_root_path()
           program_path = os.path.join(root_path, calibration_dir)
           filename = "calibrationIO.txt"
@@ -1428,10 +1429,10 @@ calibration = log_ampl.get_calibration()
   """
   __author__ = "Joaquin Figueroa"
 
+  import sys
   from PyQt4 import QtGui
   from PyQt4 import QtCore
   import configuration as conf
-  import sys
 #+END_SRC
 
 The Graphical user interface consist of a window that allows the user to tweak with each of the parameters defined in [[Confgurable parameters definitions]], plus buttons for deciding which action to take.
@@ -1935,11 +1936,14 @@ The adwin driver is mostly a convenience layer between the ADwin and the Python 
   import parameters as param
 #+END_SRC
 ** TODO Adwin driver-base class
-The Adwin base class, provides with the minimum data structure and global parameters in order to define a proper driver for ADwin measurement process. This part of the file is split in:
+The Adwin base class, provides with the minimum data structure and global parameters in order to define a proper driver for ADwin measurement process. We can consider that we can define the constants that are used to interact with the intrument, and the basic definition which provides the bare minimum interface, meaning
 - Constants :: Shown in [[Adwin driver-global constants]] defines the global constants, which represents parameters that  are needed for any process related to the ADwin
 - Interface :: Shown in [[Adwin driver-base class Interface]], defines the class and the high-level functionality common to all classes
 
 *** DONE Adwin driver-global constants
+    :PROPERTIES:
+    :header-args+: :tangle modules/parameters.py
+    :END:
 As previously stated the base-class  parameters hold information necessary for the ADwin instrument to work and some of the instrument characterization constants. The parameters are:
 - ADDRESS :: The address is the associated to the port used to communicate with the instrument.
 - BOOT_SCRIPT_DFLT :: This parameter has the location of the boot script used to load the operative system of the ADwin instrument.
@@ -1979,6 +1983,8 @@ As previously stated the base-class  parameters hold information necessary for t
       PROCESS_DELAY    = 400
 #+END_SRC
 
+Unlike the rest of the basic functionality associated to the Adwin, these constants are located in the file [[file:modules/parameters.py]], as that file is used to store all parameters with their corresponding interface
+
 *** TODO Adwin driver-base class Interface
 The Adwin driver interface provides the basic functionality needed to interact with the ADwin instrument, which is the bare minimum. The idea is that each process should have it's own specialized driver.
 Is important to note that any parameter used by this abstract driver, should be a global Adwin parameter. See
@@ -1996,9 +2002,9 @@ Is important to note that any parameter used by this abstract driver, should be 
       ## @brief   Initilaization code
       #############################################################
       def __init__(self, process_number, process_file):
-          self._adwin_subdir= ADW_GCONST.PROGRAM_DIR
-          self.adw = ADwin.ADwin(ADW_GCONST.ADDRESS, 1)
-          self.adw.Boot(ADW_GCONST.BOOT_SCRIPT_DFLT)
+          self._adwin_subdir= param.ADW_GCONST.PROGRAM_DIR
+          self.adw = ADwin.ADwin(param.ADW_GCONST.ADDRESS, 1)
+          self.adw.Boot(param.ADW_GCONST.BOOT_SCRIPT_DFLT)
           self.process_number = process_number
           self.filename = process_file
       #############################################################
@@ -2168,7 +2174,7 @@ Code fragment [[adwin-driver-iv-interface]] shows the initialization code for th
           log_array = c.get_log_array()
           length = len(log_array)
           self.adw.Set_Processdelay(ADW_IV_CONST.PROCESS_NUMBER,
-                                    ADW_GCONST.PROCESS_DELAY )
+                                    param.ADW_GCONST.PROCESS_DELAY )
           self.adw.Set_Par(ADW_IV_CONST.START_JV, c.get_start_jv())
           self.adw.Set_Par(ADW_IV_CONST.MEASURE_JV, c.get_measure_jv())
           self.adw.Set_Par(ADW_IV_CONST.END_JV, c.get_end_jv())
@@ -2360,7 +2366,7 @@ In a similar manner as used in [[Adwin IV driver-Initialization Code]] the code 
           log_array = c.get_log_array()
           length = len(log_array)
           self.adw.Set_Processdelay(ADW_HIST_CONST.PROCESS_NUMBER,
-                                    ADW_GCONST.PROCESS_DELAY )
+                                    param.ADW_GCONST.PROCESS_DELAY )
           self.adw.Set_Par(ADW_HIST_CONST.START_JV, c.get_start_jv())
           self.adw.Set_Par(ADW_HIST_CONST.MEASURE_JV, c.get_measure_jv())
           self.adw.Set_Par(ADW_HIST_CONST.END_JV, c.get_end_jv())
@@ -2513,9 +2519,9 @@ In summary, to set a value in the Adwin we need to take the target value, and co
 
 #+BEGIN_SRC python
   def adwin_ADC(analog_value):
-      # converts ADC/DAC voltage to bin number, given the voltage range and the ADW_GCONST.RESOLUTION as int (adwin digitia representation)
-      step=2*ADW_GCONST.OUTPUT_RANGE/(2**ADW_GCONST.RESOLUTION-1)
-      voltage=np.arange(-ADW_GCONST.OUTPUT_RANGE, ADW_GCONST.OUTPUT_RANGE+step, step)
+      # converts ADC/DAC voltage to bin number, given the voltage range and the param.ADW_GCONST.RESOLUTION as int (adwin digitia representation)
+      step=2*param.ADW_GCONST.OUTPUT_RANGE/(2**param.ADW_GCONST.RESOLUTION-1)
+      voltage=np.arange(-param.ADW_GCONST.OUTPUT_RANGE, param.ADW_GCONST.OUTPUT_RANGE+step, step)
       diff = abs(voltage - analog_value)
       digital_value = diff.argmin() # Is an index
 
@@ -2523,9 +2529,9 @@ In summary, to set a value in the Adwin we need to take the target value, and co
 
   def adwin_DAC(digital_value):
       # converts ADC/DAC bins to voltage, given the voltage range and the resolution (in bits)
-      step = 2 * ADW_GCONST.OUTPUT_RANGE / (2**ADW_GCONST.RESOLUTION-1)
+      step = 2 * param.ADW_GCONST.OUTPUT_RANGE / (2**param.ADW_GCONST.RESOLUTION-1)
       # voltage is array of analog/idx conversion
-      voltage = np.arange(-ADW_GCONST.OUTPUT_RANGE, ADW_GCONST.OUTPUT_RANGE+step, step)
+      voltage = np.arange(-param.ADW_GCONST.OUTPUT_RANGE, param.ADW_GCONST.OUTPUT_RANGE+step, step)
       data = voltage[int(digital_value)] 
 
       return data
@@ -2538,7 +2544,7 @@ In summary, to set a value in the Adwin we need to take the target value, and co
       # Stabilization cycles before starting measurement
       # Wait is in ms, but we need to wait number of cycles.
       # Each cycle is 10 us (in seg) => seg
-      cycle_time = ADW_GCONST.HIGH_PERIOD * ADW_GCONST.PROCESS_DELAY 
+      cycle_time = param.ADW_GCONST.HIGH_PERIOD * param.ADW_GCONST.PROCESS_DELAY 
       time_seg = time_ms * 1e-3
       wait_cycles = int(time_seg /cycle_time ) # Because ms
       return wait_cycles
