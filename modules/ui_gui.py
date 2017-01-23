@@ -292,7 +292,6 @@ class QValidator_num_param(QtGui.QValidator):
                         self.param.update(num)
                         return (QtGui.QValidator.Acceptable, text,pos)
                 return (QtGui.QValidator.Invalid, text, pos)
-# src-qvalidator-num-param ends here
 
 #############################################################
 ## @brief   Creates a label and textbox for a numerical

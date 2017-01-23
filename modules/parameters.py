@@ -9,7 +9,7 @@
 __author__ = "Joaquin Figueroa"
 
 import os
-import utilities as utl
+import modules.utilities as utl
 
 #############################################################
 ## @class   traces

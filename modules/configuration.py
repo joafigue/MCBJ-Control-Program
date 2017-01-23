@@ -11,8 +11,8 @@
 __author___ = "Joaquin Figueroa"
 
 import yaml
-import adwin_driver as adwin
-import parameters as param
+import modules.adwin_driver as adwin
+import modules.parameters as param
 
 class program_config(object):
     def __init__(self, data=None):

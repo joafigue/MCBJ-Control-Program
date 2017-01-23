@@ -12,8 +12,8 @@ import os
 import numpy as np
 import pylab as pl
 import ADwin
-import utilities as utl
-import parameters as param
+import modules.utilities as utl
+import modules.parameters as param
 # Adwin driver-header:1 ends here
 
 # [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::*Adwin%20driver-base%20class%20Interface][Adwin driver-base class Interface:1]]
