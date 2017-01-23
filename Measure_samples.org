@@ -249,8 +249,8 @@ The program configuration, is the interface that allows the user to modify the p
   __author___ = "Joaquin Figueroa"
 
   import yaml
-  import adwin_driver as adwin
-  import parameters as param
+  import modules.adwin_driver as adwin
+  import modules.parameters as param
 #+END_SRC
 
 **** TODO Program Configuration-Process configurations
@@ -616,7 +616,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
   __author__ = "Joaquin Figueroa"
 
   import os
-  import utilities as utl
+  import modules.utilities as utl
 #+END_SRC
 
 **** DONE Configurable parameters definitions
@@ -1432,7 +1432,7 @@ calibration = log_ampl.get_calibration()
   import sys
   from PyQt4 import QtGui
   from PyQt4 import QtCore
-  import configuration as conf
+  import modules.configuration as conf
 #+END_SRC
 
 The Graphical user interface consist of a window that allows the user to tweak with each of the parameters defined in [[Confgurable parameters definitions]], plus buttons for deciding which action to take.
@@ -1932,8 +1932,8 @@ The adwin driver is mostly a convenience layer between the ADwin and the Python 
   import numpy as np
   import pylab as pl
   import ADwin
-  import utilities as utl
-  import parameters as param
+  import modules.utilities as utl
+  import modules.parameters as param
 #+END_SRC
 ** TODO Adwin driver-base class
 The Adwin base class, provides with the minimum data structure and global parameters in order to define a proper driver for ADwin measurement process. We can consider that we can define the constants that are used to interact with the intrument, and the basic definition which provides the bare minimum interface, meaning
