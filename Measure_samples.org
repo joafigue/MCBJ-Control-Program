@@ -2398,7 +2398,7 @@ This section provides with the functions required to obtain the histogram measur
               print("Run number: {0} \nbreaking 1".format(trace))
           if state == 2:
               print("Run number: {0} \nmaking 1".format(trace))
-      pl.pause(0.1) 
+          pl.pause(0.1) 
       self.stop_process()
       break_histogram = self.get_break_histogram()
       make_histogram = self.get_make_histogram()
@@ -2677,6 +2677,7 @@ In the ADwin =INIT= block the variables defined are set to their default values.
 #+BEGIN_SRC basic
   INIT:
     PAR_12 = 0
+    PAR_13 = 0
     waitcounter = 0
     avgcounter = 0
     datacounter = 0
