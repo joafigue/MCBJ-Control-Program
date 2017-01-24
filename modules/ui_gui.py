@@ -175,6 +175,7 @@ def ui_hist_param_layout(window):
     jv_label, jv_text = num_param_label_textbox(hist_params.measure_jv)
     avg_label, avg_text = num_param_label_textbox(hist_params.avg_points)
     brk_label, brk_text = num_param_label_textbox(hist_params.break_speed)
+    post_label, post_text = num_param_label_textbox(hist_params.post_breaking_v)
     mk_label, mk_text = num_param_label_textbox(hist_params.make_speed)
     cb = boolean_parameter_checkbox(hist_params.use_log_amp)
 
@@ -191,11 +192,14 @@ def ui_hist_param_layout(window):
     grid.addWidget(brk_label, 3, 0)
     grid.addWidget(brk_text, 3, 1)
 
-    grid.addWidget(mk_label, 4, 0)
-    grid.addWidget(mk_text, 4, 1)
+    grid.addWidget(post_label, 4, 0)
+    grid.addWidget(post_text, 4, 1)
+
+    grid.addWidget(mk_label, 5, 0)
+    grid.addWidget(mk_text, 5, 1)
 
 
-    grid.addWidget(cb, 5, 0)
+    grid.addWidget(cb, 6, 0)
 
     return grid
 

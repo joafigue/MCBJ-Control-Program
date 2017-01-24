@@ -189,6 +189,7 @@ class ADW_HIST_CONST(object):
     MEASURE_JV  = 2
     END_JV      = 3
     BREAK_WAIT  = 17
+    POST_BREAK_WAIT  = 27
     MAKE_WAIT   = 18
     AVG         = 19
     # outputs for the ADWIN histogram measurement
@@ -254,6 +255,7 @@ class adwin_hist_driver(adwin_driver):
         self.adw.Set_Par(ADW_HIST_CONST.END_JV, c.get_end_jv())
         self.adw.Set_Par(ADW_HIST_CONST.AVG, c.get_avg_points())
         self.adw.Set_Par(ADW_HIST_CONST.BREAK_WAIT, c.get_break_wait())
+        self.adw.Set_Par(ADW_HIST_CONST.POST_BREAK_WAIT, c.get_post_break_wait())
         self.adw.Set_Par(ADW_HIST_CONST.MAKE_WAIT, c.get_make_wait())
         self.adw.Set_FPar(ADW_HIST_CONST.I_MIN_BRK, c.get_I_break_end())
         self.adw.Set_FPar(ADW_HIST_CONST.I_MAX_MK, c.get_I_make_end()) #
@@ -377,6 +379,17 @@ def adwin_DAC(digital_value):
 def adwin_ADC_DAC_roundtrip(analog_value):
     return adwin_DAC(adwin_ADC(analog_value))
 
+
+def aux_convert_vps_to_cycles(vps):
+    # VPS -> VOltage Per Second
+    # We are taking 0->1000 to 0->10, because that's the Adwin range
+    voltage_steps = adwin_ADC(vps/100) # in V/seg 
+    zero_v_steps = adwin_ADC(0)        # in V/seg (for range)
+    voltage_steps_seg = voltage_steps - zero_v_steps # in seg
+    voltage_steps_ms = voltage_steps_seg * 1e-3
+
+    voltage_wait = 1/voltage_steps_ms # in ms
+    return adwin_convert_ms_to_cycles(voltage_wait)
 
 def adwin_convert_ms_to_cycles(time_ms):
     # Stabilization cycles before starting measurement
