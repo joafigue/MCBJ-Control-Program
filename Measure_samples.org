@@ -255,7 +255,7 @@ The program configuration, is the interface that allows the user to modify the p
 #+END_SRC
 
 **** TODO Program Configuration-Process configurations
-This section is devoted to describe the configuration of the program, which is tied to the configuration file specification shown in [[Configuration Files specification]], but is also tied to the different processes which are used through the program for the different types of measurements that are defined in the [[ADwin Driver]].
+This section is devoted to describe the configuration of the program, which is tied to the configuration file specification shown in [[Configuration File Specification]], but is also tied to the different processes which are used through the program for the different types of measurements that are defined in the [[ADwin Driver]].
 
 In order to provide with the complete interface, the file is separated in:
 - Full configuration :: Properly discussed in [[Full Configuration definition]]. This configuration is a large structure whose purpose is to serve a single return parameter of the different types of configuration. It also provides with some generic functionalities
@@ -372,6 +372,7 @@ The full configuration is the general interface for all configuratioins, as it e
           self.log_ampl = param.adwin_log_amplifier()
           self.avg_points = param.avg_points()
           self.break_speed = param.break_speed()
+          self.post_breaking_v = param.post_breaking_voltage()
           self.make_speed = param.make_speed()
           self.G0 = param.GLOBAL_CONSTANTS.G0
           self.G_break_end = 1e-5 * self.G0
@@ -383,13 +384,16 @@ The full configuration is the general interface for all configuratioins, as it e
           self.config['JunctureVoltage'] = self.measure_jv.get_value()
           self.config['AveragePoints'] = self.avg_points.get_value()
           self.config['BreakSpeed'] = self.break_speed.get_value()
+          self.config['PostBreakingVoltage'] = self.post_breaking_v.get_value()
           self.config['MakeSpeed'] = self.make_speed.get_value()
           self.config['UseLogAmplifier'] = self.use_log_amp.get_value()
+
 
       def update_config_with_data(self, data):
           self.measure_jv.update_or_dflt(data.get('JunctureVoltage'))
           self.avg_points.update_or_dflt(data.get('AveragePoints'))
           self.break_speed.update_or_dflt(data.get('BreakSpeed'))
+          self.break_speed.update_or_dflt(data.get('PostBreakingVoltage'))
           self.make_speed.update_or_dflt(data.get('MakeSpeed'))
           self.use_log_amp.update_or_dflt(data.get('UseLogAmplifier'))
           self.update_config()
@@ -413,24 +417,18 @@ The full configuration is the general interface for all configuratioins, as it e
           return adwin.adwin_DAC(self.get_measure_jv())
       def get_use_log_amp(self):
           return self.use_log_amp.get_value()
+
       def get_break_wait(self):
-          # We are taking 0->1000 to 0->10, because that's the Adwin range
-          break_speed = self.break_speed.get_value()/100 # in V/seg 
-          zero_v_steps = adwin.adwin_ADC(0)              # in V/seg (for range)
-          break_steps_seg = (adwin.adwin_ADC(break_speed) -zero_v_steps) # in seg
-          break_steps_ms = break_steps_seg * 1e-3
+          break_speed = self.break_speed.get_value()
+          return adwin.aux_convert_vps_to_cycles(break_speed)
+      def get_post_break_wait(self):
+          post_voltage = self.post_breaking_v.get_value()/100
+          return adwin.adwin_ADC(post_voltage) - adwin.adwin_ADC(0)
 
-          break_wait = 1/break_steps_ms # in ms
-          return adwin.adwin_convert_ms_to_cycles(break_wait)
       def get_make_wait(self):
-          # We are taking 0->1000 to 0->10, because that's the Adwin range
-          make_speed = self.make_speed.get_value()/100
-          zero_v_steps = adwin.adwin_ADC(0) 
-          make_steps_seg = (adwin.adwin_ADC(make_speed) -zero_v_steps) # in seg
-          make_steps_ms = make_steps_seg *1e-3 # in ms
+          make_speed = self.make_speed.get_value()
+          return adwin.aux_convert_vps_to_cycles(make_speed)
 
-          make_wait = 1/make_steps_ms # in ms
-          return adwin.adwin_convert_ms_to_cycles(make_wait)
       def get_I_break_end(self):
           return  self.G_break_end * self.get_real_jv()
       def get_I_make_end(self):
@@ -602,6 +600,7 @@ Also the introduction of configuration files does not mean that the program will
      JunctureVoltage : 0.1         # Range 0.1-0.3
      AveragePoints : 32            # Number of points to average
      BreakSpeed : 300              # Volts/s
+     PostBreakingVoltage : 250     # Volts
      MakeSpeed : 500               # Volts/s
      UseLogAmplifier: true
 
@@ -1006,6 +1005,33 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
 
    #+RESULTS:
    | True | True | True | True | True | True | True | True | True |
+****** DONE Piezo Post Breaking VOltage
+   The piezo speed breaking defined in [[src-config-piezo-post-brk-class]] is the parameter that controls how many points will the Adwin measure after the first breaking is detected, defined in \([V]\). The Piezo post breaking voltage class is just a specialization of the Numerical parameter class described in [[Numerical Parameters definition]].
+
+   #+CAPTION: <<src-config-piezo-post-brk-class>> : How long wi
+   #+name: src-config-piezo-post-brk-class
+   #+BEGIN_SRC python -n -r
+     #############################################################
+     ## @class   piezo_break
+     #  @brief   All functionality related to the
+     #           piezo_speed_breaking
+     #
+     #  @details This class defines the behavior of the piezo
+     #           speed voltage relations which is defined in [V/s]
+     #           Provides the default values and range plus the
+     #           corresponding interfaces.
+     #############################################################
+     class post_breaking_voltage(numerical_parameter):
+         #############################################################
+         ## @brief   Initilaization code
+         #############################################################
+         def __init__(self):
+             _dflt = 200.0
+             _min = 1.0
+             _max = 999.0
+             _name = "Post Breaking Voltage"
+             super(post_breaking_voltage, self).__init__(_name, _dflt, _min, _max)
+   #+END_SRC
 ****** DONE Piezo Speed Making
    The piezo speed making defined in [[src-config-piezo-mk-class]] is the parameter that controls the speed at which each measurement cycle is executed, defined in \([V/s]\). The Piezo speed class is just a specialization of the Numerical parameter class described in [[Numerical Parameters definition]].
 
@@ -1692,6 +1718,7 @@ Since the configuration parameters are split in different groups so it is the la
       jv_label, jv_text = num_param_label_textbox(hist_params.measure_jv)
       avg_label, avg_text = num_param_label_textbox(hist_params.avg_points)
       brk_label, brk_text = num_param_label_textbox(hist_params.break_speed)
+      post_label, post_text = num_param_label_textbox(hist_params.post_breaking_v)
       mk_label, mk_text = num_param_label_textbox(hist_params.make_speed)
       cb = boolean_parameter_checkbox(hist_params.use_log_amp)
 
@@ -1708,11 +1735,14 @@ Since the configuration parameters are split in different groups so it is the la
       grid.addWidget(brk_label, 3, 0)
       grid.addWidget(brk_text, 3, 1)
 
-      grid.addWidget(mk_label, 4, 0)
-      grid.addWidget(mk_text, 4, 1)
+      grid.addWidget(post_label, 4, 0)
+      grid.addWidget(post_text, 4, 1)
+
+      grid.addWidget(mk_label, 5, 0)
+      grid.addWidget(mk_text, 5, 1)
 
 
-      grid.addWidget(cb, 5, 0)
+      grid.addWidget(cb, 6, 0)
 
       return grid
 
@@ -2331,6 +2361,7 @@ The Int parameters are used to define the indices to the corresponding integer v
 - MEASURE_JV ::  Used for setting the Juncture voltage set during measurements
 - END_JV :: Used for setting the juncture voltage at end of measurements, like the starting voltage should be set to \(0[V]\)
 - BREAK_WAIT   :: Used for setting  the number of cycles to wait before measuring the current, after modifying the piezoelectric voltage during the breaking analysis, and in turn the position of the piezoelectric. This time is considered as a stabilization time, to avoid measuring before the piezoelectric is stable in its new position
+- POST_BREAK_WAIT :: After the Adwin detects the breaking, we try to optimize the runtime by decreasing the number of points to measure. We do this by setting a maximum number of data points to take after the breaking, after which we start measuring the Make histogram. 
 - MAKE_WAIT   :: Used for setting  the number of cycles to wait before measuring the current, after modifying the piezoelectric voltage during the make histogram analysis. As with the *BREAK_WAIT* this is considered a stabilization time.
 - AVG :: Used as the index to set the number of measurements to be performed before taking an average in each piezoelectric point.
 - PROCESS_STATUS :: Used as output, to check the current status of the histogram measurement process
@@ -2350,6 +2381,7 @@ The Int parameters are used to define the indices to the corresponding integer v
   MEASURE_JV  = 2
   END_JV      = 3
   BREAK_WAIT  = 17
+  POST_BREAK_WAIT  = 27
   MAKE_WAIT   = 18
   AVG         = 19
   # outputs for the ADWIN histogram measurement
@@ -2442,6 +2474,7 @@ In a similar manner as used in [[Adwin IV driver-Initialization Code]] the code 
           self.adw.Set_Par(ADW_HIST_CONST.END_JV, c.get_end_jv())
           self.adw.Set_Par(ADW_HIST_CONST.AVG, c.get_avg_points())
           self.adw.Set_Par(ADW_HIST_CONST.BREAK_WAIT, c.get_break_wait())
+          self.adw.Set_Par(ADW_HIST_CONST.POST_BREAK_WAIT, c.get_post_break_wait())
           self.adw.Set_Par(ADW_HIST_CONST.MAKE_WAIT, c.get_make_wait())
           self.adw.Set_FPar(ADW_HIST_CONST.I_MIN_BRK, c.get_I_break_end())
           self.adw.Set_FPar(ADW_HIST_CONST.I_MAX_MK, c.get_I_make_end()) #
@@ -2613,6 +2646,17 @@ In summary, to set a value in the Adwin we need to take the target value, and co
   def adwin_ADC_DAC_roundtrip(analog_value):
       return adwin_DAC(adwin_ADC(analog_value))
 
+
+  def aux_convert_vps_to_cycles(vps):
+      # VPS -> VOltage Per Second
+      # We are taking 0->1000 to 0->10, because that's the Adwin range
+      voltage_steps = adwin_ADC(vps/100) # in V/seg 
+      zero_v_steps = adwin_ADC(0)        # in V/seg (for range)
+      voltage_steps_seg = voltage_steps - zero_v_steps # in seg
+      voltage_steps_ms = voltage_steps_seg * 1e-3
+
+      voltage_wait = 1/voltage_steps_ms # in ms
+      return adwin_convert_ms_to_cycles(voltage_wait)
 
   def adwin_convert_ms_to_cycles(time_ms):
       # Stabilization cycles before starting measurement
@@ -2907,6 +2951,7 @@ As in many programs, a header is required. In the Adwin case, this is necessary 
   ' PAR_5 -> Initial Piezo Voltage
   ' ---- Current Measurement ----
   ' PAR_17 -> Stabilizing time for breaking
+  ' PAR_27 -> Number of measuremnets performed during post-breaking
   ' PAR_18 -> Stabilizing time for making
   ' PAR_19 -> Number of data point to average for each measurement
   ' ---- Measurement Modifiers ----
@@ -2935,13 +2980,15 @@ As in many programs, a header is required. In the Adwin case, this is necessary 
   ' Aux Variables
   '******
   ' breakwait -> Used to wait for stabilization during breaking
+  ' broken -> Used to determine if we have crossed the breaking current threshold
+  ' break_counter -> Used to count the post breaking measurements
   ' makewait -> Used to wait for stabilization during making
   ' avgcounter -> Used to count the measurements to average for a data point
   ' avgcurrent -> Auxiliar variable for average current
   ' juncture_voltage -> Current juncture_voltage at the DAC
   ' break_acc -> Accumulator for measurements during breaking
   ' make_acc -> Accumulator for measurements during making
-  ' piezo_v -> Piezoelectric voltage
+  ' piezo_V -> Piezoelectric voltage
   ' piezo_min -> Minimum voltage to set in the piezo
   ' piezo_max -> Maximum voltage to set in the piezo
  #+END_SRC
@@ -2952,6 +2999,7 @@ In an Adwin program the local variables must be declared before the =INIT= block
 #+NAME: src-adwin-hist-declarations
 #+BEGIN_SRC basic
   DIM breakwait, makewait as long
+  DIM broken, break_counter as long
   DIM avgcounter  as long
   DIM juncture_voltage as long
   DIM break_acc, make_acc  as float
@@ -2959,7 +3007,6 @@ In an Adwin program the local variables must be declared before the =INIT= block
   DIM avgcurrent as float
   ' Output histogram
   DIM break_hist_flag, make_hist_flag as long
-  DIM histoindex_make, histoindex_break as long
   DIM DATA_1[65533] as float  'Break Conductances
   DIM DATA_2[65533] as float  'Break Voltages
   DIM DATA_3[65533] as float  'Make Conductances
@@ -2980,6 +3027,8 @@ In the ADwin =INIT= block the variables defined are set to their default values.
     break_hist_flag = 0
     make_hist_flag = 0      
     breakwait = 0
+    broken = 0
+    break_counter = 0
     makewait = 0
     avgcounter = 0
     avgcurrent = 0
@@ -3053,9 +3102,12 @@ This section describes the algorithm used to store the break histogram shown in 
   - Finally should the piezo voltage exceed a maximum voltage, then the histogram measurement is aborted  and the histogram proceeds to measuring the make histogram
 - Wait for stabilization ::  Starting on line [[(adw-brk-wt)]] this step, only counts until a certain number of cycles have passed since the last modification of the piezo-voltage as to ensure the system is stable before measurement
 - Measure data :: Starting on line [[(adw-brk-msr)]] this step performs several measurements of the current circulating through the junction storing the accumulated value. After a certain number of measurements have been made the process goues to the next step
-- Store the Data :: Starting on line [[(adw-brk-store)]] this step takes the average of the accumulated value and stores it in the array. This process also:
-  - Ensures that the current has not gone below a certain threshold in which case, the measurement stops  and the algorithm proceeds to the make histogram measurement
-  - Updates the index so no values are overwritten
+- Store the Data :: Starting on line [[(adw-brk-store)]] this step takes the average of the accumulated value and stores it in the array.
+- Check for measurement end :: Starting on line [[(adw-brk-end)]], this steps checks if the break part of the measurement is finished:
+  1. We start by checking if the current is below the threshold defined for a broken juncture, and set the corresponding flag to start the post breaking regime
+  2. If we are in the post breaking regime we check that we have performed all the post breaking measurements
+  3. If we performed all the post breaking measurements, then we go to the make histogram measurement
+  4. If the measurement is not finished we continue the break histogram measurements
 
 #+CAPTION: <<src-adwin-hist-break>> Code to generate the breaking histogram
 #+NAME: src-adwin-hist-break
@@ -3093,10 +3145,20 @@ This section describes the algorithm used to store the break histogram shown in 
       DATA_1[PAR_20] = avgcurrent
       DATA_2[PAR_20] = piezo_V
       PAR_20 = PAR_20 + 1
-      break_hist_flag = 0
+      break_hist_flag = 4
+
+    CASE 4  ' Check for break measurement end (ref:adw-brk-end)
       IF (avgcurrent <= FPAR_10) THEN
+        broken = 1 ' We are in post-breaking regime
+      ENDIF
+      IF (broken >= 1) THEN
+        break_counter = break_counter + 1
+      ENDIF
+      IF (break_counter >= PAR_27) THEN
         PAR_12 = 2 ' Go to make histogram
       ENDIF
+      break_hist_flag = 0
+
   ENDSELECT
 #+END_SRC
 
@@ -3192,6 +3254,7 @@ As with many files, this file has a description header and the corresponding inc
   #           class.
   #################################################################
   import visa
+  import pylab as pl
 #+END_SRC
 
 The rest of the file is organized in 3 mayor sections:
@@ -3221,15 +3284,15 @@ The constants are:
   #  @details These are the constants used by the faulhaber
   #           interface.
   #################################################################
-  class FH_CONST:
-      port = "COM3" #(ref:fh-const-port)
-      baud_rate = 9600 #(ref:fh-const-br)
-      pitch = 150 #(ref:fh-const-pitch)
-      gearbox = 246 #(ref:fh-const-gear)
-      max_pos = 5000000#(ref:fh-const-max)
-      min_pos = -7000000#(ref:fh-const-min)
-      max_speed = 800#in RPM(ref:fh-const-max-speed)
-      max_accel = 40#in RPM/s(ref:fh-const-accel)
+  class FH_CONST(object):
+      PORT = "COM3" #(ref:fh-const-port)
+      BAUD_RATE = 9600 #(ref:fh-const-br)
+      PITCH = 150 #(ref:fh-const-pitch)
+      GEARBOX = 246 #(ref:fh-const-gear)
+      MAX_POS = 5000000#(ref:fh-const-max)
+      MIN_POS = -7000000#(ref:fh-const-min)
+      MAX_SPEED = 800#in RPM(ref:fh-const-max-speed)
+      MAX_ACCEL = 40#in RPM/s(ref:fh-const-accel)
 #+END_SRC
 
 ** Faulhaber Utilities
@@ -3248,14 +3311,14 @@ V_{rpm} = 60 \cdot gearbox \cdot \left(\dfrac{V_{\mu m/s}}{pitch}\right)
   ## @brief   Converts motor speed from um/s to rpm
   #################################################################
   def faulhaber_convert_ums_to_rpm(ums):
-      rpm = 60 * gearbox * (ums / pitch)
+      rpm = 60 * FH_CONST.GEARBOX * (float(ums) / FH_CONST.PITCH)
       return rpm
 
   #################################################################
   ## @brief   Converts motor speed from rpm to um/s
   #################################################################
   def faulhaber_convert_rpm_to_ums(rpm):
-      ums = (rpm * pitch)/( 60 * gearbox)
+      ums = (rpm * FH_CONST.PITCH)/( 60 * FH_CONST.GEARBOX)
       return ums
 #+END_SRC
 
@@ -3264,7 +3327,7 @@ As an additional comment it can be pointed out that  \(1 [\mu m /s] \approx 100 
 *** Faulhaber State
 The Faulhaber motor, can only operate at seconds rates, however the control loop runs in less time. In order to properly control the motor, it's necessary to add state variables to help with the control loop and avoid overcontroling the motor.
 #+BEGIN_SRC python
-  class faulhaber_state():
+  class faulhaber_state(object):
       def __init__(self, start_pos, start_speed):
           self.start_pos = start_pos
           self.current_speed = start_speed
@@ -3275,7 +3338,7 @@ The Faulhaber motor, can only operate at seconds rates, however the control loop
       # Depends on numpy abs to work on array
       def is_motor_stopped(self):
           a = self.previous_pos
-          delta = sum(abs([a.[2] - a.[1], a.[1]-a.[0]]))
+          delta = sum(abs([a[2] - a[1], a[1]-a[0]]))
           return delta==0
       def update_current_speed(self, new_speed):
           self.current_speed = new_speed
@@ -3296,142 +3359,233 @@ The Faulhaber class defined in the code block [[faulhaber-class-def]], provides 
   #  @details These are the constants used by the faulhaber
   #           interface.
   #################################################################
-  class Faulhaber_motor:
+  class faulhaber_motor(object):
       def __init__(self): #(ref:fh-init-fn)
       ###  Beware the interface may not be completely correct
-          self.motor_ctrl = visa.SerialInstrument(FH_CONST.port)
-          self.motor_ctrl.baud_rate = FH_CONST.baud_rate
-      ###  Beware the interface may not be completely correct
+          self._reset_controller()
+          self._init_state()
+          self.init_motor()
+      def init_motor(self):
+          ###  Beware the interface may not be completely correct
           self.enable_motor()
-          self.set_pos_range()
-          self.set_respect_user_limits()
-          self.set_max_speed()
-          self.set_max_acceleration()
+          self._set_pos_range()
+          self._set_respect_user_limits()
+          self._set_max_speed_rpm()
+          self._set_max_acceleration()
           self.disable_motor()
-          self.state = self.init_state()
       <<faulhaber-basic-fn-interface>>
-      <<faulhaber-real-interface>>
+      <<faulhaber-real-fn-interface>>
 #+END_SRC
 *** Faulhaber Basic Functions
     :PROPERTIES:
     :header-args+:  :tangle   no
     :END:
 As previously stated this section defines the basic functions of the Faulhaber motor.
-- Enable Motor :: This function enables the motor to allow it to move.
-   #+NAME: faulhaber-basic-fn-interface
-   #+BEGIN_SRC python
-     #################################################################
-     ## @brief   Enables the motor
-     #################################################################
-     def enable_motor(self):
-         self.motor_ctrl.write("en")
-   #+END_SRC
-- Disable motor :: This function disables the motor, stopping its movement
-  #+NAME: faulhaber-basic-fn-interface
-  #+BEGIN_SRC python
-    #################################################################
-    ## @brief   Disables the motor
-    #################################################################
-    def disable_motor(self):
-        self.motor_ctrl.write("di")
-  #+END_SRC
-- Respect user limits :: It seems that the motor may not respect the user defined limits by default, so this function forces the motor to do so
-     #+NAME: faulhaber-basic-fn-interface
-     #+BEGIN_SRC python
-       #################################################################
-       ## @brief   Ensures that the motor honor the user defined limits
-       #################################################################
-       def set_respect_user_limits(self):
-           self.motor_ctrl.write("APL 1")
-     #+END_SRC
-- Set motor position range :: This function set the maximum and minimum position of the motor axis to prevent damage to the equipment.
-   #+NAME: faulhaber-basic-fn-interface
-   #+BEGIN_SRC python
-     #################################################################
-     ## @brief   Set the maximum and minimum position for the motor axis
-     #################################################################
-     def set_pos_range(self):
-         max_pos_str = "LL %d" % FH_CONST.max_pos
-         min_pos_str = "LL %d" % FH_CONST.min_pos
-         self.motor_ctrl.write(max_pos_str)
-         self.motor_ctrl.write(min_pos_str)
-    #+END_SRC
-- Set maximum speed :: This function defines the maximum speed for the motor.
-   #+NAME: faulhaber-basic-fn-interface
-     #+BEGIN_SRC python
-     #################################################################
-     ## @brief   Sets the maximum speed for the motor
-     #################################################################
-     def set_max_speed(self):
-         max_speed_str = "SP %d" %FH_CONST.max_speed
-         self.motor_ctrl.write(max_speed_str)
-     #+END_SRC
-- Set maximum acceleration :: This function is used to set the maximum acceleration for the motor.
-   #+NAME: faulhaber-basic-fn-interface
-     #+BEGIN_SRC python
-       #################################################################
-       ## @brief   Sets the maximum acceleration for the motor
-       #################################################################
-       def set_max_acceleration(self):
-           max_accel_str = "SP %d" %FH_CONST.max_accel
-           self.motor_ctrl.write(max_accel_str)
-     #+END_SRC
-- Set target speed :: This function is used to set a target speed for the continuous movement of the motor axis.
- #+NAME: faulhaber-basic-fn-interface
-    #+BEGIN_SRC python
-      #################################################################
-      ## @brief   Sets the target speed of the motor
-      #################################################################
-      def set_target_speed(self, speed):
-          target_speed_str = "v %d" %speed
-          self.state.update_speed(speed)
-          self.motor_ctrl.write(target_speed_str)
-     #+END_SRC
-- Query axis position :: This function is used to determine the current axis position of the motor, which is used as a parameter to determine how much has the motor moved since the beginning of the execution. We define a motor the hardware query as =_query_current-axis_position=, and the real query to be used on the program as =_query_position=, which also updates the state
-   #+NAME: faulhaber-basic-fn-interface
-     #+BEGIN_SRC python
-       #################################################################
-       ## @brief   Returns the current axis position
-       #  @Note    Not to be used directly in other parts of the program
-       #################################################################
-       def query_current_axis_position(self):
-           pos = self.motor_ctrl.query("pos")
-           try:
-               pos = int(pos)
-               return pos
-           except:
-               self.set_target_speed(0)
-               sleep(0.1)
-               self.disable_motor()
-               print("Error, Returned position was not a valid int")
-               print(pos)
-               raise
+- Enable Motor :: Shown in line [[(fh-basic-fn-enable)]].This function enables the motor to allow it to move.
+- Disable motor :: Shown in line [[(fh-basic-fn-disable)]].This function disables the motor, stopping its movement
+- Respect user limits :: Shown in line [[(fh-basic-fn-user-lim)]].It seems that the motor may not respect the user defined limits by default, so this function forces the motor to do so
+- Set motor position range :: Shown in line [[(fh-basic-fn-pos-range)]].This function set the maximum and minimum position of the motor axis to prevent damage to the equipment.
+- Set maximum speed :: Shown in line [[(fh-basic-fn-max-speed-rpm)]].This function defines the maximum speed for the motor.
+- Set maximum acceleration :: Shown in line [[(fh-basic-fn-max-accel)]].This function is used to set the maximum acceleration for the motor.
+- Set target speed rpm :: Shown in line [[(fh-basic-fn-speed-rpm)]].This function is used to set a target speed for the continuous movement of the motor axis in rpm
+- Set target speed rpm :: Shown in line [[(fh-basic-fn-speed)]].This function is used to set a target speed for the continuous movement of the motor axis in \([\mu s]\). This is the function that should be used in the program directly
+- Query axis position :: Shown in line [[(fh-basic-fn-real-axis-pos)]].This function is used to determine the current axis position of the motor, which is used as a parameter to determine how much has the motor moved since the beginning of the execution. We define a motor the hardware query as =query_current-axis_position= shown in [[(fh-basic-fn-axis-pos)]], and the real query to be used on the program as =get_position= shown in [[(fh-basic-fn-real-axis-pos)]], which also updates the state and should be used directly
+- Initialize State :: Shown in line [[(fh-basic-fn-init-state)]].This function sets the starting state of the faulhaber motor, by analyzing the starting position and setting the intial speed to 0.
+#+NAME: faulhaber-basic-fn-interface
+#+BEGIN_SRC python -r -n
+  #################################################################
+  ## @brief   Reset controles
+  #################################################################
+  def _reset_controller(self): #(ref:fh-basic-fn-enable)
+      self.motor_ctrl = visa.SerialInstrument(FH_CONST.PORT)
+      self.motor_ctrl.baud_rate = FH_CONST.BAUD_RATE
 
-       #################################################################
-       ## @brief   Returns the current axis position, updates the state
-       #################################################################
-       def query_position(self):
-           pos = self.query_current_axis_position()
-           self.state.update_position(pos)
-           return pos
-     #+END_SRC
-- Initialize State :: This function sets the starting state of the faulhaber motor, by analyzing the starting position and setting the intial speed to 0.
-     #+NAME: faulhaber-basic-fn-interface
-     #+BEGIN_SRC python
-       #################################################################
-       ## @brief   Initializes the motor state
-       #################################################################
-       def init_state(self):
-           start_pos = self.query_current_axis_position()
-           self.state = faulhaber_state(start_pos, 0)
-     #+END_SRC
+  #################################################################
+  ## @brief   Enables the motor
+  #################################################################
+  def enable_motor(self): #(ref:fh-basic-fn-enable)
+      self.motor_ctrl.ask("en")
 
-*** Faulhaber Program Interface
+  #################################################################
+  ## @brief   Disables the motor
+  #################################################################
+  def disable_motor(self):#(ref:fh-basic-fn-disable)
+      self.motor_ctrl.ask("di")
+
+  #################################################################
+  ## @brief   Ensures that the motor honor the user defined limits
+  #################################################################
+  def _set_respect_user_limits(self):#(ref:fh-basic-fn-user-lim)
+      self.motor_ctrl.ask("APL 1")
+
+  #################################################################
+  ## @brief   Set the maximum and minimum position for the motor axis
+  #################################################################
+  def _set_pos_range(self):#(ref:fh-basic-fn-pos-range)
+      max_pos_str = "LL %d" % FH_CONST.MAX_POS
+      min_pos_str = "LL %d" % FH_CONST.MIN_POS
+      self.motor_ctrl.ask(max_pos_str)
+      self.motor_ctrl.ask(min_pos_str)
+  #################################################################
+  ## @brief   Sets the maximum speed for the motor
+  #################################################################
+  def _set_max_speed_rpm(self):#(ref:fh-basic-fn-max-speed-rpm)
+      max_speed_str = "SP %d" %FH_CONST.MAX_SPEED
+      self.motor_ctrl.ask(max_speed_str)
+
+  #################################################################
+  ## @brief   Sets the maximum acceleration for the motor
+  #################################################################
+  def _set_max_acceleration(self):#(ref:fh-basic-fn-max-accel)
+      max_accel_str = "SP %d" %FH_CONST.MAX_ACCEL
+      self.motor_ctrl.ask(max_accel_str)
+
+  #################################################################
+  ## @brief   Sets the target speed of the motor in rpm
+  #################################################################
+  def _set_target_speed_rpm(self, speed):#(ref:fh-basic-fn-speed-rpm)
+      target_speed_str = "v %1.2f" %speed
+      self.state.update_current_speed(speed)
+      self.motor_ctrl.ask(target_speed_str)
+
+  #################################################################
+  ## @brief   Sets the target speed of the motor in us
+  #################################################################
+  def set_target_speed(self, speed_us):#(ref:fh-basic-fn-speed-us)
+      speed_rpm = faulhaber_convert_ums_to_rpm(speed_us)
+      self._set_target_speed_rpm(speed_rpm)
+
+  #################################################################
+  ## @brief   Returns the current axis position
+  #  @Note    Not to be used directly in other parts of the program
+  #################################################################
+  def _query_current_axis_position(self, count=0):#(ref:fh-basic-fn-axis-pos)
+      pos = self.motor_ctrl.ask("pos")
+      try:
+          pos = int(pos)
+      except:
+          if count < 2:
+              self._reset_motor_ctrl()
+              pl.pause(0.02)
+              return self._query_current_axis_position(count +1)
+          print("Error, Returned position '{0}' was not a valid int".format(pos))
+      return pos
+
+  #################################################################
+  ## @brief   Returns the current axis position, updates the state
+  #################################################################
+  def get_position(self):#(ref:fh-basic-fn-real-axis-pos)
+      pos = self._query_current_axis_position()
+      self.state.update_position(pos)
+      return pos
+
+  #################################################################
+  ## @brief   Initializes the motor state
+  #################################################################
+  def _init_state(self):#(ref:fh-basic-fn-init-state)
+      start_pos = self._query_current_axis_position()
+      self.state = faulhaber_state(start_pos, 0)
+#+END_SRC
+
+*** Faulhaber real Interface
     :PROPERTIES:
     :header-args+:  :tangle   no
     :END:
-The Faulhaber program interface is actually the control algorithm for the motor, this is, given a set of parameters, the control algorithm will set the new speed for the motor.
 
+#+NAME: faulhaber-real-fn-interface
+#+BEGIN_SRC python
+  def stop_motor(self):
+      self.set_target_speed(0)
+
+  def is_stopped(self):
+      return self.state.is_motor_stopped()
+
+
+  ## Manual Controls
+  def set_motor_pos(self, new_pos):
+      pos = int(new_pos)
+      target_cmd = "ho {0}".format(pos)
+      self.enable_motor()
+      print("old position {0}".format(self.get_position()) )
+      self.motor_ctrl.ask(target_cmd)
+      print("new position {0}".format(self.get_position()) )
+      self.disable_motor()
+      return
+
+  def move_to(self, target_pos, speed=2):
+      # We dont have to be too precise.
+      epsilon = 200
+      in_range = False
+      move_speed = abs(speed)
+      self.enable_motor()
+      while True :
+          position = self.get_position()
+          delta = target_pos - position
+          in_range = abs(delta) < epsilon
+          if in_range :
+              self.stop_motor()
+              break
+          if delta > 0 :
+              self.set_target_speed(move_speed)
+          else:
+              self.set_target_speed(-1*move_speed)
+          print("Current Position = {0}".format(position))
+      print("Final Position = {0}".format(self.get_position()))
+      self.disable_motor()
+#+END_SRC
+
+**** Faulhaber testing                                             :noexport:
+#+BEGIN_SRC python :tangle testing_faulhaber.py
+  import modules.Faulhaber_driver as fh_driver
+  import pylab as pl
+  from modules.adwin_driver import *
+  from modules.configuration import *
+
+  def stop():
+      motor = fh_driver.faulhaber_motor()
+      motor.enable_motor()
+      motor.stop_motor()
+      motor.disable_motor()
+      adwin_driver(1,"")
+
+
+  # Configure Plot
+  infile = "Measurement_deafult_config.yaml"
+  outfile = "Measurement_read_config.yaml"
+  config = yaml_build_config_from_file(infile)
+  dconfig = config.display_config
+  hconfig = config.hist_config
+  iv_config = config.iv_config
+
+  adw = adwin_iv_driver(iv_config)
+  adw.start_process()
+
+  motor = fh_driver.faulhaber_motor()
+  print("Motor Pos = {0}".format(motor.get_position()))
+
+  motor.enable_motor()
+  motor.set_target_speed(-2.0)
+  pl.pause(1)
+  for count in range(55):
+      pl.pause(0.1)
+      print(motor.get_position())
+      print(adw.get_conductance())
+
+  print("speed change")
+  #pl.pause(5)
+  motor.set_target_speed(2.0)
+  for count in range(55):
+      pl.pause(0.1)
+      print(motor.get_position())
+      print(adw.get_conductance())
+
+  motor.move_to(0)
+
+  motor.stop_motor()
+  motor.disable_motor()
+
+  stop()
+#+END_SRC
 *** Faulhaber Control Algorithm
     :PROPERTIES:
     :header-args+:  :tangle   no
@@ -3490,6 +3644,8 @@ As a final note, each algorithm updates the data of the run, as defined in [[Sec
       raise
 #+END_SRC
 
+
+
 **** Faulhaber control-Motor Make
 #+ATTR_LATEX: :width 0.75\textwidth
 #+CAPTION: Control algorithm of the Faulhaber motor for the release sample algorithm
@@ -3534,7 +3690,7 @@ The motor make algorithm as shown in figure [[fig:ctrl-algorithm-motor-make]] is
 
 The motor break algorithm shown in figure [[fig:ctrl-algorithm-motor-break]] moves the motor reducing the conductance until the target has been reached, then the motor is stopped.
 
-#+NAME: src-fh-ctrl-motor-brak
+#+NAME: src-fh-ctrl-motor-break
 #+CAPTION: Motor-break function
 #+BEGIN_SRC python
   #################################################################

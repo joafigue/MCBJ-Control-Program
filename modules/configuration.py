@@ -111,6 +111,7 @@ class histogram_config(object):
         self.log_ampl = param.adwin_log_amplifier()
         self.avg_points = param.avg_points()
         self.break_speed = param.break_speed()
+        self.post_breaking_v = param.post_breaking_voltage()
         self.make_speed = param.make_speed()
         self.G0 = param.GLOBAL_CONSTANTS.G0
         self.G_break_end = 1e-5 * self.G0
@@ -122,13 +123,16 @@ class histogram_config(object):
         self.config['JunctureVoltage'] = self.measure_jv.get_value()
         self.config['AveragePoints'] = self.avg_points.get_value()
         self.config['BreakSpeed'] = self.break_speed.get_value()
+        self.config['PostBreakingVoltage'] = self.post_breaking_v.get_value()
         self.config['MakeSpeed'] = self.make_speed.get_value()
         self.config['UseLogAmplifier'] = self.use_log_amp.get_value()
+
 
     def update_config_with_data(self, data):
         self.measure_jv.update_or_dflt(data.get('JunctureVoltage'))
         self.avg_points.update_or_dflt(data.get('AveragePoints'))
         self.break_speed.update_or_dflt(data.get('BreakSpeed'))
+        self.break_speed.update_or_dflt(data.get('PostBreakingVoltage'))
         self.make_speed.update_or_dflt(data.get('MakeSpeed'))
         self.use_log_amp.update_or_dflt(data.get('UseLogAmplifier'))
         self.update_config()
@@ -152,24 +156,18 @@ class histogram_config(object):
         return adwin.adwin_DAC(self.get_measure_jv())
     def get_use_log_amp(self):
         return self.use_log_amp.get_value()
+
     def get_break_wait(self):
-        # We are taking 0->1000 to 0->10, because that's the Adwin range
-        break_speed = self.break_speed.get_value()/100 # in V/seg 
-        zero_v_steps = adwin.adwin_ADC(0)              # in V/seg (for range)
-        break_steps_seg = (adwin.adwin_ADC(break_speed) -zero_v_steps) # in seg
-        break_steps_ms = break_steps_seg * 1e-3
+        break_speed = self.break_speed.get_value()
+        return adwin.aux_convert_vps_to_cycles(break_speed)
+    def get_post_break_wait(self):
+        post_voltage = self.post_breaking_v.get_value()/100
+        return adwin.adwin_ADC(post_voltage) - adwin.adwin_ADC(0)
 
-        break_wait = 1/break_steps_ms # in ms
-        return adwin.adwin_convert_ms_to_cycles(break_wait)
     def get_make_wait(self):
-        # We are taking 0->1000 to 0->10, because that's the Adwin range
-        make_speed = self.make_speed.get_value()/100
-        zero_v_steps = adwin.adwin_ADC(0) 
-        make_steps_seg = (adwin.adwin_ADC(make_speed) -zero_v_steps) # in seg
-        make_steps_ms = make_steps_seg *1e-3 # in ms
+        make_speed = self.make_speed.get_value()
+        return adwin.aux_convert_vps_to_cycles(make_speed)
 
-        make_wait = 1/make_steps_ms # in ms
-        return adwin.adwin_convert_ms_to_cycles(make_wait)
     def get_I_break_end(self):
         return  self.G_break_end * self.get_real_jv()
     def get_I_make_end(self):

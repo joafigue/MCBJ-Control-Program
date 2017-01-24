@@ -232,6 +232,27 @@ class break_speed(numerical_parameter):
         super(break_speed, self).__init__(_name, _dflt, _min, _max)
 
 #############################################################
+## @class   piezo_break
+#  @brief   All functionality related to the
+#           piezo_speed_breaking
+#
+#  @details This class defines the behavior of the piezo
+#           speed voltage relations which is defined in [V/s]
+#           Provides the default values and range plus the
+#           corresponding interfaces.
+#############################################################
+class post_breaking_voltage(numerical_parameter):
+    #############################################################
+    ## @brief   Initilaization code
+    #############################################################
+    def __init__(self):
+        _dflt = 200.0
+        _min = 1.0
+        _max = 999.0
+        _name = "Post Breaking Voltage"
+        super(post_breaking_voltage, self).__init__(_name, _dflt, _min, _max)
+
+#############################################################
 ## @class   piezo_make
 #  @brief   All functionality related to the
 #           piezo_speed_making
