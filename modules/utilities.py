@@ -4,7 +4,7 @@
            that do not fit cleanly anywhere else. Obviously
            grat care has been tanke to ensure that this file
            is kept small
-"""  
+"""
 __author__ = "Joaquin Figueroa"
 
 import os
@@ -27,12 +27,12 @@ def convert_to_list(data):
     # convert to list
     data2=[]
     for i in range(0, len(data)):
-        data2.append(int(data[i])) 
+        data2.append(int(data[i]))
     return data2
 
 def convert_to_list_float(data):
     # convert to list
     data2=[]
     for i in range(0, len(data)):
-        data2.append(data[i]) 
+        data2.append(data[i])
     return data2

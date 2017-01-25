@@ -4,7 +4,7 @@
            which defines high and low level functionalities.
            The user should use onlythe high level functionality
            if possible.
-"""  
+"""
 __author__ = "Joaquin Figueroa"
 
 
@@ -271,7 +271,7 @@ class adwin_hist_driver(adwin_driver):
                 print("Run number: {0} \nbreaking 1".format(trace))
             if state == 2:
                 print("Run number: {0} \nmaking 1".format(trace))
-            pl.pause(0.1) 
+            pl.pause(0.1)
         self.stop_process()
         break_histogram = self.get_break_histogram()
         make_histogram = self.get_make_histogram()
@@ -308,7 +308,7 @@ class adwin_hist_driver(adwin_driver):
         make_voltage = self.get_make_voltage()
         return adwin_histogram(make_conductance, make_voltage)
     
-    def get_make_conductance(self):    
+    def get_make_conductance(self):
         G0 = self.config.G0
         real_jv = self.config.get_real_jv()
         length = self.adw.Get_Par(ADW_HIST_CONST.MAKE_IDX) -1
@@ -330,7 +330,7 @@ class adwin_hist_driver(adwin_driver):
     def process_running(self):
         return self.adw.Get_Par(ADW_HIST_CONST.END_STATUS) != 1
     def successful_measurement(self):
-        return not self.adw.Get_Par(ADW_HIST_CONST.ERROR_STATUS) == 0
+        return self.adw.Get_Par(ADW_HIST_CONST.ERROR_STATUS) == 0
     def error_in_breaking(self):
         return self.adw.Get_Par(ADW_HIST_CONST.ERROR_STATUS) & 1 == 1
     def error_in_making(self):
@@ -372,7 +372,7 @@ def adwin_DAC(digital_value):
     step = 2 * param.ADW_GCONST.OUTPUT_RANGE / (2**param.ADW_GCONST.RESOLUTION-1)
     # voltage is array of analog/idx conversion
     voltage = np.arange(-param.ADW_GCONST.OUTPUT_RANGE, param.ADW_GCONST.OUTPUT_RANGE+step, step)
-    data = voltage[int(digital_value)] 
+    data = voltage[int(digital_value)]
 
     return data
 
@@ -383,7 +383,7 @@ def adwin_ADC_DAC_roundtrip(analog_value):
 def aux_convert_vps_to_cycles(vps):
     # VPS -> VOltage Per Second
     # We are taking 0->1000 to 0->10, because that's the Adwin range
-    voltage_steps = adwin_ADC(vps/100) # in V/seg 
+    voltage_steps = adwin_ADC(vps/100) # in V/seg
     zero_v_steps = adwin_ADC(0)        # in V/seg (for range)
     voltage_steps_seg = voltage_steps - zero_v_steps # in seg
     voltage_steps_ms = voltage_steps_seg * 1e-3
@@ -395,7 +395,7 @@ def adwin_convert_ms_to_cycles(time_ms):
     # Stabilization cycles before starting measurement
     # Wait is in ms, but we need to wait number of cycles.
     # Each cycle is 10 us (in seg) => seg
-    cycle_time = param.ADW_GCONST.HIGH_PERIOD * param.ADW_GCONST.PROCESS_DELAY 
+    cycle_time = param.ADW_GCONST.HIGH_PERIOD * param.ADW_GCONST.PROCESS_DELAY
     time_seg = time_ms * 1e-3
     wait_cycles = int(time_seg /cycle_time ) # Because ms
     return wait_cycles

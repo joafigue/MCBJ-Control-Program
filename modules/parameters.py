@@ -5,7 +5,7 @@
            validations.
            Also the program provides the definitions of the
            global constants of the program
-"""  
+"""
 __author__ = "Joaquin Figueroa"
 
 import os
@@ -227,7 +227,7 @@ class break_speed(numerical_parameter):
     def __init__(self):
         _dflt = 300.0
         _min = 10.0
-        _max = 600.0
+        _max = 900.0
         _name = "Piezo Speed Breaking"
         super(break_speed, self).__init__(_name, _dflt, _min, _max)
 
@@ -269,7 +269,7 @@ class make_speed(numerical_parameter):
     def __init__(self):
         _dflt = 500.0
         _min = 30.0
-        _max = 800.0
+        _max = 990.0
         _name = "Piezo Speed Making"
         super(make_speed, self).__init__(_name, _dflt, _min, _max)
 
@@ -570,3 +570,22 @@ class ADW_GCONST(object):
     # Program Constants
     PROCESS_DELAY    = 400
 # Adwin driver-global constants:1 ends here
+
+# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::src-faulhaber-constants][src-faulhaber-constants]]
+#################################################################
+## @author  Joaquin Figueroa
+#  @brief   Constants used for the faulhaber interface
+#
+#  @details These are the constants used by the faulhaber
+#           interface.
+#################################################################
+class FH_CONST(object):
+    PORT = "COM3" #
+    BAUD_RATE = 9600 #
+    PITCH = 150 #
+    GEARBOX = 246 #
+    MAX_POS = 5000000#
+    MIN_POS = -7000000#
+    MAX_SPEED = 800#in RPM
+    MAX_ACCEL = 40#in RPM/s
+# src-faulhaber-constants ends here
