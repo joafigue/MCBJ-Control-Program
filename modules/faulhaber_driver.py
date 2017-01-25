@@ -39,14 +39,16 @@ class faulhaber_state(object):
     def __init__(self, start_pos, start_speed):
         self.start_pos = start_pos
         self.current_speed = start_speed
-        self.previous_pos = [start_pos, start_pos, start_pos]
+        self.previous_pos = [start_pos]*4
     def update_position(self, new_pos):
         self.previous_pos.append(new_pos)
         self.previous_pos.pop(0)
     # Depends on numpy abs to work on array
     def is_motor_stopped(self):
         a = self.previous_pos
-        delta = sum(abs([a[2] - a[1], a[1]-a[0]]))
+        delta = 0
+        for idx in range(len(a) - 1):
+            delta = delta + abs(a[idx+1] - a[idx])
         return delta==0
     def update_current_speed(self, new_speed):
         self.current_speed = new_speed
@@ -185,7 +187,9 @@ class faulhaber_motor(object):
     def stop_motor(self):
         self.set_target_speed(0)
     
-    def is_stopped(self):
+    def is_stopped(self, verbose=False):
+        pos = self.get_position()
+        if verbose : print("Motor pos = {0}".format(pos))
         return self.state.is_motor_stopped()
     
     def small_break(self, speed=-1.0):

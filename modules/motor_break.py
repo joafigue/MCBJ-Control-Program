@@ -41,10 +41,11 @@ def histogram_to_data_list(break_histogram, make_histogram):
     break_conductance = break_histogram.get_conductance()
     make_conductance = make_histogram.get_conductance()
     data = []
-    for idx in range(0,len(break_conductance), 10):
+    skip = 300
+    for idx in range(0,len(break_conductance), skip):
         conductance = break_conductance[idx]
         data.append(conductance)
-    for idx in range(0,len(make_conductance), 10):
+    for idx in range(0,len(make_conductance), skip):
         conductance = make_conductance[idx]
         data.append(conductance)
     return data
@@ -58,27 +59,31 @@ def motor_break_juncture_control_loop(motor, iv_config):
     state = MB_STATE.BREAKING
 
     adw_iv.start_process()
-    motor.set_speed(-2)
-    pl.pause(0.1)
+    motor.enable_motor()
+    motor.set_target_speed(-2)
     while state == MB_STATE.BREAKING :
+        pl.pause(0.2)
         conductance = adw_iv.get_conductance()
         if motor.is_stopped():
             state = MB_STATE.ERROR_NO_BREAK
+            motor.stop_motor()
         if conductance <= broken_conductance :
             state = MB_STATE.RESTORING
         yield conductance, state
-        pl.pause(0.1)
 
-    motor.set_speed(2)
+    motor.set_target_speed(2)
     while state == MB_STATE.RESTORING:
+        pl.pause(0.2)
         conductance = adw_iv.get_conductance()
         if motor.is_stopped():
             state = MB_STATE.ERROR_NO_MAKE
+            motor.stop_motor()
         if conductance >= restore_conductance:
             state = MB_STATE.FINE_TUNING
         yield conductance, state
 
     motor.stop_motor()
+    motor.disable_motor()
     adw_hist = adw.adwin_hist_driver(build_hist_config_for_motor_break(iv_config))
     adw_hist.start_process()
     on_point_counter = 0
@@ -89,35 +94,41 @@ def motor_break_juncture_control_loop(motor, iv_config):
         data_list = histogram_to_data_list(break_hist, make_hist)
         if adw_hist.error_in_breaking() and adw_hist.error_in_making():
             invalid_counter = invalid_counter +1
-            if invalid_counter > 5:
+            if invalid_counter > 3:
+                on_point_counter = 0
                 state = MB_STATE.ERROR_INVALID_FINE_TUNING
         elif adw_hist.error_in_breaking():
             motor.small_break()
+            on_point_counter = 0
+            invalid_counter = 0
         elif adw_hist.error_in_making():
             motor.small_make()
+            on_point_counter = 0
+            invalid_counter = 0
         else:
+            invalid_counter = 0
             on_point_counter = on_point_counter +1
-            if on_point_counter > 5:
+            if on_point_counter > 3:
                 state = MB_STATE.READY_ON_POINT
         for conductance in data_list:
             yield conductance, state
 
 
-
 def motor_break_get_loop_data(motor, iv_config):
     iterator = motor_break_juncture_control_loop(motor, iv_config)
-    piezo_cycles_per_data = 180 # 18 each data, but we take one every 10 points
+    wait_per_point = 18         # We take roughly 18 cycles to measure
+    skip = 300                  # We only take one every 300 measurements
     cycle_time = param.ADW_GCONST.HIGH_PERIOD * param.ADW_GCONST.PROCESS_DELAY
-    piezo_data_time = cycle_time * piezo_cycles_per_data
+    piezo_data_time = cycle_time * skip * wait_per_point
     start = time.time()
-    new_time = start - time.time()
+    new_time = time.time() - start
     for conductance, state in iterator:
         pos = motor.get_position()
         yield conductance, pos, state, new_time
         if state == MB_STATE.FINE_TUNING:
             new_time = new_time + piezo_data_time
         else :
-            new_time = start - time.time()
+            new_time = time.time() - start
 
 
 def print_motor_break_data(conductance, pos, state, new_time):

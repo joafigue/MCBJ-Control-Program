@@ -330,7 +330,7 @@ class adwin_hist_driver(adwin_driver):
     def process_running(self):
         return self.adw.Get_Par(ADW_HIST_CONST.END_STATUS) != 1
     def successful_measurement(self):
-        return not self.adw.Get_Par(ADW_HIST_CONST.ERROR_STATUS) == 0
+        return self.adw.Get_Par(ADW_HIST_CONST.ERROR_STATUS) == 0
     def error_in_breaking(self):
         return self.adw.Get_Par(ADW_HIST_CONST.ERROR_STATUS) & 1 == 1
     def error_in_making(self):
