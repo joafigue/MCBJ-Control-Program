@@ -1980,10 +1980,11 @@ This file has the algorithm that performs the juncture break and drives the moto
       break_conductance = break_histogram.get_conductance()
       make_conductance = make_histogram.get_conductance()
       data = []
-      for idx in range(0,len(break_conductance), 10):
+      skip = 300
+      for idx in range(0,len(break_conductance), skip):
           conductance = break_conductance[idx]
           data.append(conductance)
-      for idx in range(0,len(make_conductance), 10):
+      for idx in range(0,len(make_conductance), skip):
           conductance = make_conductance[idx]
           data.append(conductance)
       return data
@@ -1997,27 +1998,31 @@ This file has the algorithm that performs the juncture break and drives the moto
       state = MB_STATE.BREAKING
 
       adw_iv.start_process()
-      motor.set_speed(-2)
-      pl.pause(0.1)
+      motor.enable_motor()
+      motor.set_target_speed(-2)
       while state == MB_STATE.BREAKING :
+          pl.pause(0.2)
           conductance = adw_iv.get_conductance()
           if motor.is_stopped():
               state = MB_STATE.ERROR_NO_BREAK
+              motor.stop_motor()
           if conductance <= broken_conductance :
               state = MB_STATE.RESTORING
           yield conductance, state
-          pl.pause(0.1)
 
-      motor.set_speed(2)
+      motor.set_target_speed(2)
       while state == MB_STATE.RESTORING:
+          pl.pause(0.2)
           conductance = adw_iv.get_conductance()
           if motor.is_stopped():
               state = MB_STATE.ERROR_NO_MAKE
+              motor.stop_motor()
           if conductance >= restore_conductance:
               state = MB_STATE.FINE_TUNING
           yield conductance, state
 
       motor.stop_motor()
+      motor.disable_motor()
       adw_hist = adw.adwin_hist_driver(build_hist_config_for_motor_break(iv_config))
       adw_hist.start_process()
       on_point_counter = 0
@@ -2028,35 +2033,41 @@ This file has the algorithm that performs the juncture break and drives the moto
           data_list = histogram_to_data_list(break_hist, make_hist)
           if adw_hist.error_in_breaking() and adw_hist.error_in_making():
               invalid_counter = invalid_counter +1
-              if invalid_counter > 5:
+              if invalid_counter > 3:
+                  on_point_counter = 0
                   state = MB_STATE.ERROR_INVALID_FINE_TUNING
           elif adw_hist.error_in_breaking():
               motor.small_break()
+              on_point_counter = 0
+              invalid_counter = 0
           elif adw_hist.error_in_making():
               motor.small_make()
+              on_point_counter = 0
+              invalid_counter = 0
           else:
+              invalid_counter = 0
               on_point_counter = on_point_counter +1
-              if on_point_counter > 5:
+              if on_point_counter > 3:
                   state = MB_STATE.READY_ON_POINT
           for conductance in data_list:
               yield conductance, state
 
 
-
   def motor_break_get_loop_data(motor, iv_config):
       iterator = motor_break_juncture_control_loop(motor, iv_config)
-      piezo_cycles_per_data = 180 # 18 each data, but we take one every 10 points
+      wait_per_point = 18         # We take roughly 18 cycles to measure
+      skip = 300                  # We only take one every 300 measurements
       cycle_time = param.ADW_GCONST.HIGH_PERIOD * param.ADW_GCONST.PROCESS_DELAY
-      piezo_data_time = cycle_time * piezo_cycles_per_data
+      piezo_data_time = cycle_time * skip * wait_per_point
       start = time.time()
-      new_time = start - time.time()
+      new_time = time.time() - start
       for conductance, state in iterator:
           pos = motor.get_position()
           yield conductance, pos, state, new_time
           if state == MB_STATE.FINE_TUNING:
               new_time = new_time + piezo_data_time
           else :
-              new_time = start - time.time()
+              new_time = time.time() - start
 
 
   def print_motor_break_data(conductance, pos, state, new_time):
@@ -2107,7 +2118,7 @@ This file has the algorithm that performs the juncture break and drives the moto
       #ax.autoscale(enable=True, axis='both', tight=None)
       return line, ax
 
-        
+
   def motor_break_print_plot(iv_config):
       motor = fh.faulhaber_motor()
       line, ax = motor_break_plot_config()
@@ -2134,30 +2145,33 @@ This file has the algorithm that performs the juncture break and drives the moto
   import pylab as pl
   import time
   import os
-  import adwin_driver as adw
-  import faulhaber_driver as fh
-  import utilities as utl
-  import configuration as conf
-  import parameters as param
+  import modules.adwin_driver as adw
+  import modules.faulhaber_driver as fh
+  import modules.utilities as utl
+  import modules.configuration as conf
+  import modules.parameters as param
+  import modules.motor_break as mb
 
   def stop():
-      motor = fh_driver.faulhaber_motor()
+      motor = fh.faulhaber_motor()
       motor.enable_motor()
       motor.stop_motor()
       motor.disable_motor()
-      adwin_driver(1,"")
+      adw.adwin_driver(1,"")
 
 
   # Configure Plot
   infile = "Measurement_deafult_config.yaml"
   outfile = "Measurement_read_config.yaml"
-  config = yaml_build_config_from_file(infile)
+  config = conf.yaml_build_config_from_file(infile)
   dconfig = config.display_config
   hconfig = config.hist_config
   iv_config = config.iv_config
 
-  motor = fh_driver.faulhaber_motor()
-  motor_break_print(motor, iv_config)
+  motor = fh.faulhaber_motor()
+  mb.motor_break_print_plot(iv_config)
+  #mb.motor_break_print(motor, iv_config)
+
 
 #+END_SRC
 ** TODO Measurement with Piezo
@@ -2181,7 +2195,8 @@ This file has the algorithm that performs the juncture break and drives the moto
 
 #+END_SRC
 
-#+BEGIN_SRC 
+#+BEGIN_SRC  python
+  def 
 
 
 #+END_SRC
@@ -2798,7 +2813,7 @@ This section provides with the functions required to obtain the histogram measur
   def process_running(self):
       return self.adw.Get_Par(ADW_HIST_CONST.END_STATUS) != 1
   def successful_measurement(self):
-      return not self.adw.Get_Par(ADW_HIST_CONST.ERROR_STATUS) == 0
+      return self.adw.Get_Par(ADW_HIST_CONST.ERROR_STATUS) == 0
   def error_in_breaking(self):
       return self.adw.Get_Par(ADW_HIST_CONST.ERROR_STATUS) & 1 == 1
   def error_in_making(self):
@@ -3573,14 +3588,16 @@ The Faulhaber motor, can only operate at seconds rates, however the control loop
       def __init__(self, start_pos, start_speed):
           self.start_pos = start_pos
           self.current_speed = start_speed
-          self.previous_pos = [start_pos, start_pos, start_pos]
+          self.previous_pos = [start_pos]*4
       def update_position(self, new_pos):
           self.previous_pos.append(new_pos)
           self.previous_pos.pop(0)
       # Depends on numpy abs to work on array
       def is_motor_stopped(self):
           a = self.previous_pos
-          delta = sum(abs([a[2] - a[1], a[1]-a[0]]))
+          delta = 0
+          for idx in range(len(a) - 1):
+              delta = delta + abs(a[idx+1] - a[idx])
           return delta==0
       def update_current_speed(self, new_speed):
           self.current_speed = new_speed
@@ -3756,7 +3773,9 @@ As previously stated this section defines the basic functions of the Faulhaber m
   def stop_motor(self):
       self.set_target_speed(0)
 
-  def is_stopped(self):
+  def is_stopped(self, verbose=False):
+      pos = self.get_position()
+      if verbose : print("Motor pos = {0}".format(pos))
       return self.state.is_motor_stopped()
 
   def small_break(self, speed=-1.0):
@@ -3843,20 +3862,20 @@ As previously stated this section defines the basic functions of the Faulhaber m
   motor.enable_motor()
   motor.set_target_speed(-2.0)
   pl.pause(1)
-  for count in range(55):
-      pl.pause(0.1)
+  for count in range(11):
+      pl.pause(0.5)
       print(motor.get_position())
       print(adw.get_conductance())
 
   print("speed change")
   #pl.pause(5)
   motor.set_target_speed(2.0)
-  for count in range(55):
-      pl.pause(0.1)
+  for count in range(11):
+      pl.pause(0.5)
       print(motor.get_position())
       print(adw.get_conductance())
 
-  motor.move_to(0)
+  # motor.move_to(0)
 
   motor.stop_motor()
   motor.disable_motor()
