@@ -1965,6 +1965,11 @@ This file has the algorithm that performs the juncture break and drives the moto
       ERROR_NO_MAKE = 7
       ERROR_INVALID_FINE_TUNING = 8
 
+
+  class MB_CONST(object):
+      BROKEN_CONDUCTANCE = 1e-6    # IN G0
+      RESTORE_CONDUCTANCE = 50    # in G0
+
   def build_hist_config_for_motor_break(iv_config):
       hist_dict = {}
       hist_dict['JunctureVoltage'] = iv_config.measure_jv.get_value()
@@ -1990,50 +1995,48 @@ This file has the algorithm that performs the juncture break and drives the moto
       return data
 
 
-  def motor_break_juncture_control_loop(motor, iv_config):
-      """ Control Loop """
-      adw_iv = adw.adwin_iv_driver(iv_config)
-      broken_conductance = 1e-6
-      restore_conductance = 50
-      state = MB_STATE.BREAKING
-
-      adw_iv.start_process()
+  def motor_break_juncture_iterator(motor, iv_driver):
       motor.enable_motor()
       motor.set_target_speed(-2)
+      state = MB_STATE.BREAKING
       while state == MB_STATE.BREAKING :
-          pl.pause(0.2)
-          conductance = adw_iv.get_conductance()
+          pl.pause(0.05)
+          conductance = iv_driver.get_conductance()
           if motor.is_stopped():
               state = MB_STATE.ERROR_NO_BREAK
-              motor.stop_motor()
-          if conductance <= broken_conductance :
+          if conductance <= MB_CONST.BROKEN_CONDUCTANCE :
               state = MB_STATE.RESTORING
           yield conductance, state
-
-      motor.set_target_speed(2)
-      while state == MB_STATE.RESTORING:
-          pl.pause(0.2)
-          conductance = adw_iv.get_conductance()
-          if motor.is_stopped():
-              state = MB_STATE.ERROR_NO_MAKE
-              motor.stop_motor()
-          if conductance >= restore_conductance:
-              state = MB_STATE.FINE_TUNING
-          yield conductance, state
-
       motor.stop_motor()
       motor.disable_motor()
-      adw_hist = adw.adwin_hist_driver(build_hist_config_for_motor_break(iv_config))
-      adw_hist.start_process()
+
+  def motor_restore_juncture_iterator(motor, iv_driver):
+      motor.enable_motor()
+      motor.set_target_speed(2)
+      state = MB_STATE.RESTORING
+      while state == MB_STATE.RESTORING :
+          pl.pause(0.05)
+          conductance = iv_driver.get_conductance()
+          if motor.is_stopped():
+              state = MB_STATE.ERROR_NO_MAKE
+          if conductance >= MB_CONST.RESTORE_CONDUCTANCE :
+              state = MB_STATE.FINE_TUNING
+          yield conductance, state
+      motor.stop_motor()
+      motor.disable_motor()
+
+
+  def motor_fine_tune_iterator(motor, adw_hist):    
       on_point_counter = 0
       invalid_counter = 0
+      state = MB_STATE.FINE_TUNING
 
       while state == MB_STATE.FINE_TUNING:
           break_hist, make_hist = adw_hist.measure_and_get_histogram()
           data_list = histogram_to_data_list(break_hist, make_hist)
           if adw_hist.error_in_breaking() and adw_hist.error_in_making():
               invalid_counter = invalid_counter +1
-              if invalid_counter > 3:
+              if invalid_counter >= 3:
                   on_point_counter = 0
                   state = MB_STATE.ERROR_INVALID_FINE_TUNING
           elif adw_hist.error_in_breaking():
@@ -2047,11 +2050,27 @@ This file has the algorithm that performs the juncture break and drives the moto
           else:
               invalid_counter = 0
               on_point_counter = on_point_counter +1
-              if on_point_counter > 3:
+              if on_point_counter >= 3:
                   state = MB_STATE.READY_ON_POINT
           for conductance in data_list:
               yield conductance, state
 
+
+
+  def motor_break_juncture_control_loop(motor, iv_config):
+      """ Control Loop """
+      adw_iv = adw.adwin_iv_driver(iv_config)
+      adw_iv.start_process()
+
+      for conductance, state in motor_break_juncture_iterator(motor, adw_iv):
+          yield conductance, state
+
+      for conductance, state in motor_restore_juncture_iterator(motor, adw_iv):
+          yield conductance, state
+
+      adw_hist = adw.adwin_hist_driver(build_hist_config_for_motor_break(iv_config))
+      for conductance, state in motor_fine_tune_iterator(motor, adw_hist):
+          yield conductance, state
 
   def motor_break_get_loop_data(motor, iv_config):
       iterator = motor_break_juncture_control_loop(motor, iv_config)
