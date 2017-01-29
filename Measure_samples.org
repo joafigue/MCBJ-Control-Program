@@ -2066,9 +2066,9 @@ This file has the algorithm that performs the juncture break and drives the moto
   import time
   import os
   import numpy as np
-  import adwin_driver as adw
-  import faulhaber_driver as fh
-  import configuration as conf
+  import modules.adwin_driver as adw
+  import modules.faulhaber_driver as fh
+  import modules.configuration as conf
 #+END_SRC
 
 #+BEGIN_SRC python
@@ -2325,7 +2325,7 @@ This file has the algorithm that performs the juncture break and drives the moto
   import matplotlib.pyplot as plt
   import os
   import json
-  import parameters as param
+  import modules.parameters as param
 #+END_SRC
 
 #+BEGIN_SRC  python
@@ -3920,7 +3920,7 @@ As with many files, this file has a description header and the corresponding inc
   #################################################################
   import visa
   import pylab as pl
-  import parameters as param
+  import modules.parameters as param
 #+END_SRC
 
 The rest of the file is organized in 3 mayor sections:

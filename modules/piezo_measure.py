@@ -9,7 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import json
-import parameters as param
+import modules.parameters as param
 
 class histogram_save_data_class(object):
     def __init__(self, break_histogram, make_histogram, full_config):

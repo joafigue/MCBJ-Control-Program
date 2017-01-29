@@ -15,7 +15,7 @@
 #################################################################
 import visa
 import pylab as pl
-import parameters as param
+import modules.parameters as param
 # Faulhaber Driver:1 ends here
 
 # [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::*Conversion%20functions][Conversion functions:1]]

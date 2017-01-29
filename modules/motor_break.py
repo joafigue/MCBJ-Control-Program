@@ -12,9 +12,9 @@ import pylab as pl
 import time
 import os
 import numpy as np
-import adwin_driver as adw
-import faulhaber_driver as fh
-import configuration as conf
+import modules.adwin_driver as adw
+import modules.faulhaber_driver as fh
+import modules.configuration as conf
 
 class MB_STATE(object):
     BREAKING = 1
