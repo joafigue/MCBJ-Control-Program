@@ -294,6 +294,26 @@ class traces(integer_parameter):
         super(traces, self).__init__(_name, _dflt, _min, _max)
 
 #############################################################
+## @class   Skip_points
+#  @brief   All functionality related to
+#
+#  @details This class defines the parameter that controls
+#           the number of traces (runs) performed using the
+#           piezo. Each trace correspond to a full cycle
+#           from closed juncture to open and back.
+#############################################################
+class skip_points(integer_parameter):
+    #############################################################
+    ## @brief   Initilaization code
+    #############################################################
+    def __init__(self):
+        _dflt = int(1)
+        _min = int(1)
+        _max = int(99)
+        _name = "Points to skip/not save in Adwin"
+        super(skip_points, self).__init__(_name, _dflt, _min, _max)
+
+#############################################################
 ## @class   display_xmin
 #  @brief   All functionality related to the minimum of X axis
 #
@@ -429,7 +449,7 @@ class bool_param(object):
     ## @brief   restores the default value of the number of traces
     ##############################################################
     def reset(self): #(ref:src-bool-reset)
-        self.value = True
+        self.value = self._dflt
     ##############################################################
     ## @brief   Ensures the new target string is a directory
     ##############################################################
@@ -479,6 +499,18 @@ class save_data(bool_param):
     def __init__(self):
         name = "Save Data"
         super(save_data, self).__init__(name)
+
+#############################################################
+## @class   Use Json
+#  @brief   Basically allow to turn of the motor. Used in IV
+#############################################################
+class use_json(bool_param):
+    #############################################################
+    ## @brief   Initilaization code
+    #############################################################
+    def __init__(self):
+        name = "Use Json for Write data"
+        super(use_json, self).__init__(name, False)
 
 #############################################################
 ## @class   use_log_amp
@@ -566,6 +598,7 @@ class ADW_GCONST(object):
     # Adwin instrument characterization
     HIGH_PERIOD      = 25e-9
     OUTPUT_RANGE     = 10.0
+    OUTPUT_MAX_D     = 15.0
     RESOLUTION       = 16.0
     # Program Constants
     PROCESS_DELAY    = 400

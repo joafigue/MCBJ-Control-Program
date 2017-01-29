@@ -82,7 +82,7 @@ As it was already stated the measurement is splitted in 2 steps, the motor initi
 - Main loop :: As in many programs the main loop is the one that orchestrates the execution of the program. For details see [[Main Loop]]
 - UI Interface :: Considering the requiremens for different configurations for the measurement such as the voltage applied to the juncture, there is a requierement for a reasonable to use UI, and this UI should allow the user to run a measurement. For details see [[User Interface]]
 - motor break :: Using the motor actuator, a break juncture is created and then the displacement is set so that a movement generated with the piezo-electric actuator the juncture can be easily reconstructed. For details see [[Motor break junction]]
-- Measurement with the piezo :: With the sample in the optimal setting for the piezo is the measured by modifying the voltage applied to the piezo-electric device which in turn creates a displacement of the sample recreating the juncture an allowing for easily repetable measurements through the dynamic range of the piezo-electric device. For details see [[Measurement with Piezo]]
+- Measurement with the piezo :: With the sample in the optimal setting for the piezo is the measured by modifying the voltage applied to the piezo-electric device which in turn creates a displacement of the sample recreating the juncture an allowing for easily repetable measurements through the dynamic range of the piezo-electric device. For details see [[Histogram Measurement with Piezo]]
 
 Obviously there is a series of additional modules which provide the interface to the different actuators, and additional helpeer functions to improve the presentation of the results, all of which will be presented in turn.
 
@@ -250,6 +250,7 @@ The program configuration, is the interface that allows the user to modify the p
   __author___ = "Joaquin Figueroa"
 
   import yaml
+  import time
   import modules.adwin_driver as adwin
   import modules.parameters as param
 #+END_SRC
@@ -374,6 +375,7 @@ The full configuration is the general interface for all configuratioins, as it e
           self.break_speed = param.break_speed()
           self.post_breaking_v = param.post_breaking_voltage()
           self.make_speed = param.make_speed()
+          self.skip = param.skip_points()
           self.G0 = param.GLOBAL_CONSTANTS.G0
           self.G_break_end = 1e-5 * self.G0
           self.G_make_end = 20 * self.G0
@@ -386,6 +388,7 @@ The full configuration is the general interface for all configuratioins, as it e
           self.config['BreakSpeed'] = self.break_speed.get_value()
           self.config['PostBreakingVoltage'] = self.post_breaking_v.get_value()
           self.config['MakeSpeed'] = self.make_speed.get_value()
+          self.config['SkipPoints'] = self.skip.get_value()
           self.config['UseLogAmplifier'] = self.use_log_amp.get_value()
 
 
@@ -395,6 +398,7 @@ The full configuration is the general interface for all configuratioins, as it e
           self.break_speed.update_or_dflt(data.get('BreakSpeed'))
           self.break_speed.update_or_dflt(data.get('PostBreakingVoltage'))
           self.make_speed.update_or_dflt(data.get('MakeSpeed'))
+          self.make_speed.update_or_dflt(data.get('SkipPoints'))
           self.use_log_amp.update_or_dflt(data.get('UseLogAmplifier'))
           self.update_config()
 
@@ -429,11 +433,33 @@ The full configuration is the general interface for all configuratioins, as it e
           make_speed = self.make_speed.get_value()
           return adwin.aux_convert_vps_to_cycles(make_speed)
 
+      def get_skip_points(self):
+          make_speed = self.skip.get_value()
+
       def get_I_break_end(self):
           return  self.G_break_end * self.get_real_jv()
       def get_I_make_end(self):
           return  self.G_make_end * self.get_real_jv()
 
+      def get_time_per_break_data_point(self):
+          logic_cycles = 5        # 5 logic steps in breaking
+          break_wait = self.get_break_wait()
+          avg_points = self.get_avg_points()
+          skip_data = self.skip.get_value()
+          total_cycles = (logic_cycles + break_wait + avg_points)*skip_data
+          cycle_time = param.ADW_GCONST.HIGH_PERIOD * param.ADW_GCONST.PROCESS_DELAY
+          time_per_data_point = cycle_time * total_cycles
+          return time_per_data_point
+
+      def get_time_per_make_data_point(self):
+          logic_cycles = 5        # 5 logic steps in breaking
+          break_wait = self.get_make_wait()
+          avg_points = self.get_avg_points()
+          skip_data = self.skip.get_value()
+          total_cycles = (logic_cycles + break_wait + avg_points)*skip_data
+          cycle_time = param.ADW_GCONST.HIGH_PERIOD * param.ADW_GCONST.PROCESS_DELAY
+          time_per_data_point = cycle_time * total_cycles
+          return time_per_data_point
 #+END_SRC
 
 ***** Display Configuration
@@ -505,8 +531,11 @@ The full configuration is the general interface for all configuratioins, as it e
               self.update_config_with_data(data)
 
       def build_config_dflt(self):
+          date = time.strftime("%Y%m%d_%H%M%S")
           self.save_dir = param.save_dir()
           self.save_data = param.save_data()
+          self.use_json = param.use_json()
+          self.dflt_filename = "scan_{0}".format(date)
           self.config = {}
           self.update_config()
 
@@ -514,10 +543,12 @@ The full configuration is the general interface for all configuratioins, as it e
       def update_config(self):
           self.config['SaveData'] = self.save_data.get_value()
           self.config['SaveDir'] = self.save_dir.get_value()
+          self.config['UseJson'] = self.use_json.get_value()
 
       def update_config_with_data(self, data):
           self.save_dir.update(data.get('SaveDir'))
           self.save_data.update(data.get('SaveData'))
+          self.use_json.update(data.get('UseJson'))
 
           self.update_config()
 
@@ -530,6 +561,10 @@ The full configuration is the general interface for all configuratioins, as it e
       def get_save_dir(self):
           return self.save_dir.get_value()
 
+      def get_use_json(self):
+          return self.use_json.get_value()
+      def get_filename(self):
+          return self.dflt_filename
 #+END_SRC
 ***** File Interface
 
@@ -617,6 +652,37 @@ Also the introduction of configuration files does not mean that the program will
      SaveData: Yes
      SaveDir : 'E:/Measurements/Fullerenos/C60 2/Molecule/'
  #+END_SRC
+
+**** Configuration file testing
+#+BEGIN_SRC python :tangle test_configuration.py
+  import modules.configuration as conf
+  import json
+
+  # Configure Plot
+  infile = "Measurement_deafult_config.yaml"
+  outfile = "Measurement_read_config.yaml"
+  config = conf.yaml_build_config_from_file(infile)
+  dconfig = config.display_config
+  hconfig = config.hist_config
+  iv_config = config.iv_config
+
+  config.dump_config_file(outfile)
+
+
+  real_config  = config.get_config()
+  config.dump_config_file(outfile)
+
+  dump_file = open(outfile, "a")
+  dump_file.write("testing\n")
+  dump_file.close()
+
+  json_file = open("json_test.json", "w")
+  json.dump(real_config, json_file, indent = 4)
+  asdf = {"break_data" : [1, 2, 3, 4]}
+  json.dump(asdf, json_file, indent = 4)
+  json_file.close()
+
+#+END_SRC
 *** TODO Parameters definitions
     :PROPERTIES:
     :header-args+: :tangle   modules/parameters.py
@@ -1131,6 +1197,34 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
    #+END_SRC
 
    #+RESULTS:
+****** TODO Skip Data points
+Storing each data point of the Adwin would yield around 20000 data points, which is to expensive to process and takes up too much space on the hard drive, therefore to reduce the number of data points, we hae a variable which will force the ADwin to not store all data points.
+This variable will make the adwin to store only one out of \(n\) values with \(n\) the value set on this parameter
+
+#+CAPTION: The adwin will only save one out of N data points
+#+NAME: src-config-skip-class
+#+BEGIN_SRC python -n -r
+  #############################################################
+  ## @class   Skip_points
+  #  @brief   All functionality related to
+  #
+  #  @details This class defines the parameter that controls
+  #           the number of traces (runs) performed using the
+  #           piezo. Each trace correspond to a full cycle
+  #           from closed juncture to open and back.
+  #############################################################
+  class skip_points(integer_parameter):
+      #############################################################
+      ## @brief   Initilaization code
+      #############################################################
+      def __init__(self):
+          _dflt = int(1)
+          _min = int(1)
+          _max = int(99)
+          _name = "Points to skip/not save in Adwin"
+          super(skip_points, self).__init__(_name, _dflt, _min, _max)
+
+#+END_SRC
 ****** DONE Display xmin
    To display the measurements on real time, we show the histogram, and we define the minimum value for the *X-axis*, since we plot in *distance* value, we define the minimun as:
 
@@ -1322,7 +1416,7 @@ This parameter class is defined in a very similar fashion as the generic numeric
       ## @brief   restores the default value of the number of traces
       ##############################################################
       def reset(self): #(ref:src-bool-reset)
-          self.value = True
+          self.value = self._dflt
       ##############################################################
       ## @brief   Ensures the new target string is a directory
       ##############################################################
@@ -1381,6 +1475,24 @@ The user may decide not to save the data, for example if is just checking the co
           super(save_data, self).__init__(name)
 #+END_SRC
 
+****** DONE Use Json at saving
+I want to add the option to save the data using Json as a transactional language as it allows for easier scripts for reading and writing the data files
+#+CAPTION: Define if we should use json to save data files
+#+NAME: src-param-use-json-class
+#+BEGIN_SRC python
+  #############################################################
+  ## @class   Use Json
+  #  @brief   Basically allow to turn of the motor. Used in IV
+  #############################################################
+  class use_json(bool_param):
+      #############################################################
+      ## @brief   Initilaization code
+      #############################################################
+      def __init__(self):
+          name = "Use Json for Write data"
+          super(use_json, self).__init__(name, False)
+#+END_SRC
+
 ****** DONE Use logarithmic amplifier
 The user may decide not to use the logarithmic amplifier with the ADwin, so we provide the option with a simple extension
 
@@ -1403,7 +1515,7 @@ The user may decide not to use the logarithmic amplifier with the ADwin, so we p
           super(use_log_amp, self).__init__(name)
 #+END_SRC
 
-****** IV move motor
+****** DONE IV move motor
 Sometimes, if there is a problem with the juncture, there is no need to move the motor again, therefore the user may want to disable it.
 #+CAPTION: Define if we should use the logaritmic amplifier
 #+NAME: src-param-use-log-class
@@ -1420,7 +1532,6 @@ Sometimes, if there is a problem with the juncture, there is no need to move the
           name = "Move motor during IV"
           super(iv_move_motor, self).__init__(name)
 #+END_SRC
-
 **** DONE Non-Configurable parameters definitions
 
 ***** Global constants
@@ -1641,7 +1752,7 @@ Since the configuration parameters are split in different groups so it is the la
 - IV/Conductance parameters :: The layout for the basic parameters is described in [[IV parameters layout]]
 - histogram parameters :: The layout for the advanced parameters is described in [[Histogram parameters layout]]
 - display parameters :: The layout for the presentation parameters is described in [[Display parameters layout]]
-- Save parameters :: parameters that are used to determine if and where the data will be saved. Is described in [[Save parameters layout]]
+- Save parameters :: parameters that are used to determine if and where the data will be saved. Is described in [[Save options parameters layout]]
 - Utilities :: Some utilities shared by all the different layouts are described in [[Configuration parameters layout utilities]]
 
 #+CAPTION: Configuration parameters layout
@@ -1717,6 +1828,7 @@ Since the configuration parameters are split in different groups so it is the la
       # Num parameters fields
       jv_label, jv_text = num_param_label_textbox(hist_params.measure_jv)
       avg_label, avg_text = num_param_label_textbox(hist_params.avg_points)
+      skip_label, skip_text = num_param_label_textbox(hist_params.skip)
       brk_label, brk_text = num_param_label_textbox(hist_params.break_speed)
       post_label, post_text = num_param_label_textbox(hist_params.post_breaking_v)
       mk_label, mk_text = num_param_label_textbox(hist_params.make_speed)
@@ -1741,8 +1853,10 @@ Since the configuration parameters are split in different groups so it is the la
       grid.addWidget(mk_label, 5, 0)
       grid.addWidget(mk_text, 5, 1)
 
+      grid.addWidget(skip_label, 6, 0)
+      grid.addWidget(skip_text, 6, 1)
 
-      grid.addWidget(cb, 6, 0)
+      grid.addWidget(cb, 7, 0)
 
       return grid
 
@@ -1803,7 +1917,9 @@ Since the configuration parameters are split in different groups so it is the la
       dir_btn = QtGui.QPushButton('Change Directory')
       dir_btn.clicked.connect(lambda: showDialog(window, save_opts, dir_label))
 
-      cb = boolean_parameter_checkbox(save_opts.save_data)
+      save_cb = boolean_parameter_checkbox(save_opts.save_data)
+
+      json_cb = boolean_parameter_checkbox(save_opts.use_json)
 
       # Add fields to the layout
       grid = QtGui.QGridLayout()
@@ -1813,7 +1929,8 @@ Since the configuration parameters are split in different groups so it is the la
       grid.addWidget(dir_label, 1, 0)
       grid.addWidget(dir_btn, 1, 1)
 
-      grid.addWidget(cb, 2, 0)
+      grid.addWidget(save_cb, 2, 0)
+      grid.addWidget(json_cb, 2, 1)
 
       return grid
 
@@ -1948,10 +2065,10 @@ This file has the algorithm that performs the juncture break and drives the moto
   import pylab as pl
   import time
   import os
+  import numpy as np
   import adwin_driver as adw
   import faulhaber_driver as fh
   import configuration as conf
-  import parameters as param
 #+END_SRC
 
 #+BEGIN_SRC python
@@ -1965,6 +2082,11 @@ This file has the algorithm that performs the juncture break and drives the moto
       ERROR_NO_MAKE = 7
       ERROR_INVALID_FINE_TUNING = 8
 
+
+  class MB_CONST(object):
+      BROKEN_CONDUCTANCE = 1e-6    # IN G0
+      RESTORE_CONDUCTANCE = 50    # in G0
+
   def build_hist_config_for_motor_break(iv_config):
       hist_dict = {}
       hist_dict['JunctureVoltage'] = iv_config.measure_jv.get_value()
@@ -1977,63 +2099,54 @@ This file has the algorithm that performs the juncture break and drives the moto
 
 
   def histogram_to_data_list(break_histogram, make_histogram):
-      break_conductance = break_histogram.get_conductance()
-      make_conductance = make_histogram.get_conductance()
-      data = []
+      brk_cond = break_histogram.get_conductance()
+      mk_cond = make_histogram.get_conductance()
       skip = 300
-      for idx in range(0,len(break_conductance), skip):
-          conductance = break_conductance[idx]
-          data.append(conductance)
-      for idx in range(0,len(make_conductance), skip):
-          conductance = make_conductance[idx]
-          data.append(conductance)
-      return data
+      return np.concatenate((brk_cond[::skip], mk_cond[::skip]))
 
 
-  def motor_break_juncture_control_loop(motor, iv_config):
-      """ Control Loop """
-      adw_iv = adw.adwin_iv_driver(iv_config)
-      broken_conductance = 1e-6
-      restore_conductance = 50
-      state = MB_STATE.BREAKING
-
-      adw_iv.start_process()
+  def motor_break_juncture_iterator(motor, iv_driver):
       motor.enable_motor()
       motor.set_target_speed(-2)
+      state = MB_STATE.BREAKING
       while state == MB_STATE.BREAKING :
-          pl.pause(0.2)
-          conductance = adw_iv.get_conductance()
+          pl.pause(0.05)
+          conductance = iv_driver.get_conductance()
           if motor.is_stopped():
               state = MB_STATE.ERROR_NO_BREAK
-              motor.stop_motor()
-          if conductance <= broken_conductance :
+          if conductance <= MB_CONST.BROKEN_CONDUCTANCE :
               state = MB_STATE.RESTORING
           yield conductance, state
-
-      motor.set_target_speed(2)
-      while state == MB_STATE.RESTORING:
-          pl.pause(0.2)
-          conductance = adw_iv.get_conductance()
-          if motor.is_stopped():
-              state = MB_STATE.ERROR_NO_MAKE
-              motor.stop_motor()
-          if conductance >= restore_conductance:
-              state = MB_STATE.FINE_TUNING
-          yield conductance, state
-
       motor.stop_motor()
       motor.disable_motor()
-      adw_hist = adw.adwin_hist_driver(build_hist_config_for_motor_break(iv_config))
-      adw_hist.start_process()
+
+  def motor_restore_juncture_iterator(motor, iv_driver):
+      motor.enable_motor()
+      motor.set_target_speed(2)
+      state = MB_STATE.RESTORING
+      while state == MB_STATE.RESTORING :
+          pl.pause(0.05)
+          conductance = iv_driver.get_conductance()
+          if motor.is_stopped():
+              state = MB_STATE.ERROR_NO_MAKE
+          if conductance >= MB_CONST.RESTORE_CONDUCTANCE :
+              state = MB_STATE.FINE_TUNING
+          yield conductance, state
+      motor.stop_motor()
+      motor.disable_motor()
+
+
+  def motor_fine_tune_iterator(motor, adw_hist):
       on_point_counter = 0
       invalid_counter = 0
+      state = MB_STATE.FINE_TUNING
 
       while state == MB_STATE.FINE_TUNING:
           break_hist, make_hist = adw_hist.measure_and_get_histogram()
           data_list = histogram_to_data_list(break_hist, make_hist)
           if adw_hist.error_in_breaking() and adw_hist.error_in_making():
               invalid_counter = invalid_counter +1
-              if invalid_counter > 3:
+              if invalid_counter >= 3:
                   on_point_counter = 0
                   state = MB_STATE.ERROR_INVALID_FINE_TUNING
           elif adw_hist.error_in_breaking():
@@ -2047,20 +2160,37 @@ This file has the algorithm that performs the juncture break and drives the moto
           else:
               invalid_counter = 0
               on_point_counter = on_point_counter +1
-              if on_point_counter > 3:
+              if on_point_counter >= 3:
                   state = MB_STATE.READY_ON_POINT
           for conductance in data_list:
               yield conductance, state
 
 
+
+  def motor_break_juncture_control_loop(motor, iv_config, hist_config=None):
+      """ Control Loop """
+      adw_iv = adw.adwin_iv_driver(iv_config)
+      adw_iv.start_process()
+
+      for conductance, state in motor_break_juncture_iterator(motor, adw_iv):
+          yield conductance, state
+
+      for conductance, state in motor_restore_juncture_iterator(motor, adw_iv):
+          yield conductance, state
+
+      if not hist_config :
+          hist_config = build_hist_config_for_motor_break(iv_config)
+      adw_hist = adw.adwin_hist_driver(hist_config)
+      for conductance, state in motor_fine_tune_iterator(motor, adw_hist):
+          yield conductance, state
+
   def motor_break_get_loop_data(motor, iv_config):
-      iterator = motor_break_juncture_control_loop(motor, iv_config)
-      wait_per_point = 18         # We take roughly 18 cycles to measure
+      hist_config = build_hist_config_for_motor_break(iv_config)
       skip = 300                  # We only take one every 300 measurements
-      cycle_time = param.ADW_GCONST.HIGH_PERIOD * param.ADW_GCONST.PROCESS_DELAY
-      piezo_data_time = cycle_time * skip * wait_per_point
+      piezo_data_time = hist_config.get_time_per_break_data_point() * skip
       start = time.time()
       new_time = time.time() - start
+      iterator = motor_break_juncture_control_loop(motor, iv_config)
       for conductance, state in iterator:
           pos = motor.get_position()
           yield conductance, pos, state, new_time
@@ -2092,12 +2222,14 @@ This file has the algorithm that performs the juncture break and drives the moto
 
 
   def motor_break_print(motor, iv_config):
+      state = MB_STATE.ERROR_STATUS
       iterator = motor_break_get_loop_data(motor, iv_config)
       for conductance, pos, state, new_time  in iterator:
           print_motor_break_data(conductance, pos, state, new_time)
           if state >= MB_STATE.ERROR_STATUS:
               print_motor_break_error_message(state)
               break
+      return state
 
   def motor_break_plot_config():
       # Set up the figure
@@ -2127,6 +2259,7 @@ This file has the algorithm that performs the juncture break and drives the moto
       Time = []
 
       # Set control looop which at each iteration will "spit" the state of the motro break algorithm
+      state = MB_STATE.ERROR_STATUS
       motor_control_loop = motor_break_get_loop_data(motor, iv_config)
       for conductance, pos, state, new_time  in motor_control_loop:
           print_motor_break_data(conductance, pos, state, new_time)
@@ -2138,10 +2271,11 @@ This file has the algorithm that performs the juncture break and drives the moto
           line.set_data(Time, Gt_1)
           ax.set_xlim([Time[0], Time[-1]*1.2])
           pl.pause(0.001)
+      return state
 #+END_SRC
 
 *** Testing motor_break control loop                               :noexport:
-#+BEGIN_SRC python :tangle testing_motor_break_control_loop.py
+#+BEGIN_SRC python :tangle test_motor_break_control_loop.py
   import pylab as pl
   import time
   import os
@@ -2157,7 +2291,7 @@ This file has the algorithm that performs the juncture break and drives the moto
       motor.enable_motor()
       motor.stop_motor()
       motor.disable_motor()
-      adw.adwin_driver(1,"")
+      adw.adwin_driver(1, "")
 
 
   # Configure Plot
@@ -2174,33 +2308,290 @@ This file has the algorithm that performs the juncture break and drives the moto
 
 
 #+END_SRC
-** TODO Measurement with Piezo
+** TODO Histogram Measurement with Piezo
    :PROPERTIES:
    :header-args+:  :tangle   modules/piezo_measure.py
    :END:
 
 #+BEGIN_SRC python
-  """ Module - piezo_measure.py : Performs measuremnet with piezo + interface 
+  """ Module - piezo_measure.py : Performs measuremnet with piezo + interface
 
-  This file, uses the adwin to perform the histogram measurements and provides with interface to analyze the results
+  This file, uses the adwin to perform the histogram measurements
+  and provides with interface to analyze the results
   """
-
+  __author__ = "Joaquin Figueroa"
   import pylab as pl
-  import time
+  import numpy as np
+  import matplotlib.pyplot as plt
   import os
-  import adwin_driver as adw
-  import faulhaber_driver as fh
-  import configuration as conf
+  import json
   import parameters as param
-
 #+END_SRC
 
 #+BEGIN_SRC  python
-  def 
+  class histogram_save_data_class(object):
+      def __init__(self, break_histogram, make_histogram, full_config):
+          self.full_config = full_config
+          self.G_breaking = break_histogram.get_conductance()
+          self.V_breaking = break_histogram.get_voltage()
+          self.D_breaking = []
+          self.T_breaking = []
+
+          self.G_making = make_histogram.get_conductance()
+          self.V_making = make_histogram.get_voltage()
+          self.D_making = []
+          self.T_making = []
+
+          self.convert_break_voltage_to_distance()
+          self.generate_break_time_array()
+
+          self.convert_make_voltage_to_distance()
+          self.generate_make_time_array()
+
+
+      def convert_break_voltage_to_distance(self):
+          G_array = self.G_breaking
+          V_array = self.V_breaking
+          d_max_v = param.ADW_GCONST.OUTPUT_MAX_D # nm guess
+          max_v = param.ADW_GCONST.OUTPUT_RANGE # Adwin_voltage
+          distance = V_array *(d_max_v/max_v)
+          real_brk_idx = max(pl.find(G_array > 0.5))
+          recentered_distance = distance - distance[real_brk_idx]
+          self.D_breaking = recentered_distance
+
+      def convert_make_voltage_to_distance(self):
+          G_array = self.G_making
+          V_array = self.V_making
+          d_max_v = param.ADW_GCONST.OUTPUT_MAX_D # nm guess
+          max_v = param.ADW_GCONST.OUTPUT_RANGE # Adwin_voltage
+          distance = V_array *(d_max_v/max_v)
+          real_mk_idx = min(pl.find(G_array < 0.5))
+          recentered_distance = distance - distance[real_mk_idx]
+          self.D_making = recentered_distance
+
+      def generate_break_time_array(self):
+          hist_config = self.full_config.hist_config
+          time_per_point = hist_config.get_time_per_break_data_point()
+          length = len(self.G_breaking)
+          self.T_breaking = np.array(range(0, length)) * time_per_point
+
+
+      def generate_make_time_array(self):
+          hist_config = self.full_config.hist_config
+          time_per_point = hist_config.get_time_per_make_data_point()
+          length = len(self.G_making)
+          self.T_making = np.array(range(0, length)) * time_per_point
+
+      def get_G_breaking(self):
+          return self.G_breaking
+      def get_D_breaking(self):
+          return self.D_breaking
+      def get_V_breaking(self):
+          return self.V_breaking
+      def get_T_breaking(self):
+          return self.T_breaking
+      def get_G_making(self):
+          return self.G_making
+      def get_D_making(self):
+          return self.D_making
+      def get_V_making(self):
+          return self.V_making
+      def get_T_making(self):
+          return self.T_making
+
+      def save_data(self, trace=1):
+          save_config = self.full_config.save_config
+          if save_config.save_data.get_value():
+              if save_config.use_json.get_value():
+                  self._real_save_data_with_json(trace)
+              else:
+                  self._real_save_data(trace)
+      def _real_save_data(self, trace=1):
+          save_dir =  self.full_config.save_config.get_save_dir()
+          filename = self.full_config.save_config.get_filename()
+          filename = "{0}_{1}.dat".format(filename, trace)
+          real_filename = os.path.join(save_dir, filename)
+          filedesc = open(real_filename, "w")
+
+
+          self.make_piezo_header(filedesc)
+          filedesc.write('@ \n')
+          for T, G, V in zip(self.T_breaking, self.G_breaking, self.V_breaking):
+              ln = "{0:1.8f}\t{1:1.8f}\t{2:1.8f}\t\n".format(T, G, V)
+              filedesc.write(ln)
+          filedesc.write('@ \n')
+          for T, G, V in zip(self.T_making, self.G_making, self.V_making):
+              ln = "{0:1.8f}\t{1:1.8f}\t{2:1.8f}\t\n".format(T, G, V)
+              filedesc.write(ln)
+
+      def _real_save_data_with_json(self, trace=1):
+          self._real_save_data(trace) # TODO - Actually write
+
+      def make_piezo_header(self, fd):
+          hc = self.full_config.hist_config
+          fd.write('Juncture voltage : {0} V\n'.format(hc.get_real_jv()))
+          fd.write('Breaking speed : {0} V/s\n'.format(hc.break_speed.get_value()))
+          fd.write('Making speed : {0} V/s\n'.format(hc.make_speed.get_value()))
+          fd.write('Post breaking : {0} V\n'.format(hc.post_breaking_v.get_value()))
+
+
+  class histogram_plot_data_class(object):
+      def __init__(self, dconfig):      # display_config
+          self.dconfig = dconfig
+          nGbins = dconfig.get_nGbins()
+          self.Gmax = dconfig.get_Gmax()
+          self.Gmin = dconfig.get_Gmin()
+          G_powers = np.linspace(np.log10(self.Gmin), np.log10(self.Gmax), nGbins)
+          # Conductance bins for histogram
+          self.Gbins = np.power(np.zeros(nGbins) + 10.0, G_powers)
+
+          nDbins = dconfig.get_nXbins()
+          self.xmin = dconfig.get_xmin()
+          self.xmax = dconfig.get_xmax()
+          # Displacement bins for histogram
+          self.Dbins = np.linspace(self.xmin, self.xmax, nDbins)
+
+          self.histo1D_breaking_sum = np.zeros(nGbins-1)
+          self.histo1D_making_sum = np.zeros(nGbins-1)
+          self.histo2D_breaking_sum = np.zeros(shape=(nGbins-1, nDbins-1))
+
+          self.prepare_plot_config()
+          self.hist_data = None
+
+      def prepare_plot_config(self):
+          ## plot settings
+          pl.rcParams['figure.figsize'] = [22, 10]
+          font = {'family' : 'normal',
+                  'weight' : 'normal',
+                  'size'   : 22}
+          fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
+          ax1.set_position([0.07, 0.1, 0.25, 0.8])
+          ax2.set_position([0.39, 0.1, 0.25, 0.8])
+          ax3.set_position([0.72, 0.1, 0.25, 0.8])
+          fig.set_facecolor('white')
+          pl.matplotlib.rc('font', **font)
+          self.figure = fig
+          self.break_make_trace = ax1
+          self.histogram_1D = ax2
+          self.histogram_2D = ax3
+
+      def update_histogram_plt_data(self, histogram_save_data):
+          self.hist_data = histogram_save_data
+          bins = (self.Gbins, self.Dbins)
+
+          G_breaking = histogram_save_data.get_G_breaking()
+          D_breaking = histogram_save_data.get_D_breaking()
+          G_making = histogram_save_data.get_G_making()
+
+          break_histogram = pl.histogram(G_breaking, self.Gbins)
+          make_histogram = pl.histogram(G_making, self.Gbins)
+
+
+          self.histo1D_breaking_sum = self.histo1D_breaking_sum + break_histogram[0]
+          self.histo1D_making_sum = self.histo1D_making_sum + make_histogram[0]
+
+          break_histogram2D = pl.histogram2d(G_breaking, D_breaking, bins)
+          self.histo2D_breaking_sum = self.histo2D_breaking_sum + break_histogram2D[0]
+
+      def plot_break_make_trace(self):
+          axis = self.break_make_trace
+          axis.clear()
+          G_breaking = self.hist_data.get_G_breaking()
+          D_breaking = self.hist_data.get_D_breaking()
+          G_making = self.hist_data.get_G_making()
+          D_making = self.hist_data.get_D_making()
+
+          axis.plot(D_breaking, G_breaking, linewidth=2)
+          axis.plot(D_making, G_making, linewidth=2)
+          axis.set_yscale("log")
+          axis.set_xlim(-5, max(max(D_making), max(D_breaking)))
+          axis.set_ylim(self.Gmin, self.Gmax)
+          axis.set_title("Conductance trace")
+          axis.set_xlabel('Displacement (nm)')
+          axis.set_ylabel('Conductance (G0)')
+          axis.set_aspect(1)
+
+      def plot_histogram_1D(self):
+          axis = self.histogram_1D
+          axis.clear()
+          Gbins_plot = self.Gbins[:-1]
+          axis.plot(Gbins_plot, self.histo1D_breaking_sum, linewidth=2)
+          axis.plot(Gbins_plot, self.histo1D_making_sum, linewidth=2)
+          y_max = 1.2*max(max(self.histo1D_breaking_sum), max(self.histo1D_making_sum))
+
+          axis.set_xscale("log")
+          axis.set_ylim(0, y_max)
+          axis.set_xlim(self.Gbins[0], self.Gbins[-1])
+          axis.set_title("1D Histogram")
+          axis.set_ylabel('Counts')
+          axis.set_xlabel('Conductance (G0)')
+          axis.set_aspect(1)
+
+      def get_max_counts_in_histogram2D(self):
+          high_Gbins = abs(np.log10(self.Gbins) - -2)
+          low_Gbins = abs(np.log10(self.Gbins) - -6)
+          low_idx = pl.find(min(low_Gbins) == low_Gbins)[0]
+          high_idx = pl.find(min(high_Gbins) == high_Gbins)[0]
+          tmp = self.histo2D_breaking_sum[low_idx:high_idx, :]
+          Cmax = 0
+          for y in range(0, high_idx - low_idx):
+              Cmax = max(max(tmp[y, :]), Cmax)
+          return int(Cmax)
+
+      def plot_histogram_2D(self):
+          axis = self.histogram_2D
+          Gbins_plot = self.Gbins[:-1]
+          Dbins_plot = self.Dbins[:-1]
+          max_counts = self.get_max_counts_in_histogram2D()
+          levels = np.linspace(0, max_counts/2, 16)
+          axis.clear()
+          axis.contourf(Dbins_plot, Gbins_plot, self.histo2D_breaking_sum, levels)
+          axis.set_yscale("log")
+          axis.set_ylim(Gbins_plot[0], Gbins_plot[-1])
+          axis.set_xlim(Dbins_plot[0], Dbins_plot[-1])
+          axis.set_title("2D Histogram")
+          axis.set_xlabel('Displacement (nm)')
+          axis.set_ylabel('Conductance (G0)')
+#+END_SRC
+*** testing  histogram_measurements plot
+#+BEGIN_SRC python :tangle test_piezo_measure.py
+  import modules.piezo_measure as pm
+  import modules.adwin_driver as adw
+  import modules.configuration as conf
+  import matplotlib.pyplot as plt
+  import modules.faulhaber_driver as fh
+
+  def stop():
+      motor = fh.faulhaber_motor()
+      motor.enable_motor()
+      motor.stop_motor()
+      motor.disable_motor()
+      adw.adwin_driver(1, "")
+
+
+  # Configure Plot
+  infile = "Measurement_deafult_config.yaml"
+  outfile = "Measurement_read_config.yaml"
+  config = conf.yaml_build_config_from_file(infile)
+  dconfig = config.display_config
+  hconfig = config.hist_config
+  iv_config = config.iv_config
+
+
+  adw_hist = adw.adwin_hist_driver(hconfig)
+  hist_plotter = pm.histogram_plot_data_class(dconfig)
+
+  for trace in range(10):
+      break_hist, make_hist = adw_hist.measure_and_get_histogram(trace)
+      hist_save = pm.histogram_save_data_class(break_hist, make_hist, config)
+      hist_save.save_data(trace)
+      hist_plotter.update_histogram_plt_data(hist_save)
+      hist_plotter.plot_break_make_trace()
+      hist_plotter.plot_histogram_1D()
+      hist_plotter.plot_histogram_2D()
 
 
 #+END_SRC
-
 ** TODO General purpose Utilities
    :PROPERTIES:
    :header-args+:  :tangle   modules/utilities.py
@@ -2331,6 +2722,7 @@ As previously stated the base-class  parameters hold information necessary for t
       # Adwin instrument characterization
       HIGH_PERIOD      = 25e-9
       OUTPUT_RANGE     = 10.0
+      OUTPUT_MAX_D     = 15.0
       RESOLUTION       = 16.0
       # Program Constants
       PROCESS_DELAY    = 400
@@ -2617,6 +3009,7 @@ The Int parameters are used to define the indices to the corresponding integer v
 - POST_BREAK_WAIT :: After the Adwin detects the breaking, we try to optimize the runtime by decreasing the number of points to measure. We do this by setting a maximum number of data points to take after the breaking, after which we start measuring the Make histogram.
 - MAKE_WAIT   :: Used for setting  the number of cycles to wait before measuring the current, after modifying the piezoelectric voltage during the make histogram analysis. As with the *BREAK_WAIT* this is considered a stabilization time.
 - AVG :: Used as the index to set the number of measurements to be performed before taking an average in each piezoelectric point.
+- SKIP :: We may not want to save all data points in the adwin histogram measurement, therefore, we will instruct the adwin to skip saving some parameters 
 - PROCESS_STATUS :: Used as output, to check the current status of the histogram measurement process
 - END_STATUS :: Flag used to communicate the python program that the measurement process is ended
 - ERROR_STATUS :: Used as flag to let the python program know that there was an error in the measurement and the data should not be stored
@@ -2637,6 +3030,7 @@ The Int parameters are used to define the indices to the corresponding integer v
   POST_BREAK_WAIT  = 27
   MAKE_WAIT   = 18
   AVG         = 19
+  SKIP        = 30
   # outputs for the ADWIN histogram measurement
   PROCESS_STATUS  = 12
   END_STATUS  = 13
@@ -2729,6 +3123,7 @@ In a similar manner as used in [[Adwin IV driver-Initialization Code]] the code 
           self.adw.Set_Par(ADW_HIST_CONST.BREAK_WAIT, c.get_break_wait())
           self.adw.Set_Par(ADW_HIST_CONST.POST_BREAK_WAIT, c.get_post_break_wait())
           self.adw.Set_Par(ADW_HIST_CONST.MAKE_WAIT, c.get_make_wait())
+          self.adw.Set_Par(ADW_HIST_CONST.SKIP, c.get_skip_points())
           self.adw.Set_FPar(ADW_HIST_CONST.I_MIN_BRK, c.get_I_break_end())
           self.adw.Set_FPar(ADW_HIST_CONST.I_MAX_MK, c.get_I_make_end()) #
           self.adw.SetData_Float(log_array,
@@ -2772,19 +3167,16 @@ This section provides with the functions required to obtain the histogram measur
       real_jv = self.config.get_real_jv()
       length = self.adw.Get_Par(ADW_HIST_CONST.BREAK_IDX) -1
       current_hist = self.adw.GetData_Float(ADW_HIST_CONST.BRK_HIST, 1, length)
+      current_hist = np.asarray(current_hist)
       conductance_hist = current_hist/(real_jv * G0)
-      ret_hist = utl.convert_to_list_float(conductance_hist)
-      return ret_hist
+      return conductance_hist
 
   def get_break_voltage(self):
       length = self.adw.Get_Par(ADW_HIST_CONST.BREAK_IDX) -1
       voltage_hist = self.adw.GetData_Float(ADW_HIST_CONST.BRK_VOLT, 1, length)
-      new_voltage_hist = np.zeros(length)
-      for idx in range(length):
-          new_v = adwin_DAC(voltage_hist[idx])
-          new_voltage_hist[idx] = new_v
-      ret_hist = utl.convert_to_list_float(new_voltage_hist)
-      return ret_hist
+      voltage_hist = np.asarray(voltage_hist)
+      new_voltage_hist = adwin_DAC(voltage_hist)
+      return new_voltage_hist
 
   def get_make_histogram(self):
       make_conductance = self.get_make_conductance()
@@ -2796,19 +3188,16 @@ This section provides with the functions required to obtain the histogram measur
       real_jv = self.config.get_real_jv()
       length = self.adw.Get_Par(ADW_HIST_CONST.MAKE_IDX) -1
       current_hist = self.adw.GetData_Float(ADW_HIST_CONST.MK_HIST, 1, length)
+      current_hist = np.asarray(current_hist)
       conductance_hist = current_hist/(real_jv * G0)
-      ret_hist = utl.convert_to_list_float(conductance_hist)
-      return ret_hist
+      return conductance_hist
 
   def get_make_voltage(self):
       length = self.adw.Get_Par(ADW_HIST_CONST.MAKE_IDX) -1
       voltage_hist = self.adw.GetData_Float(ADW_HIST_CONST.MK_VOLT, 1, length)
-      new_voltage_hist = np.zeros(length)
-      for idx in range(length):
-          new_v = adwin_DAC(voltage_hist[idx])
-          new_voltage_hist[idx] = new_v
-      ret_hist = utl.convert_to_list_float(new_voltage_hist)
-      return ret_hist
+      voltage_hist = np.asarray(voltage_hist)
+      new_voltage_hist = adwin_DAC(voltage_hist)
+      return new_voltage_hist
 
   def process_running(self):
       return self.adw.Get_Par(ADW_HIST_CONST.END_STATUS) != 1
@@ -2870,7 +3259,7 @@ There are several functionalities that are tied to the ADwin intrument but do no
       def print_histogram(self):
           for idx in range(self.length):
               G, V = self.get_voltage_conductance_pair(idx)
-              print("Index = {0}, G = {1}, V = {2}".format(idx,G,V))
+              print("Index = {0}, G = {1}, V = {2}".format(idx, G,V))
 #+END_SRC
 *** TODO Adwin converters
 The Adwin can perform DAC conversion at its output. Is this conversion used for setting the output voltages of the instrument, either to control the Piezoelectric device or to set the juncture voltage. However the instrument cannot be configured with any values, so in order to set the target values in the instrument, we need to perform the same process with the driver and pass the instrument with the corresponding digital value.
@@ -2878,16 +3267,39 @@ The Adwin can perform DAC conversion at its output. Is this conversion used for 
 In summary, to set a value in the Adwin we need to take the target value, and convert it to digital representation within the ADwin constraints; similarly we need to be able to convert a digital representation back to regular values.
 
 #+BEGIN_SRC python
+  # This works with numpy array.
   def adwin_ADC(analog_value):
+      # converts ADC/DAC voltage to bin number, given the voltage range and the param.ADW_GCONST.RESOLUTION as int (adwin digitia representation
+      o_range = param.ADW_GCONST.OUTPUT_RANGE
+      step=2*o_range/(2**param.ADW_GCONST.RESOLUTION-1)
+      zero_v = o_range/step
+      restricted = np.maximum(np.minimum(analog_value, o_range), -o_range)
+      digital_value = np.asarray(restricted/step + zero_v, dtype=int)
+      if len(digital_value) < 2 :
+          digital_value = int(digital_value)
+      return digital_value
+
+  # This works with numpy array.
+  def adwin_DAC(digital_value):
+      # converts ADC/DAC bins to voltage, given the voltage range and the resolution (in bits)
+      step = 2 * param.ADW_GCONST.OUTPUT_RANGE / (2**param.ADW_GCONST.RESOLUTION-1)
+      # voltage is array of analog/idx conversion
+      zero_v = param.ADW_GCONST.OUTPUT_RANGE/step
+      analog_value = (digital_value - zero_v)*step
+      if len(analog_value) < 2 :
+          analog_value = float(analog_value)
+      return analog_value
+
+  def adwin_ADC2(analog_value):
       # converts ADC/DAC voltage to bin number, given the voltage range and the param.ADW_GCONST.RESOLUTION as int (adwin digitia representation)
-      step=2*param.ADW_GCONST.OUTPUT_RANGE/(2**param.ADW_GCONST.RESOLUTION-1)
-      voltage=np.arange(-param.ADW_GCONST.OUTPUT_RANGE, param.ADW_GCONST.OUTPUT_RANGE+step, step)
+      step = 2*param.ADW_GCONST.OUTPUT_RANGE/(2**param.ADW_GCONST.RESOLUTION-1)
+      voltage = np.arange(-param.ADW_GCONST.OUTPUT_RANGE, param.ADW_GCONST.OUTPUT_RANGE+step, step)
       diff = abs(voltage - analog_value)
       digital_value = diff.argmin() # Is an index
 
       return digital_value
 
-  def adwin_DAC(digital_value):
+  def adwin_DAC2(digital_value):
       # converts ADC/DAC bins to voltage, given the voltage range and the resolution (in bits)
       step = 2 * param.ADW_GCONST.OUTPUT_RANGE / (2**param.ADW_GCONST.RESOLUTION-1)
       # voltage is array of analog/idx conversion
@@ -2924,7 +3336,7 @@ In summary, to set a value in the Adwin we need to take the target value, and co
 #+BEGIN_SRC python
   def ADwin_stop():
       """ create a new adwin drive, which will reboot the Adwin, and stop all executions"""
-      adwin_driver(1,"")            # This reboots the Adwin, killing the process
+      adwin_driver(1, "")            # This reboots the Adwin, killing the process
 #+END_SRC
 
 * DONE Adwin Measurements
@@ -3598,7 +4010,7 @@ The Faulhaber motor, can only operate at seconds rates, however the control loop
           delta = 0
           for idx in range(len(a) - 1):
               delta = delta + abs(a[idx+1] - a[idx])
-          return delta==0
+          return delta == 0
       def update_current_speed(self, new_speed):
           self.current_speed = new_speed
 #+END_SRC
@@ -3831,7 +4243,7 @@ As previously stated this section defines the basic functions of the Faulhaber m
 #+END_SRC
 
 **** Faulhaber testing                                             :noexport:
-#+BEGIN_SRC python :tangle testing_faulhaber.py
+#+BEGIN_SRC python :tangle test_faulhaber.py
   import modules.faulhaber_driver as fh_driver
   import pylab as pl
   from modules.adwin_driver import *
@@ -3842,7 +4254,7 @@ As previously stated this section defines the basic functions of the Faulhaber m
       motor.enable_motor()
       motor.stop_motor()
       motor.disable_motor()
-      adwin_driver(1,"")
+      adwin_driver(1, "")
 
 
   # Configure Plot

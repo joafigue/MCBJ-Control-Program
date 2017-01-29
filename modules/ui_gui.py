@@ -174,6 +174,7 @@ def ui_hist_param_layout(window):
     # Num parameters fields
     jv_label, jv_text = num_param_label_textbox(hist_params.measure_jv)
     avg_label, avg_text = num_param_label_textbox(hist_params.avg_points)
+    skip_label, skip_text = num_param_label_textbox(hist_params.skip)
     brk_label, brk_text = num_param_label_textbox(hist_params.break_speed)
     post_label, post_text = num_param_label_textbox(hist_params.post_breaking_v)
     mk_label, mk_text = num_param_label_textbox(hist_params.make_speed)
@@ -198,8 +199,10 @@ def ui_hist_param_layout(window):
     grid.addWidget(mk_label, 5, 0)
     grid.addWidget(mk_text, 5, 1)
 
+    grid.addWidget(skip_label, 6, 0)
+    grid.addWidget(skip_text, 6, 1)
 
-    grid.addWidget(cb, 6, 0)
+    grid.addWidget(cb, 7, 0)
 
     return grid
 
@@ -252,7 +255,9 @@ def ui_save_opts_layout(window):
     dir_btn = QtGui.QPushButton('Change Directory')
     dir_btn.clicked.connect(lambda: showDialog(window, save_opts, dir_label))
 
-    cb = boolean_parameter_checkbox(save_opts.save_data)
+    save_cb = boolean_parameter_checkbox(save_opts.save_data)
+
+    json_cb = boolean_parameter_checkbox(save_opts.use_json)
 
     # Add fields to the layout
     grid = QtGui.QGridLayout()
@@ -262,7 +267,8 @@ def ui_save_opts_layout(window):
     grid.addWidget(dir_label, 1, 0)
     grid.addWidget(dir_btn, 1, 1)
 
-    grid.addWidget(cb, 2, 0)
+    grid.addWidget(save_cb, 2, 0)
+    grid.addWidget(json_cb, 2, 1)
 
     return grid
 

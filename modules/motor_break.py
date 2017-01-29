@@ -11,10 +11,10 @@ __author__ = "Joaquin Figueroa"
 import pylab as pl
 import time
 import os
+import numpy as np
 import adwin_driver as adw
 import faulhaber_driver as fh
 import configuration as conf
-import parameters as param
 
 class MB_STATE(object):
     BREAKING = 1
@@ -25,6 +25,11 @@ class MB_STATE(object):
     ERROR_NO_BREAK = 6
     ERROR_NO_MAKE = 7
     ERROR_INVALID_FINE_TUNING = 8
+
+
+class MB_CONST(object):
+    BROKEN_CONDUCTANCE = 1e-6    # IN G0
+    RESTORE_CONDUCTANCE = 50    # in G0
 
 def build_hist_config_for_motor_break(iv_config):
     hist_dict = {}
@@ -38,63 +43,54 @@ def build_hist_config_for_motor_break(iv_config):
 
 
 def histogram_to_data_list(break_histogram, make_histogram):
-    break_conductance = break_histogram.get_conductance()
-    make_conductance = make_histogram.get_conductance()
-    data = []
+    brk_cond = break_histogram.get_conductance()
+    mk_cond = make_histogram.get_conductance()
     skip = 300
-    for idx in range(0,len(break_conductance), skip):
-        conductance = break_conductance[idx]
-        data.append(conductance)
-    for idx in range(0,len(make_conductance), skip):
-        conductance = make_conductance[idx]
-        data.append(conductance)
-    return data
+    return np.concatenate((brk_cond[::skip], mk_cond[::skip]))
 
 
-def motor_break_juncture_control_loop(motor, iv_config):
-    """ Control Loop """
-    adw_iv = adw.adwin_iv_driver(iv_config)
-    broken_conductance = 1e-6
-    restore_conductance = 50
-    state = MB_STATE.BREAKING
-
-    adw_iv.start_process()
+def motor_break_juncture_iterator(motor, iv_driver):
     motor.enable_motor()
     motor.set_target_speed(-2)
+    state = MB_STATE.BREAKING
     while state == MB_STATE.BREAKING :
-        pl.pause(0.2)
-        conductance = adw_iv.get_conductance()
+        pl.pause(0.05)
+        conductance = iv_driver.get_conductance()
         if motor.is_stopped():
             state = MB_STATE.ERROR_NO_BREAK
-            motor.stop_motor()
-        if conductance <= broken_conductance :
+        if conductance <= MB_CONST.BROKEN_CONDUCTANCE :
             state = MB_STATE.RESTORING
         yield conductance, state
-
-    motor.set_target_speed(2)
-    while state == MB_STATE.RESTORING:
-        pl.pause(0.2)
-        conductance = adw_iv.get_conductance()
-        if motor.is_stopped():
-            state = MB_STATE.ERROR_NO_MAKE
-            motor.stop_motor()
-        if conductance >= restore_conductance:
-            state = MB_STATE.FINE_TUNING
-        yield conductance, state
-
     motor.stop_motor()
     motor.disable_motor()
-    adw_hist = adw.adwin_hist_driver(build_hist_config_for_motor_break(iv_config))
-    adw_hist.start_process()
+
+def motor_restore_juncture_iterator(motor, iv_driver):
+    motor.enable_motor()
+    motor.set_target_speed(2)
+    state = MB_STATE.RESTORING
+    while state == MB_STATE.RESTORING :
+        pl.pause(0.05)
+        conductance = iv_driver.get_conductance()
+        if motor.is_stopped():
+            state = MB_STATE.ERROR_NO_MAKE
+        if conductance >= MB_CONST.RESTORE_CONDUCTANCE :
+            state = MB_STATE.FINE_TUNING
+        yield conductance, state
+    motor.stop_motor()
+    motor.disable_motor()
+
+
+def motor_fine_tune_iterator(motor, adw_hist):
     on_point_counter = 0
     invalid_counter = 0
+    state = MB_STATE.FINE_TUNING
 
     while state == MB_STATE.FINE_TUNING:
         break_hist, make_hist = adw_hist.measure_and_get_histogram()
         data_list = histogram_to_data_list(break_hist, make_hist)
         if adw_hist.error_in_breaking() and adw_hist.error_in_making():
             invalid_counter = invalid_counter +1
-            if invalid_counter > 3:
+            if invalid_counter >= 3:
                 on_point_counter = 0
                 state = MB_STATE.ERROR_INVALID_FINE_TUNING
         elif adw_hist.error_in_breaking():
@@ -108,20 +104,37 @@ def motor_break_juncture_control_loop(motor, iv_config):
         else:
             invalid_counter = 0
             on_point_counter = on_point_counter +1
-            if on_point_counter > 3:
+            if on_point_counter >= 3:
                 state = MB_STATE.READY_ON_POINT
         for conductance in data_list:
             yield conductance, state
 
 
+
+def motor_break_juncture_control_loop(motor, iv_config, hist_config=None):
+    """ Control Loop """
+    adw_iv = adw.adwin_iv_driver(iv_config)
+    adw_iv.start_process()
+
+    for conductance, state in motor_break_juncture_iterator(motor, adw_iv):
+        yield conductance, state
+
+    for conductance, state in motor_restore_juncture_iterator(motor, adw_iv):
+        yield conductance, state
+
+    if not hist_config :
+        hist_config = build_hist_config_for_motor_break(iv_config)
+    adw_hist = adw.adwin_hist_driver(hist_config)
+    for conductance, state in motor_fine_tune_iterator(motor, adw_hist):
+        yield conductance, state
+
 def motor_break_get_loop_data(motor, iv_config):
-    iterator = motor_break_juncture_control_loop(motor, iv_config)
-    wait_per_point = 18         # We take roughly 18 cycles to measure
+    hist_config = build_hist_config_for_motor_break(iv_config)
     skip = 300                  # We only take one every 300 measurements
-    cycle_time = param.ADW_GCONST.HIGH_PERIOD * param.ADW_GCONST.PROCESS_DELAY
-    piezo_data_time = cycle_time * skip * wait_per_point
+    piezo_data_time = hist_config.get_time_per_break_data_point() * skip
     start = time.time()
     new_time = time.time() - start
+    iterator = motor_break_juncture_control_loop(motor, iv_config)
     for conductance, state in iterator:
         pos = motor.get_position()
         yield conductance, pos, state, new_time
@@ -153,12 +166,14 @@ def print_motor_break_error_message(state):
 
 
 def motor_break_print(motor, iv_config):
+    state = MB_STATE.ERROR_STATUS
     iterator = motor_break_get_loop_data(motor, iv_config)
     for conductance, pos, state, new_time  in iterator:
         print_motor_break_data(conductance, pos, state, new_time)
         if state >= MB_STATE.ERROR_STATUS:
             print_motor_break_error_message(state)
             break
+    return state
 
 def motor_break_plot_config():
     # Set up the figure
@@ -188,6 +203,7 @@ def motor_break_print_plot(iv_config):
     Time = []
 
     # Set control looop which at each iteration will "spit" the state of the motro break algorithm
+    state = MB_STATE.ERROR_STATUS
     motor_control_loop = motor_break_get_loop_data(motor, iv_config)
     for conductance, pos, state, new_time  in motor_control_loop:
         print_motor_break_data(conductance, pos, state, new_time)
@@ -199,3 +215,4 @@ def motor_break_print_plot(iv_config):
         line.set_data(Time, Gt_1)
         ax.set_xlim([Time[0], Time[-1]*1.2])
         pl.pause(0.001)
+    return state

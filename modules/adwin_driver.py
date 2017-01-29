@@ -192,6 +192,7 @@ class ADW_HIST_CONST(object):
     POST_BREAK_WAIT  = 27
     MAKE_WAIT   = 18
     AVG         = 19
+    SKIP        = 30
     # outputs for the ADWIN histogram measurement
     PROCESS_STATUS  = 12
     END_STATUS  = 13
@@ -257,6 +258,7 @@ class adwin_hist_driver(adwin_driver):
         self.adw.Set_Par(ADW_HIST_CONST.BREAK_WAIT, c.get_break_wait())
         self.adw.Set_Par(ADW_HIST_CONST.POST_BREAK_WAIT, c.get_post_break_wait())
         self.adw.Set_Par(ADW_HIST_CONST.MAKE_WAIT, c.get_make_wait())
+        self.adw.Set_Par(ADW_HIST_CONST.SKIP, c.get_skip_points())
         self.adw.Set_FPar(ADW_HIST_CONST.I_MIN_BRK, c.get_I_break_end())
         self.adw.Set_FPar(ADW_HIST_CONST.I_MAX_MK, c.get_I_make_end()) #
         self.adw.SetData_Float(log_array,
@@ -289,19 +291,16 @@ class adwin_hist_driver(adwin_driver):
         real_jv = self.config.get_real_jv()
         length = self.adw.Get_Par(ADW_HIST_CONST.BREAK_IDX) -1
         current_hist = self.adw.GetData_Float(ADW_HIST_CONST.BRK_HIST, 1, length)
+        current_hist = np.asarray(current_hist)
         conductance_hist = current_hist/(real_jv * G0)
-        ret_hist = utl.convert_to_list_float(conductance_hist)
-        return ret_hist
+        return conductance_hist
     
     def get_break_voltage(self):
         length = self.adw.Get_Par(ADW_HIST_CONST.BREAK_IDX) -1
         voltage_hist = self.adw.GetData_Float(ADW_HIST_CONST.BRK_VOLT, 1, length)
-        new_voltage_hist = np.zeros(length)
-        for idx in range(length):
-            new_v = adwin_DAC(voltage_hist[idx])
-            new_voltage_hist[idx] = new_v
-        ret_hist = utl.convert_to_list_float(new_voltage_hist)
-        return ret_hist
+        voltage_hist = np.asarray(voltage_hist)
+        new_voltage_hist = adwin_DAC(voltage_hist)
+        return new_voltage_hist
     
     def get_make_histogram(self):
         make_conductance = self.get_make_conductance()
@@ -313,19 +312,16 @@ class adwin_hist_driver(adwin_driver):
         real_jv = self.config.get_real_jv()
         length = self.adw.Get_Par(ADW_HIST_CONST.MAKE_IDX) -1
         current_hist = self.adw.GetData_Float(ADW_HIST_CONST.MK_HIST, 1, length)
+        current_hist = np.asarray(current_hist)
         conductance_hist = current_hist/(real_jv * G0)
-        ret_hist = utl.convert_to_list_float(conductance_hist)
-        return ret_hist
+        return conductance_hist
     
     def get_make_voltage(self):
         length = self.adw.Get_Par(ADW_HIST_CONST.MAKE_IDX) -1
         voltage_hist = self.adw.GetData_Float(ADW_HIST_CONST.MK_VOLT, 1, length)
-        new_voltage_hist = np.zeros(length)
-        for idx in range(length):
-            new_v = adwin_DAC(voltage_hist[idx])
-            new_voltage_hist[idx] = new_v
-        ret_hist = utl.convert_to_list_float(new_voltage_hist)
-        return ret_hist
+        voltage_hist = np.asarray(voltage_hist)
+        new_voltage_hist = adwin_DAC(voltage_hist)
+        return new_voltage_hist
     
     def process_running(self):
         return self.adw.Get_Par(ADW_HIST_CONST.END_STATUS) != 1
@@ -354,20 +350,43 @@ class adwin_histogram(object):
     def print_histogram(self):
         for idx in range(self.length):
             G, V = self.get_voltage_conductance_pair(idx)
-            print("Index = {0}, G = {1}, V = {2}".format(idx,G,V))
+            print("Index = {0}, G = {1}, V = {2}".format(idx, G,V))
 # src-adwin-hist-driver-aux-histogram ends here
 
 # [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::*Adwin%20converters][Adwin converters:1]]
+# This works with numpy array.
 def adwin_ADC(analog_value):
+    # converts ADC/DAC voltage to bin number, given the voltage range and the param.ADW_GCONST.RESOLUTION as int (adwin digitia representation
+    o_range = param.ADW_GCONST.OUTPUT_RANGE
+    step=2*o_range/(2**param.ADW_GCONST.RESOLUTION-1)
+    zero_v = o_range/step
+    restricted = np.maximum(np.minimum(analog_value, o_range), -o_range)
+    digital_value = np.asarray(restricted/step + zero_v, dtype=int)
+    if len(digital_value) < 2 :
+        digital_value = int(digital_value)
+    return digital_value
+
+# This works with numpy array.
+def adwin_DAC(digital_value):
+    # converts ADC/DAC bins to voltage, given the voltage range and the resolution (in bits)
+    step = 2 * param.ADW_GCONST.OUTPUT_RANGE / (2**param.ADW_GCONST.RESOLUTION-1)
+    # voltage is array of analog/idx conversion
+    zero_v = param.ADW_GCONST.OUTPUT_RANGE/step
+    analog_value = (digital_value - zero_v)*step
+    if len(analog_value) < 2 :
+        analog_value = float(analog_value)
+    return analog_value
+
+def adwin_ADC2(analog_value):
     # converts ADC/DAC voltage to bin number, given the voltage range and the param.ADW_GCONST.RESOLUTION as int (adwin digitia representation)
-    step=2*param.ADW_GCONST.OUTPUT_RANGE/(2**param.ADW_GCONST.RESOLUTION-1)
-    voltage=np.arange(-param.ADW_GCONST.OUTPUT_RANGE, param.ADW_GCONST.OUTPUT_RANGE+step, step)
+    step = 2*param.ADW_GCONST.OUTPUT_RANGE/(2**param.ADW_GCONST.RESOLUTION-1)
+    voltage = np.arange(-param.ADW_GCONST.OUTPUT_RANGE, param.ADW_GCONST.OUTPUT_RANGE+step, step)
     diff = abs(voltage - analog_value)
     digital_value = diff.argmin() # Is an index
 
     return digital_value
 
-def adwin_DAC(digital_value):
+def adwin_DAC2(digital_value):
     # converts ADC/DAC bins to voltage, given the voltage range and the resolution (in bits)
     step = 2 * param.ADW_GCONST.OUTPUT_RANGE / (2**param.ADW_GCONST.RESOLUTION-1)
     # voltage is array of analog/idx conversion
@@ -404,5 +423,5 @@ def adwin_convert_ms_to_cycles(time_ms):
 # [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::*Adwin%20reset][Adwin reset:1]]
 def ADwin_stop():
     """ create a new adwin drive, which will reboot the Adwin, and stop all executions"""
-    adwin_driver(1,"")            # This reboots the Adwin, killing the process
+    adwin_driver(1, "")            # This reboots the Adwin, killing the process
 # Adwin reset:1 ends here

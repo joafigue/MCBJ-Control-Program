@@ -49,7 +49,7 @@ class faulhaber_state(object):
         delta = 0
         for idx in range(len(a) - 1):
             delta = delta + abs(a[idx+1] - a[idx])
-        return delta==0
+        return delta == 0
     def update_current_speed(self, new_speed):
         self.current_speed = new_speed
 # Faulhaber State:1 ends here
