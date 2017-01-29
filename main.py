@@ -14,8 +14,6 @@ __author__ = "Joaquin Figueroa"
 
 import sys
 from modules.ui_gui import run_gui, UI_CMD
-from modules.motor_break import *
-from modules.piezo_measure import *
 
 ############################################################
 ## @fn    : main_exit

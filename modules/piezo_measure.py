@@ -83,8 +83,8 @@ class histogram_save_data_class(object):
 
     def save_data(self, trace=1):
         save_config = self.full_config.save_config
-        if save_config.save_data.get_value():
-            if save_config.use_json.get_value():
+        if save_config.get_save_data():
+            if save_config.get_use_json():
                 self._real_save_data_with_json(trace)
             else:
                 self._real_save_data(trace)

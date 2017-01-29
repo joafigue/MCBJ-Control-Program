@@ -28,8 +28,11 @@ class MB_STATE(object):
 
 
 class MB_CONST(object):
-    BROKEN_CONDUCTANCE = 1e-6    # IN G0
+    BROKEN_CONDUCTANCE = 1e-6   # IN G0
     RESTORE_CONDUCTANCE = 50    # in G0
+    BREAK_SPEED = -2            # In us
+    MAKE_SPEED = 2              # in us
+
 
 def build_hist_config_for_motor_break(iv_config):
     hist_dict = {}
@@ -51,7 +54,7 @@ def histogram_to_data_list(break_histogram, make_histogram):
 
 def motor_break_juncture_iterator(motor, iv_driver):
     motor.enable_motor()
-    motor.set_target_speed(-2)
+    motor.set_target_speed(MB_CONST.BREAK_SPEED)
     state = MB_STATE.BREAKING
     while state == MB_STATE.BREAKING :
         pl.pause(0.05)
@@ -66,7 +69,7 @@ def motor_break_juncture_iterator(motor, iv_driver):
 
 def motor_restore_juncture_iterator(motor, iv_driver):
     motor.enable_motor()
-    motor.set_target_speed(2)
+    motor.set_target_speed(MB_CONST.MAKE_SPEED)
     state = MB_STATE.RESTORING
     while state == MB_STATE.RESTORING :
         pl.pause(0.05)
@@ -206,6 +209,37 @@ def motor_break_print_plot(iv_config):
     state = MB_STATE.ERROR_STATUS
     motor_control_loop = motor_break_get_loop_data(motor, iv_config)
     for conductance, pos, state, new_time  in motor_control_loop:
+        print_motor_break_data(conductance, pos, state, new_time)
+        if state >= MB_STATE.ERROR_STATUS:
+            print_motor_break_error_message(state)
+            break
+        Gt_1.append(conductance)
+        Time.append(new_time)
+        line.set_data(Time, Gt_1)
+        ax.set_xlim([Time[0], Time[-1]*1.2])
+        pl.pause(0.001)
+    return state
+
+def no_motor_continous_measurement(motor, iv_config):
+    adw_iv = adw.adwin_iv_driver(iv_config)
+    adw_iv.start_process()
+    state = MB_STATE.BREAKING
+    start_time = time.time()
+    while state == MB_STATE.BREAKING :
+        pl.pause(0.02)
+        conductance = adw_iv.get_conductance()
+        new_time = time.time() - start_time
+        pos = motor.get_position()
+        yield conductance, pos, state, new_time
+
+def no_motor_continous_plot(iv_config):
+    motor = fh.faulhaber_motor()
+    line, ax = motor_break_plot_config()
+    Gt_1 = []
+    Time = []
+    state = MB_STATE.ERROR_STATUS
+    continous_data  = no_motor_continous_measurement(motor, iv_config)
+    for conductance, pos, state, new_time  in continous_data:
         print_motor_break_data(conductance, pos, state, new_time)
         if state >= MB_STATE.ERROR_STATUS:
             print_motor_break_error_message(state)

@@ -93,7 +93,6 @@ class ADW_IV_CONST(object):
     WAIT        = 7
     AVG         = 8
     MAX_DATA    = 10
-    ABORT       = 11
     # outputs for the ADWIN IV measurement
     END_STATUS  = 12
     # src-adwin-iv-param ends here
@@ -376,28 +375,6 @@ def adwin_DAC(digital_value):
     if len(analog_value) < 2 :
         analog_value = float(analog_value)
     return analog_value
-
-def adwin_ADC2(analog_value):
-    # converts ADC/DAC voltage to bin number, given the voltage range and the param.ADW_GCONST.RESOLUTION as int (adwin digitia representation)
-    step = 2*param.ADW_GCONST.OUTPUT_RANGE/(2**param.ADW_GCONST.RESOLUTION-1)
-    voltage = np.arange(-param.ADW_GCONST.OUTPUT_RANGE, param.ADW_GCONST.OUTPUT_RANGE+step, step)
-    diff = abs(voltage - analog_value)
-    digital_value = diff.argmin() # Is an index
-
-    return digital_value
-
-def adwin_DAC2(digital_value):
-    # converts ADC/DAC bins to voltage, given the voltage range and the resolution (in bits)
-    step = 2 * param.ADW_GCONST.OUTPUT_RANGE / (2**param.ADW_GCONST.RESOLUTION-1)
-    # voltage is array of analog/idx conversion
-    voltage = np.arange(-param.ADW_GCONST.OUTPUT_RANGE, param.ADW_GCONST.OUTPUT_RANGE+step, step)
-    data = voltage[int(digital_value)]
-
-    return data
-
-def adwin_ADC_DAC_roundtrip(analog_value):
-    return adwin_DAC(adwin_ADC(analog_value))
-
 
 def aux_convert_vps_to_cycles(vps):
     # VPS -> VOltage Per Second
