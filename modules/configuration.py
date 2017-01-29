@@ -11,6 +11,7 @@
 __author___ = "Joaquin Figueroa"
 
 import yaml
+import time
 import adwin_driver as adwin
 import parameters as param
 
@@ -113,6 +114,7 @@ class histogram_config(object):
         self.break_speed = param.break_speed()
         self.post_breaking_v = param.post_breaking_voltage()
         self.make_speed = param.make_speed()
+        self.skip = param.skip_points()
         self.G0 = param.GLOBAL_CONSTANTS.G0
         self.G_break_end = 1e-5 * self.G0
         self.G_make_end = 20 * self.G0
@@ -125,6 +127,7 @@ class histogram_config(object):
         self.config['BreakSpeed'] = self.break_speed.get_value()
         self.config['PostBreakingVoltage'] = self.post_breaking_v.get_value()
         self.config['MakeSpeed'] = self.make_speed.get_value()
+        self.config['SkipPoints'] = self.skip.get_value()
         self.config['UseLogAmplifier'] = self.use_log_amp.get_value()
 
 
@@ -134,6 +137,7 @@ class histogram_config(object):
         self.break_speed.update_or_dflt(data.get('BreakSpeed'))
         self.break_speed.update_or_dflt(data.get('PostBreakingVoltage'))
         self.make_speed.update_or_dflt(data.get('MakeSpeed'))
+        self.make_speed.update_or_dflt(data.get('SkipPoints'))
         self.use_log_amp.update_or_dflt(data.get('UseLogAmplifier'))
         self.update_config()
 
@@ -168,10 +172,33 @@ class histogram_config(object):
         make_speed = self.make_speed.get_value()
         return adwin.aux_convert_vps_to_cycles(make_speed)
 
+    def get_skip_points(self):
+        make_speed = self.skip.get_value()
+
     def get_I_break_end(self):
         return  self.G_break_end * self.get_real_jv()
     def get_I_make_end(self):
         return  self.G_make_end * self.get_real_jv()
+
+    def get_time_per_break_data_point(self):
+        logic_cycles = 5        # 5 logic steps in breaking
+        break_wait = self.get_break_wait()
+        avg_points = self.get_avg_points()
+        skip_data = self.skip.get_value()
+        total_cycles = (logic_cycles + break_wait + avg_points)*skip_data
+        cycle_time = param.ADW_GCONST.HIGH_PERIOD * param.ADW_GCONST.PROCESS_DELAY
+        time_per_data_point = cycle_time * total_cycles
+        return time_per_data_point
+
+    def get_time_per_make_data_point(self):
+        logic_cycles = 5        # 5 logic steps in breaking
+        break_wait = self.get_make_wait()
+        avg_points = self.get_avg_points()
+        skip_data = self.skip.get_value()
+        total_cycles = (logic_cycles + break_wait + avg_points)*skip_data
+        cycle_time = param.ADW_GCONST.HIGH_PERIOD * param.ADW_GCONST.PROCESS_DELAY
+        time_per_data_point = cycle_time * total_cycles
+        return time_per_data_point
 
 class display_config(object):
     def __init__(self, data=None):
@@ -237,8 +264,11 @@ class save_options(object):
             self.update_config_with_data(data)
 
     def build_config_dflt(self):
+        date = time.strftime("%Y%m%d_%H%M%S")
         self.save_dir = param.save_dir()
         self.save_data = param.save_data()
+        self.use_json = param.use_json()
+        self.dflt_filename = "scan_{0}".format(date)
         self.config = {}
         self.update_config()
 
@@ -246,10 +276,12 @@ class save_options(object):
     def update_config(self):
         self.config['SaveData'] = self.save_data.get_value()
         self.config['SaveDir'] = self.save_dir.get_value()
+        self.config['UseJson'] = self.use_json.get_value()
 
     def update_config_with_data(self, data):
         self.save_dir.update(data.get('SaveDir'))
         self.save_data.update(data.get('SaveData'))
+        self.use_json.update(data.get('UseJson'))
 
         self.update_config()
 
@@ -261,6 +293,11 @@ class save_options(object):
         return self.save_data.get_value()
     def get_save_dir(self):
         return self.save_dir.get_value()
+
+    def get_use_json(self):
+        return self.use_json.get_value()
+    def get_filename(self):
+        return self.dflt_filename
 
 def yaml_loader(filepath):
     with open(filepath, "r") as file_descriptor:
