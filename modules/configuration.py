@@ -128,7 +128,8 @@ class histogram_config(object):
         self.make_speed = param.make_speed()
         self.skip = param.skip_points()
         self.G0 = param.GLOBAL_CONSTANTS.G0
-        self.G_break_end = 1e-5 * self.G0
+        self.G_break_mid = 5 * self.G0
+        self.G_break_end = 5e-5 * self.G0
         self.G_make_end = 20 * self.G0
         self.config = {}
         self.update_config()
@@ -185,7 +186,10 @@ class histogram_config(object):
         return adwin.aux_convert_vps_to_cycles(make_speed)
 
     def get_skip_points(self):
-        make_speed = self.skip.get_value()
+        return self.skip.get_value()
+
+    def get_I_break_mid(self):
+        return  self.G_break_mid * self.get_real_jv()
 
     def get_I_break_end(self):
         return  self.G_break_end * self.get_real_jv()

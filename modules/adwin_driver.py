@@ -204,6 +204,7 @@ class ADW_HIST_CONST(object):
     ## @brief  Indices  for float vars with ADwin for IV measurements
     ###########################################################################
     # inputs for the ADWIN histogram measurement
+    I_MID_BRK  = 9
     I_MIN_BRK  = 10
     I_MAX_MK   = 11
     # src-adwin-hist-fparam ends here
@@ -259,6 +260,7 @@ class adwin_hist_driver(adwin_driver):
         self.adw.Set_Par(ADW_HIST_CONST.MAKE_WAIT, c.get_make_wait())
         self.adw.Set_Par(ADW_HIST_CONST.SKIP, c.get_skip_points())
         self.adw.Set_FPar(ADW_HIST_CONST.I_MIN_BRK, c.get_I_break_end())
+        self.adw.Set_FPar(ADW_HIST_CONST.I_MID_BRK, c.get_I_break_mid())
         self.adw.Set_FPar(ADW_HIST_CONST.I_MAX_MK, c.get_I_make_end()) #
         self.adw.SetData_Float(log_array,
                               ADW_HIST_CONST.LOG_AMPL, 1, length)

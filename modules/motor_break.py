@@ -15,6 +15,7 @@ import numpy as np
 import adwin_driver as adw
 import faulhaber_driver as fh
 import configuration as conf
+import parameters as param
 
 class MB_STATE(object):
     BREAKING = 1
@@ -25,13 +26,6 @@ class MB_STATE(object):
     ERROR_NO_BREAK = 6
     ERROR_NO_MAKE = 7
     ERROR_INVALID_FINE_TUNING = 8
-
-
-class MB_CONST(object):
-    BROKEN_CONDUCTANCE = 1e-6   # IN G0
-    RESTORE_CONDUCTANCE = 50    # in G0
-    BREAK_SPEED = -2            # In us
-    MAKE_SPEED = 2              # in us
 
 
 def build_hist_config_for_motor_break(iv_config):
@@ -54,14 +48,14 @@ def histogram_to_data_list(break_histogram, make_histogram):
 
 def motor_break_juncture_iterator(motor, iv_driver):
     motor.enable_motor()
-    motor.set_target_speed(MB_CONST.BREAK_SPEED)
+    motor.set_target_speed(param.MB_CONST.BREAK_SPEED)
     state = MB_STATE.BREAKING
     while state == MB_STATE.BREAKING :
         pl.pause(0.05)
         conductance = iv_driver.get_conductance()
         if motor.is_stopped():
             state = MB_STATE.ERROR_NO_BREAK
-        if conductance <= MB_CONST.BROKEN_CONDUCTANCE :
+        if conductance <= param.MB_CONST.BROKEN_CONDUCTANCE :
             state = MB_STATE.RESTORING
         yield conductance, state
     motor.stop_motor()
@@ -69,14 +63,14 @@ def motor_break_juncture_iterator(motor, iv_driver):
 
 def motor_restore_juncture_iterator(motor, iv_driver):
     motor.enable_motor()
-    motor.set_target_speed(MB_CONST.MAKE_SPEED)
+    motor.set_target_speed(param.MB_CONST.MAKE_SPEED)
     state = MB_STATE.RESTORING
     while state == MB_STATE.RESTORING :
         pl.pause(0.05)
         conductance = iv_driver.get_conductance()
         if motor.is_stopped():
             state = MB_STATE.ERROR_NO_MAKE
-        if conductance >= MB_CONST.RESTORE_CONDUCTANCE :
+        if conductance >= param.MB_CONST.RESTORE_CONDUCTANCE :
             state = MB_STATE.FINE_TUNING
         yield conductance, state
     motor.stop_motor()

@@ -135,7 +135,29 @@ In order to perform the measurements the standard python libraries and the modul
   import modules.motor_break as mb
   from modules.motor_break import stop # Important function to stop everything
 #+END_SRC
-This program will be executed directly and if the user provided the configuration file it will use it to perform the measurement. In order to do so, we need to ensure that we have a filename to read. The code fragment [[src-measure-cli-parse-opts]] will read the options and determine if the user provided an appropriate filename. If the user didn't do so, then it will chose the default configuration in the program root directory.
+#+BEGIN_SRC python
+  def default_config_file():
+      """ Function to determine the default configuration file to use
+
+      This function is used to deterine the configuration file to be used.
+      Note that in this function we can set a "new" default file by hand, which can
+      be used to pass the configuration file without running the program through the
+      Command line.
+      """
+
+      custom_config_file = "F:\joaquin_rewrite\data\New Folder\Configuration_file_20170131_114342.yaml"
+      if os.path.isfile(custom_config_file):
+          return custom_config_file
+      directory = utl.get_script_root_path()
+      filename = "Measurement_deafult_config.yaml"
+      filename = os.path.join(directory, filename)
+      return filename
+
+
+
+#+END_SRC
+This program will be executed directly and if the user provided the configuration file it will use it to perform the measurement. In order to do so, we need to ensure that we have a filename to read. The code fragment [[src-measure-cli-parse-opts]] will read the options and determine if the user provided an appropriate filename. If the user didn't do so, then it will chose the default configuration file as shown in the code fragment [[src-measure-cl-config]]
+
 #+CAPTION: Parse the arguments and define a filename to use
 #+NAME: src-measure-cli-parse-opts
 #+BEGIN_SRC python
@@ -144,11 +166,32 @@ This program will be executed directly and if the user provided the configuratio
       try:
           filename = argv[1]      # argv[0] is the scriptname
       except:
-          directory = utl.get_script_root_path()
-          filename = "Measurement_deafult_config.yaml"
-          filename = os.path.join(directory, filename)
+          filename = default_config_file()
       return filename
 #+END_SRC
+
+#+CAPTION: Function to return the default configuration file. Allows for changing the program
+#+NAME: src-measure-cl-config
+#+BEGIN_SRC python
+  def default_config_file():
+      """ Function to determine the default configuration file to use
+
+      This function is used to deterine the configuration file to be used.
+      Note that in this function we can set a "new" default file by hand, which can
+      be used to pass the configuration file without running the program through the
+      Command line.
+      """
+
+      custom_config_file = "F:\joaquin_rewrite\data\New Folder\Configuration_file_20170131_114342.yaml"
+      if os.path.isfile(custom_config_file):
+          return custom_config_file
+      directory = utl.get_script_root_path()
+      filename = "Measurement_deafult_config.yaml"
+      filename = os.path.join(directory, filename)
+      return filename
+#+END_SRC
+
+
 
 Now that we have a filename, we have to build the configuration from it. If there is no configuration file in the location specified by the user, then the program will fallback to using harcoded values in the program source code. The code fragment [[src-measure-cli-parse-file]] shows the corresponding functionality
 #+CAPTION: Parse the configuration file to build the configuration
@@ -385,13 +428,11 @@ Finally the main loop is executed indefinitely until the user terminates the pro
   ##            the program
   ############################################################
   def main():
-      run = True
-      while run:
-          ui_config, config = run_gui()
-          ui_cmd    = ui_config.cmd
-          print(config.get_config())
-          config_filename = config.dump_config_file()
-          run = execute_ui_cmd(ui_cmd, config_filename)
+      ui_config, config = run_gui()
+      ui_cmd    = ui_config.cmd
+      print(config.get_config())
+      config_filename = config.dump_config_file()
+      execute_ui_cmd(ui_cmd, config_filename)
 
   if __name__ == "__main__":
       main()
@@ -599,7 +640,8 @@ The full configuration is the general interface for all configuratioins, as it e
           self.make_speed = param.make_speed()
           self.skip = param.skip_points()
           self.G0 = param.GLOBAL_CONSTANTS.G0
-          self.G_break_end = 1e-5 * self.G0
+          self.G_break_mid = 5 * self.G0
+          self.G_break_end = 5e-5 * self.G0
           self.G_make_end = 20 * self.G0
           self.config = {}
           self.update_config()
@@ -656,7 +698,10 @@ The full configuration is the general interface for all configuratioins, as it e
           return adwin.aux_convert_vps_to_cycles(make_speed)
 
       def get_skip_points(self):
-          make_speed = self.skip.get_value()
+          return self.skip.get_value()
+
+      def get_I_break_mid(self):
+          return  self.G_break_mid * self.get_real_jv()
 
       def get_I_break_end(self):
           return  self.G_break_end * self.get_real_jv()
@@ -1425,7 +1470,7 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
    #+END_SRC
 
    #+RESULTS:
-****** TODO Skip Data points
+****** DONE Skip Data points
 Storing each data point of the Adwin would yield around 20000 data points, which is to expensive to process and takes up too much space on the hard drive, therefore to reduce the number of data points, we hae a variable which will force the ADwin to not store all data points.
 This variable will make the adwin to store only one out of \(n\) values with \(n\) the value set on this parameter
 
@@ -1446,7 +1491,7 @@ This variable will make the adwin to store only one out of \(n\) values with \(n
       ## @brief   Initilaization code
       #############################################################
       def __init__(self):
-          _dflt = int(1)
+          _dflt = int(10)
           _min = int(1)
           _max = int(99)
           _name = "Points to skip/not save in Adwin"
@@ -1950,7 +1995,7 @@ Finally the buttons created are added to the layout of the button section of the
           lambda: widget.close_with_cmd(UI_CMD.EXIT)) (ref:lambda-btn)
       quit_button.setToolTip("Terminates the program")
       # Break Button
-      no_op_button = QtGui.QPushButton("Continuous Measurement - Diagnose")
+      no_op_button = QtGui.QPushButton("Diagnose Experimental Setup")
       no_op_button.clicked.connect(
           lambda: widget.close_with_cmd(UI_CMD.NO_OP_PLOT))
       no_op_button.setToolTip("Continuous G measure. Use for experiment Diagnosis")
@@ -2297,7 +2342,10 @@ This file has the algorithm that performs the juncture break and drives the moto
   import adwin_driver as adw
   import faulhaber_driver as fh
   import configuration as conf
+  import parameters as param
 #+END_SRC
+
+
 
 #+BEGIN_SRC python
   class MB_STATE(object):
@@ -2309,13 +2357,6 @@ This file has the algorithm that performs the juncture break and drives the moto
       ERROR_NO_BREAK = 6
       ERROR_NO_MAKE = 7
       ERROR_INVALID_FINE_TUNING = 8
-
-
-  class MB_CONST(object):
-      BROKEN_CONDUCTANCE = 1e-6   # IN G0
-      RESTORE_CONDUCTANCE = 50    # in G0
-      BREAK_SPEED = -2            # In us
-      MAKE_SPEED = 2              # in us
 
 
   def build_hist_config_for_motor_break(iv_config):
@@ -2338,14 +2379,14 @@ This file has the algorithm that performs the juncture break and drives the moto
 
   def motor_break_juncture_iterator(motor, iv_driver):
       motor.enable_motor()
-      motor.set_target_speed(MB_CONST.BREAK_SPEED)
+      motor.set_target_speed(param.MB_CONST.BREAK_SPEED)
       state = MB_STATE.BREAKING
       while state == MB_STATE.BREAKING :
           pl.pause(0.05)
           conductance = iv_driver.get_conductance()
           if motor.is_stopped():
               state = MB_STATE.ERROR_NO_BREAK
-          if conductance <= MB_CONST.BROKEN_CONDUCTANCE :
+          if conductance <= param.MB_CONST.BROKEN_CONDUCTANCE :
               state = MB_STATE.RESTORING
           yield conductance, state
       motor.stop_motor()
@@ -2353,14 +2394,14 @@ This file has the algorithm that performs the juncture break and drives the moto
 
   def motor_restore_juncture_iterator(motor, iv_driver):
       motor.enable_motor()
-      motor.set_target_speed(MB_CONST.MAKE_SPEED)
+      motor.set_target_speed(param.MB_CONST.MAKE_SPEED)
       state = MB_STATE.RESTORING
       while state == MB_STATE.RESTORING :
           pl.pause(0.05)
           conductance = iv_driver.get_conductance()
           if motor.is_stopped():
               state = MB_STATE.ERROR_NO_MAKE
-          if conductance >= MB_CONST.RESTORE_CONDUCTANCE :
+          if conductance >= param.MB_CONST.RESTORE_CONDUCTANCE :
               state = MB_STATE.FINE_TUNING
           yield conductance, state
       motor.stop_motor()
@@ -2544,6 +2585,19 @@ This file has the algorithm that performs the juncture break and drives the moto
 
 #+END_SRC
 
+*** Motor Break Constants
+    :PROPERTIES:
+    :header-args: :tangle modules/parameters.py
+    :END:
+
+#+BEGIN_SRC python
+  class MB_CONST(object):
+      BROKEN_CONDUCTANCE = 1e-6   # IN G0
+      RESTORE_CONDUCTANCE = 50    # in G0
+      BREAK_SPEED = -2            # In us
+      MAKE_SPEED = 2              # in us
+
+#+END_SRC
 *** Testing motor_break control loop                               :noexport:
 #+BEGIN_SRC python :tangle test_motor_break_control_loop.py
   import pylab as pl
@@ -2687,11 +2741,11 @@ This file has the algorithm that performs the juncture break and drives the moto
           self.make_piezo_header(filedesc)
           filedesc.write('@ \n')
           for T, G, V in zip(self.T_breaking, self.G_breaking, self.V_breaking):
-              ln = "{0:5.8f}\t{1:5.8f}\t{2:5.8f}\t\n".format(T, G, V)
+              ln = "{0:5.8e}\t{1:5.8e}\t{2:5.8e}\t\n".format(T, G, V)
               filedesc.write(ln)
           filedesc.write('@ \n')
           for T, G, V in zip(self.T_making, self.G_making, self.V_making):
-              ln = "{0:5.8f}\t{1:5.8f}\t{2:5.8f}\t\n".format(T, G, V)
+              ln = "{0:5.8e}\t{1:5.8e}\t{2:5.8e}\t\n".format(T, G, V)
               filedesc.write(ln)
 
       def _real_save_data_with_json(self, trace=1):
@@ -3310,6 +3364,7 @@ The Int parameters are used to define the indices to the corresponding integer v
 
 **** DONE Adwin driver-histogram float parameters
 The float parameters are used to define the indices to the corresponding float variables in the internal ADwin memory used for communication. The variables used are:
+- I_MID_BRK  :: Variable used to set the Current just before the breaking dunring the breaking process. This current is used to avoid skipping the data around the breaking point of the sample, as that zone is the most interesting part of the measurement, and every point is meaningful
 - I_MIN_BRK  :: Variable used to set the minimum expected current during breaking
 - I_MAX_MK   :: Variable used to set the maximum expected current during making
 
@@ -3320,6 +3375,7 @@ The float parameters are used to define the indices to the corresponding float v
   ## @brief  Indices  for float vars with ADwin for IV measurements
   ###########################################################################
   # inputs for the ADWIN histogram measurement
+  I_MID_BRK  = 9
   I_MIN_BRK  = 10
   I_MAX_MK   = 11
 #+END_SRC
@@ -3394,6 +3450,7 @@ In a similar manner as used in [[Adwin IV driver-Initialization Code]] the code 
           self.adw.Set_Par(ADW_HIST_CONST.MAKE_WAIT, c.get_make_wait())
           self.adw.Set_Par(ADW_HIST_CONST.SKIP, c.get_skip_points())
           self.adw.Set_FPar(ADW_HIST_CONST.I_MIN_BRK, c.get_I_break_end())
+          self.adw.Set_FPar(ADW_HIST_CONST.I_MID_BRK, c.get_I_break_mid())
           self.adw.Set_FPar(ADW_HIST_CONST.I_MAX_MK, c.get_I_make_end()) #
           self.adw.SetData_Float(log_array,
                                 ADW_HIST_CONST.LOG_AMPL, 1, length)
@@ -3866,6 +3923,8 @@ As in many programs, a header is required. In the Adwin case, this is necessary 
   ' PAR_18 -> Stabilizing time for making
   ' PAR_19 -> Number of data point to average for each measurement
   ' ---- Measurement Modifiers ----
+  ' FPAR_9  -> Pre-Breaking Current -> At this point we don't skip up to complete
+  '            breaking to over-represent this segment(which is the target of measurement)
   ' FPAR_10 -> Maximum current at breaking end - Greater => not broken
   ' FPAR_11 -> Minimum current at making  - Smaller => not closed
   ' ---- Amplifier -----
@@ -3894,6 +3953,8 @@ As in many programs, a header is required. In the Adwin case, this is necessary 
   ' broken -> Used to determine if we have crossed the breaking current threshold
   ' break_counter -> Used to count the post breaking measurements
   ' makewait -> Used to wait for stabilization during making
+  ' skip -> Used to keep track if we should skip data points or not.
+  ' skipcounter -> Used to determine if the current datapoint should be stored
   ' avgcounter -> Used to count the measurements to average for a data point
   ' avgcurrent -> Auxiliar variable for average current
   ' juncture_voltage -> Current juncture_voltage at the DAC
@@ -3911,6 +3972,7 @@ In an Adwin program the local variables must be declared before the =INIT= block
 #+BEGIN_SRC basic
   DIM breakwait, makewait as long
   DIM broken, break_counter as long
+  DIM skip, skipcounter as long
   DIM avgcounter  as long
   DIM juncture_voltage as long
   DIM break_acc, make_acc  as float
@@ -3941,6 +4003,8 @@ In the ADwin =INIT= block the variables defined are set to their default values.
     broken = 0
     break_counter = 0
     makewait = 0
+    skip = 1
+    skipcounter = 1
     avgcounter = 0
     avgcurrent = 0
     break_acc = 0
@@ -4051,25 +4115,35 @@ This section describes the algorithm used to store the break histogram shown in 
         break_hist_flag = 3 ' Go to next stage
       ENDIF
 
-    CASE 3  ' Store average in array (ref:adw-brk-store)
+    CASE 3  ' Check for break measurement end (ref:adw-brk-end)
       avgcurrent = break_acc / PAR_19
-      DATA_1[PAR_20] = avgcurrent
-      DATA_2[PAR_20] = piezo_V
-      PAR_20 = PAR_20 + 1
       break_hist_flag = 4
-
-    CASE 4  ' Check for break measurement end (ref:adw-brk-end)
+      IF (avgcurrent <= FPAR_9) THEN
+        skip = 0
+      ENDIF
       IF (avgcurrent <= FPAR_10) THEN
+        skip = 1
         broken = 1 ' We are in post-breaking regime
+      ENDIF
+      IF (skip >= 1) THEN
+        skipcounter = skipcounter + 1
+        IF (skipcounter < PAR_30) THEN
+          break_hist_flag = 0
+        ENDIF
       ENDIF
       IF (broken >= 1) THEN
         break_counter = break_counter + 1
       ENDIF
       IF (break_counter >= PAR_27) THEN
         PAR_12 = 2 ' Go to make histogram
+        skipcounter = 1
       ENDIF
+    CASE 4  ' Store average in array (ref:adw-brk-store)
+      skipcounter = 1
       break_hist_flag = 0
-
+      DATA_1[PAR_20] = avgcurrent
+      DATA_2[PAR_20] = piezo_V
+      PAR_20 = PAR_20 + 1
   ENDSELECT
 #+END_SRC
 
@@ -4121,8 +4195,17 @@ This section describes the algorithm used to store the make histogram shown in t
         make_hist_flag = 3 ' Go to next stage
       ENDIF
 
-    CASE 3  ' Store average in array  (ref:adw-mk-store)
+    CASE 3  ' Check for make measurement end (ref:adw-brk-end)
       avgcurrent = make_acc / PAR_19
+      skipcounter = skipcounter + 1
+      IF (skipcounter <= PAR_30) THEN
+        make_hist_flag = 0
+      ELSE
+        skipcounter = 1
+        make_hist_flag = 4
+      ENDIF
+
+    CASE 4  ' Store average in array  (ref:adw-mk-store)
       DATA_3[PAR_21] = avgcurrent
       DATA_4[PAR_21] = piezo_V
       PAR_21 = PAR_21 + 1

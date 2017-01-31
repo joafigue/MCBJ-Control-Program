@@ -64,13 +64,11 @@ def execute_ui_cmd(ui_cmd, config_file):
 ##            the program
 ############################################################
 def main():
-    run = True
-    while run:
-        ui_config, config = run_gui()
-        ui_cmd    = ui_config.cmd
-        print(config.get_config())
-        config_filename = config.dump_config_file()
-        run = execute_ui_cmd(ui_cmd, config_filename)
+    ui_config, config = run_gui()
+    ui_cmd    = ui_config.cmd
+    print(config.get_config())
+    config_filename = config.dump_config_file()
+    execute_ui_cmd(ui_cmd, config_filename)
 
 if __name__ == "__main__":
     main()
