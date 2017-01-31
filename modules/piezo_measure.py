@@ -99,11 +99,11 @@ class histogram_save_data_class(object):
         self.make_piezo_header(filedesc)
         filedesc.write('@ \n')
         for T, G, V in zip(self.T_breaking, self.G_breaking, self.V_breaking):
-            ln = "{0:1.8f}\t{1:1.8f}\t{2:1.8f}\t\n".format(T, G, V)
+            ln = "{0:5.8f}\t{1:5.8f}\t{2:5.8f}\t\n".format(T, G, V)
             filedesc.write(ln)
         filedesc.write('@ \n')
         for T, G, V in zip(self.T_making, self.G_making, self.V_making):
-            ln = "{0:1.8f}\t{1:1.8f}\t{2:1.8f}\t\n".format(T, G, V)
+            ln = "{0:5.8f}\t{1:5.8f}\t{2:5.8f}\t\n".format(T, G, V)
             filedesc.write(ln)
 
     def _real_save_data_with_json(self, trace=1):

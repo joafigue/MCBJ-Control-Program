@@ -220,7 +220,7 @@ def motor_break_print_plot(iv_config):
         pl.pause(0.001)
     return state
 
-def no_motor_continous_measurement(motor, iv_config):
+def no_motor_continuous_measurement(motor, iv_config):
     adw_iv = adw.adwin_iv_driver(iv_config)
     adw_iv.start_process()
     state = MB_STATE.BREAKING
@@ -232,14 +232,14 @@ def no_motor_continous_measurement(motor, iv_config):
         pos = motor.get_position()
         yield conductance, pos, state, new_time
 
-def no_motor_continous_plot(iv_config):
+def no_motor_continuous_plot(iv_config):
     motor = fh.faulhaber_motor()
     line, ax = motor_break_plot_config()
     Gt_1 = []
     Time = []
     state = MB_STATE.ERROR_STATUS
-    continous_data  = no_motor_continous_measurement(motor, iv_config)
-    for conductance, pos, state, new_time  in continous_data:
+    continuous_data  = no_motor_continuous_measurement(motor, iv_config)
+    for conductance, pos, state, new_time  in continuous_data:
         print_motor_break_data(conductance, pos, state, new_time)
         if state >= MB_STATE.ERROR_STATUS:
             print_motor_break_error_message(state)
@@ -250,3 +250,10 @@ def no_motor_continous_plot(iv_config):
         ax.set_xlim([Time[0], Time[-1]*1.2])
         pl.pause(0.001)
     return state
+
+def stop():
+    motor = fh.faulhaber_motor()
+    motor.enable_motor()
+    motor.stop_motor()
+    motor.disable_motor()
+    adw.adwin_driver(1, "")
