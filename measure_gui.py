@@ -1,19 +1,18 @@
-""" Module Main - Main file for measuring break-junction experiments
+""" Module graphical_measure - Runs a GUI to configure and the measures.
 
-    This is the main file for the program used to
-    measure samples using the break-junction technique.
-    This program provides a GUI to control the execution
-    based on providing the tools to configure a run.
-    The program automates the whole procedure by:
-    1- Automating the creation of the break junction
-       using the motor
-    2- Automating the measurement process using a piezo
-       actuator.
+This program runs a Graphical User Interface to generate a configuration file.
+Using the configuration file this program will either:
+1- Avoid measurements to allow the user to diagnose the experimental setup
+2- Perform the full measurement using the corresponding program.
 """
+
 __author__ = "Joaquin Figueroa"
 
 import sys
 from modules.ui_gui import run_gui, UI_CMD
+import measure_cli
+import no_measure_plot
+from modules.motor_break import stop
 
 ############################################################
 ## @fn    : main_exit
@@ -21,7 +20,7 @@ from modules.ui_gui import run_gui, UI_CMD
 ############################################################
 def main_exit(config):
     print("Program Finished successfully")
-    sys.exit()
+    return False
 
 ############################################################
 ## @fn      : main_motor_break
@@ -29,8 +28,9 @@ def main_exit(config):
 #             creating a break-junction and then joins it
 #             again leaving it ready for measurement
 ############################################################
-def main_motor_break(config):
-    motor_break_juncture()
+def main_no_op_measure(config_file):
+    no_measure_plot.main(config_file)
+    return True
 
 ############################################################
 ## @fn      : main_measure
@@ -38,9 +38,9 @@ def main_motor_break(config):
 #             sample by creating the break-junction with the
 #             motor, and using the piezo to measure
 ############################################################
-def main_measure(config):
-    motor_break_juncture()
-    measure_sample()
+def main_measure(config_file):
+    measure_cli.main(config_file)
+    return True
 
 ############################################################
 ## @fn      : execute_ui_cmd
@@ -50,25 +50,28 @@ def main_measure(config):
 #             2- only perform break-junction
 #             3- perform full measurement of the sample
 ############################################################
-def execute_ui_cmd(ui_cmd, config):
+def execute_ui_cmd(ui_cmd, config_file):
     switch = {
         UI_CMD.EXIT    : main_exit,
-        UI_CMD.M_BREAK : main_motor_break,
+        UI_CMD.NO_OP_PLOT : main_no_op_measure,
         UI_CMD.MEASURE : main_measure,
     }
     cmd = switch.get(ui_cmd, sys.exit)
-    cmd(config)
+    return cmd(config_file)
 
 ############################################################
 ## @details : Main loop. Executes UI Cmd until the user end
 ##            the program
 ############################################################
 def main():
-    while True:
+    run = True
+    while run:
         ui_config, config = run_gui()
         ui_cmd    = ui_config.cmd
         print(config.get_config())
-        execute_ui_cmd(ui_cmd, config)
+        config_filename = config.dump_config_file()
+        run = execute_ui_cmd(ui_cmd, config_filename)
 
 if __name__ == "__main__":
     main()
+    stop()

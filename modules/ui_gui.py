@@ -5,7 +5,6 @@
 """
 __author__ = "Joaquin Figueroa"
 
-import sys
 from PyQt4 import QtGui
 from PyQt4 import QtCore
 import modules.configuration as conf
@@ -14,7 +13,7 @@ import modules.configuration as conf
 ## @brief   Runs the GUI for the program
 ############################################################
 def run_gui():
-    app = QtGui.QApplication(sys.argv) # Create "aplication"
+    app = QtGui.QApplication([]) # Create "aplication"
     config_window = ui_config_window() # Instantiate widget
     app.exec_()                        # Execute appliaction
     return config_window.ui_config, config_window.config
@@ -56,7 +55,7 @@ class ui_config_window(QtGui.QWidget):
         vbox.addLayout(buttons_layout)
 
         self.setLayout(vbox)
-        self.setGeometry(300, 300, 300, 150)
+        self.setGeometry(150, 150, 550, 550)
         self.setWindowTitle('Buttons')
         self.show()
 
@@ -66,7 +65,7 @@ class ui_config_window(QtGui.QWidget):
     ############################################################
     def close_with_cmd(self, cmd): #
         self.ui_config.update_cmd(cmd)
-        QtCore.QCoreApplication.instance().quit()
+        self.close()
 
 ############################################################
 ## @brief   Creates buttons layout and returns it
@@ -87,12 +86,12 @@ def ui_create_buttons_layout(widget):
         lambda: widget.close_with_cmd(UI_CMD.EXIT)) 
     quit_button.setToolTip("Terminates the program")
     # Break Button
-    break_button = QtGui.QPushButton("Only break")
-    break_button.clicked.connect(
-        lambda: widget.close_with_cmd(UI_CMD.M_BREAK))
-    break_button.setToolTip("Use the motor to create a break junction.")
+    no_op_button = QtGui.QPushButton("Continuous Measurement - Diagnose")
+    no_op_button.clicked.connect(
+        lambda: widget.close_with_cmd(UI_CMD.NO_OP_PLOT))
+    no_op_button.setToolTip("Continuous G measure. Use for experiment Diagnosis")
     # Measure Button
-    measure_button = QtGui.QPushButton("Full Measure")
+    measure_button = QtGui.QPushButton("Perform Measurement")
     measure_button.clicked.connect(
         lambda: widget.close_with_cmd(UI_CMD.MEASURE))
     measure_button.setToolTip(
@@ -102,7 +101,7 @@ def ui_create_buttons_layout(widget):
     hbox = QtGui.QHBoxLayout()
     hbox.addStretch(1)
     hbox.addWidget(quit_button)
-    hbox.addWidget(break_button)
+    hbox.addWidget(no_op_button)
     hbox.addWidget(measure_button)
 
     vbox = QtGui.QVBoxLayout()
@@ -216,7 +215,6 @@ def ui_display_param_layout(window):
 
     nGbins_label, nGbins_text = num_param_label_textbox(display_params.nGbins)
     nXbins_label, nXbins_text = num_param_label_textbox(display_params.nXbins)
-    traces_label, traces_text = num_param_label_textbox(display_params.traces)
 
     # Add fields to the layout
     grid = QtGui.QGridLayout()
@@ -242,9 +240,6 @@ def ui_display_param_layout(window):
     grid.addWidget(nXbins_text, 6, 1)
 
 
-    grid.addWidget(traces_label, 7, 0)
-    grid.addWidget(traces_text, 7, 1)
-
     return grid
 
 def ui_save_opts_layout(window):
@@ -254,6 +249,7 @@ def ui_save_opts_layout(window):
     dir_label = QtGui.QLabel(save_opts.save_dir.get_value())
     dir_btn = QtGui.QPushButton('Change Directory')
     dir_btn.clicked.connect(lambda: showDialog(window, save_opts, dir_label))
+    traces_label, traces_text = num_param_label_textbox(save_opts.traces)
 
     save_cb = boolean_parameter_checkbox(save_opts.save_data)
 
@@ -264,11 +260,14 @@ def ui_save_opts_layout(window):
     grid.setSpacing(10)
 
 
-    grid.addWidget(dir_label, 1, 0)
-    grid.addWidget(dir_btn, 1, 1)
+    grid.addWidget(traces_label, 1, 0)
+    grid.addWidget(traces_text, 1, 1)
 
-    grid.addWidget(save_cb, 2, 0)
-    grid.addWidget(json_cb, 2, 1)
+    grid.addWidget(dir_label, 2, 0)
+    grid.addWidget(dir_btn, 2, 1)
+
+    grid.addWidget(save_cb, 3, 0)
+    grid.addWidget(json_cb, 3, 1)
 
     return grid
 
@@ -341,7 +340,7 @@ def showDialog(window, save_opts, dir_label):
 ############################################################
 class UI_CMD(object):
     EXIT    = 0
-    M_BREAK = 1
+    NO_OP_PLOT = 1
     MEASURE = 2
 
 class gui_cmd(object):

@@ -88,6 +88,8 @@ class numerical_parameter(object):
     #           range
     #############################################################
     def validate(self, val):#
+        if val == None:
+            return False
         val = float(val)
         return (self._min <= val) & (val <= self._max)
     #############################################################
@@ -584,7 +586,7 @@ class adwin_log_amplifier(object):
 #           PROGRAM_DIR -> The directory where all adwin files are stored
 #           HIGH_PERIOD -> high priority process clock period (25 ns)
 #           OUTPUT_RANGE -> Output voltage in volts (+- 10 v)
-#           RESOLUTION -> 16 bits of representation for continous values
+#           RESOLUTION -> 16 bits of representation for continuous values
 #           IV_PROCESS -> IV measurements program stored in slot 1
 #           HIST_PROCESS -> Histogram program stored in slot 2
 #           PROCESS_DELAY -> number of ADwin clock between each operation

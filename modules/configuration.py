@@ -9,7 +9,7 @@
            performed by the program
 """
 __author___ = "Joaquin Figueroa"
-
+import os
 import yaml
 import time
 import modules.adwin_driver as adwin
@@ -31,9 +31,7 @@ class program_config(object):
         self.hist_config = histogram_config(hist_data)
         self.display_config = display_config(display_data)
         self.save_config = save_options(save_data)
-    def dump_config_file(self, filename=None):
-        config = self.get_config()
-        yaml_dump(filename, config)
+
     def get_config(self):
         config = {}
         config['IV Configuration'] = self.iv_config.get_config()
@@ -41,6 +39,17 @@ class program_config(object):
         config['Display Configuration'] = self.display_config.get_config()
         config['Save Options'] = self.save_config.get_config()
         return config
+
+    def dump_config_file(self, filename=None):
+        data_dir = self.save_config.get_save_dir()
+        if filename:
+            new_filename = filename
+        else:
+            date = time.strftime("%Y%m%d_%H%M%S")
+            new_filename = "Configuration_file_{0}.yaml".format(date)
+        config_filename = os.path.join(data_dir, new_filename)
+        yaml_dump(config_filename, self.get_config())
+        return config_filename
 
 class iv_config(object):
     def __init__(self, data=None):
@@ -88,6 +97,9 @@ class iv_config(object):
         return adwin.adwin_ADC(self.end_jv)
     def get_avg_points(self):
         return self.avg_points.get_value()
+    def get_move_motor(self):
+        return self.move_motor.get_value()
+
 
     def get_wait_cycles(self):
         return adwin.adwin_convert_ms_to_cycles(self.wait)
@@ -137,7 +149,7 @@ class histogram_config(object):
         self.break_speed.update_or_dflt(data.get('BreakSpeed'))
         self.break_speed.update_or_dflt(data.get('PostBreakingVoltage'))
         self.make_speed.update_or_dflt(data.get('MakeSpeed'))
-        self.make_speed.update_or_dflt(data.get('SkipPoints'))
+        self.skip.update_or_dflt(data.get('SkipPoints'))
         self.use_log_amp.update_or_dflt(data.get('UseLogAmplifier'))
         self.update_config()
 
@@ -213,7 +225,6 @@ class display_config(object):
         self.Gmax = param.display_Gmax()
         self.nGbins = param.display_nGbins()
         self.nXbins = param.display_nXbins()
-        self.traces = param.traces()
         self.config = {}
         self.update_config()
 
@@ -225,7 +236,6 @@ class display_config(object):
         self.config['Gmax'] = self.Gmax.get_value()
         self.config['nGbins'] = self.nGbins.get_value()
         self.config['nDbins'] = self.nXbins.get_value()
-        self.config['NumberTraces'] = self.traces.get_value()
 
     def update_config_with_data(self, data):
         self.xmin.update_or_dflt(data.get('xmin'))
@@ -234,7 +244,6 @@ class display_config(object):
         self.Gmax.update_or_dflt(data.get('Gmax'))
         self.nGbins.update_or_dflt(data.get('nGbins'))
         self.nXbins.update_or_dflt(data.get('nDbins'))
-        self.traces.update_or_dflt(data.get('NumberTraces'))
 
         self.update_config()
 
@@ -254,8 +263,6 @@ class display_config(object):
         return self.nGbins.get_value()
     def get_nXbins(self):
         return self.nXbins.get_value()
-    def get_traces(self):
-        return self.traces.get_value()
 
 class save_options(object):
     def __init__(self, data=None):
@@ -268,6 +275,7 @@ class save_options(object):
         self.save_dir = param.save_dir()
         self.save_data = param.save_data()
         self.use_json = param.use_json()
+        self.traces = param.traces()
         self.dflt_filename = "scan_{0}".format(date)
         self.config = {}
         self.update_config()
@@ -277,11 +285,13 @@ class save_options(object):
         self.config['SaveData'] = self.save_data.get_value()
         self.config['SaveDir'] = self.save_dir.get_value()
         self.config['UseJson'] = self.use_json.get_value()
+        self.config['NumberTraces'] = self.traces.get_value()
 
     def update_config_with_data(self, data):
         self.save_dir.update(data.get('SaveDir'))
         self.save_data.update(data.get('SaveData'))
         self.use_json.update(data.get('UseJson'))
+        self.traces.update_or_dflt(data.get('NumberTraces'))
 
         self.update_config()
 
@@ -298,6 +308,8 @@ class save_options(object):
         return self.use_json.get_value()
     def get_filename(self):
         return self.dflt_filename
+    def get_traces(self):
+        return self.traces.get_value()
 
 def yaml_loader(filepath):
     with open(filepath, "r") as file_descriptor:

@@ -361,7 +361,7 @@ def adwin_ADC(analog_value):
     zero_v = o_range/step
     restricted = np.maximum(np.minimum(analog_value, o_range), -o_range)
     digital_value = np.asarray(restricted/step + zero_v, dtype=int)
-    if len(digital_value) < 2 :
+    if digital_value.ndim == 0 or len(digital_value) < 2:
         digital_value = int(digital_value)
     return digital_value
 
@@ -371,8 +371,8 @@ def adwin_DAC(digital_value):
     step = 2 * param.ADW_GCONST.OUTPUT_RANGE / (2**param.ADW_GCONST.RESOLUTION-1)
     # voltage is array of analog/idx conversion
     zero_v = param.ADW_GCONST.OUTPUT_RANGE/step
-    analog_value = (digital_value - zero_v)*step
-    if len(analog_value) < 2 :
+    analog_value = np.asarray((digital_value - zero_v)*step)
+    if analog_value.ndim == 0 or len(analog_value) < 2:
         analog_value = float(analog_value)
     return analog_value
 
