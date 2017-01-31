@@ -1,6 +1,8 @@
 import pylab as pl
 import time
 import os
+import sys
+sys.path.append("../")
 import modules.adwin_driver as adw
 import modules.faulhaber_driver as fh
 import modules.utilities as utl

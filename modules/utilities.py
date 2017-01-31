@@ -9,6 +9,7 @@ __author__ = "Joaquin Figueroa"
 
 import os
 import inspect
+import matplotlib.pyplot as plt
 
 #############################################################
 ## @brief   Returns the path to the main.py directory
@@ -22,3 +23,7 @@ def get_script_root_path():
     module_path = os.path.dirname(os.path.abspath(fname))
     script_root_path = os.path.dirname(module_path)
     return script_root_path
+
+def closefigs():
+    for i in range(1000):
+        plt.close(i)

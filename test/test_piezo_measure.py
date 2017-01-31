@@ -1,3 +1,5 @@
+import sys
+sys.path.append("../")
 import modules.piezo_measure as pm
 import modules.adwin_driver as adw
 import modules.configuration as conf

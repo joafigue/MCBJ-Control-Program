@@ -129,7 +129,7 @@ class histogram_config(object):
         self.skip = param.skip_points()
         self.G0 = param.GLOBAL_CONSTANTS.G0
         self.G_break_mid = 5 * self.G0
-        self.G_break_end = 5e-5 * self.G0
+        self.G_break_end = 5e-6 * self.G0
         self.G_make_end = 20 * self.G0
         self.config = {}
         self.update_config()

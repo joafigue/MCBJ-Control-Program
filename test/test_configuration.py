@@ -1,9 +1,7 @@
 import json
-import os
 import sys
 sys.path.append("../")
 import modules.configuration as conf
-
 
 # Configure Plot
 infile = "Measurement_deafult_config.yaml"

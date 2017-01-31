@@ -1,4 +1,4 @@
-# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::*Faulhaber%20Driver][Faulhaber Driver:1]]
+# [[file:~/Lab_Diana/Programa_python/MCBJ-Control-Program/Measure_samples.org::*Faulhaber%20Driver][Faulhaber Driver:1]]
 #################################################################
 ## @file    faulhaber_driver.py
 #  @author  Joaquin Figueroa
@@ -18,7 +18,7 @@ import pylab as pl
 import parameters as param
 # Faulhaber Driver:1 ends here
 
-# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::*Conversion%20functions][Conversion functions:1]]
+# [[file:~/Lab_Diana/Programa_python/MCBJ-Control-Program/Measure_samples.org::*Conversion%20functions][Conversion functions:1]]
 #################################################################
 ## @brief   Converts motor speed from um/s to rpm
 #################################################################
@@ -34,7 +34,7 @@ def faulhaber_convert_rpm_to_ums(rpm):
     return ums
 # Conversion functions:1 ends here
 
-# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::*Faulhaber%20State][Faulhaber State:1]]
+# [[file:~/Lab_Diana/Programa_python/MCBJ-Control-Program/Measure_samples.org::*Faulhaber%20State][Faulhaber State:1]]
 class faulhaber_state(object):
     def __init__(self, start_pos, start_speed):
         self.start_pos = start_pos
@@ -54,7 +54,7 @@ class faulhaber_state(object):
         self.current_speed = new_speed
 # Faulhaber State:1 ends here
 
-# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::faulhaber-class-def][faulhaber-class-def]]
+# [[file:~/Lab_Diana/Programa_python/MCBJ-Control-Program/Measure_samples.org::faulhaber-class-def][faulhaber-class-def]]
 #################################################################
 ## @author  Joaquin Figueroa
 #  @brief   Faulhaber class interface
@@ -77,7 +77,7 @@ class faulhaber_motor(object):
         self._set_max_acceleration()
         self.disable_motor()
     
-    # [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::faulhaber-basic-fn-interface][faulhaber-basic-fn-interface]]
+    # [[file:~/Lab_Diana/Programa_python/MCBJ-Control-Program/Measure_samples.org::faulhaber-basic-fn-interface][faulhaber-basic-fn-interface]]
     #################################################################
     ## @brief   Reset controles
     #################################################################
@@ -155,7 +155,7 @@ class faulhaber_motor(object):
         pl.pause(0.5)
         self.disable_motor()
     # faulhaber-basic-fn-interface ends here
-    # [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::faulhaber-basic-fn-interface][faulhaber-basic-fn-interface]]
+    # [[file:~/Lab_Diana/Programa_python/MCBJ-Control-Program/Measure_samples.org::faulhaber-basic-fn-interface][faulhaber-basic-fn-interface]]
     
     #################################################################
     ## @brief   Enables the motor
@@ -202,7 +202,7 @@ class faulhaber_motor(object):
         self._small_move_with_speed(real_speed)
     
     # faulhaber-basic-fn-interface ends here
-    # [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::faulhaber-advanced-fn-interface][faulhaber-advanced-fn-interface]]
+    # [[file:~/Lab_Diana/Programa_python/MCBJ-Control-Program/Measure_samples.org::faulhaber-advanced-fn-interface][faulhaber-advanced-fn-interface]]
     
     ## Manual Controls
     def set_motor_pos(self, new_pos):

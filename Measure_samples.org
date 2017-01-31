@@ -128,34 +128,12 @@ In order to perform the measurements the standard python libraries and the modul
 #+BEGIN_SRC python
   import os
   import sys
-  import matplotlib.pyplot as plt
   import modules.adwin_driver as adw
   import modules.utilities as utl
   import modules.configuration as conf
   import modules.piezo_measure as pm
   import modules.motor_break as mb
   from modules.motor_break import stop # Important function to stop everything
-#+END_SRC
-#+BEGIN_SRC python
-  def default_config_file():
-      """ Function to determine the default configuration file to use
-
-      This function is used to deterine the configuration file to be used.
-      Note that in this function we can set a "new" default file by hand, which can
-      be used to pass the configuration file without running the program through the
-      Command line.
-      """
-
-      custom_config_file = "F:\joaquin_rewrite\data\New Folder\Configuration_file_20170131_114342.yaml"
-      if os.path.isfile(custom_config_file):
-          return custom_config_file
-      directory = utl.get_script_root_path()
-      filename = "Measurement_deafult_config.yaml"
-      filename = os.path.join(directory, filename)
-      return filename
-
-
-
 #+END_SRC
 This program will be executed directly and if the user provided the configuration file it will use it to perform the measurement. In order to do so, we need to ensure that we have a filename to read. The code fragment [[src-measure-cli-parse-opts]] will read the options and determine if the user provided an appropriate filename. If the user didn't do so, then it will chose the default configuration file as shown in the code fragment [[src-measure-cl-config]]
 
@@ -221,7 +199,7 @@ Now that we covered the auxiliary utilities, we can describe the main loop, whic
       - If the system is in the operation point, will perform the measuerement
       - For each measurement (trace) will save and plot the Data
       """
-      plt.closefigs()
+      utl.closefigs()
       config = build_config_if_file_exists(filename) #(ref:src-m-cli-config)
       dconfig = config.display_config
       hconfig = config.hist_config
@@ -643,7 +621,7 @@ The full configuration is the general interface for all configuratioins, as it e
           self.skip = param.skip_points()
           self.G0 = param.GLOBAL_CONSTANTS.G0
           self.G_break_mid = 5 * self.G0
-          self.G_break_end = 5e-5 * self.G0
+          self.G_break_end = 5e-6 * self.G0
           self.G_make_end = 20 * self.G0
           self.config = {}
           self.update_config()
@@ -2921,6 +2899,7 @@ As with many programs, there are some general purpose functionalities that do no
 
   import os
   import inspect
+  import matplotlib.pyplot as plt
 #+END_SRC
 
 *** Path utilities.
@@ -2939,6 +2918,14 @@ Although Python already provides with a good interface to interface with the fil
       module_path = os.path.dirname(os.path.abspath(fname))
       script_root_path = os.path.dirname(module_path)
       return script_root_path
+#+END_SRC
+
+*** Close open figures
+If the program is run many times some figures may be still open and we don't want that.
+#+BEGIN_SRC python
+  def closefigs():
+      for i in range(1000):
+          plt.close(i)
 #+END_SRC
 
 *** TODO manipulation taken from original program
@@ -3994,7 +3981,7 @@ In the ADwin =INIT= block the variables defined are set to their default values.
     broken = 0
     break_counter = 0
     makewait = 0
-    skip = 1
+    skip = PAR_30
     skipcounter = 1
     avgcounter = 0
     avgcurrent = 0
@@ -4110,15 +4097,15 @@ This section describes the algorithm used to store the break histogram shown in 
       avgcurrent = break_acc / PAR_19
       break_hist_flag = 4
       IF (avgcurrent <= FPAR_9) THEN
-        skip = 0
+        skip = PAR_30/2
       ENDIF
       IF (avgcurrent <= FPAR_10) THEN
-        skip = 1
+        skip = PAR_30
         broken = 1 ' We are in post-breaking regime
       ENDIF
       IF (skip >= 1) THEN
         skipcounter = skipcounter + 1
-        IF (skipcounter < PAR_30) THEN
+        IF (skipcounter < skip) THEN
           break_hist_flag = 0
         ENDIF
       ENDIF

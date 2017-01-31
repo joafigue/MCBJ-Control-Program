@@ -1,4 +1,4 @@
-# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::*Adwin%20driver-header][Adwin driver-header:1]]
+# [[file:~/Lab_Diana/Programa_python/MCBJ-Control-Program/Measure_samples.org::*Adwin%20driver-header][Adwin driver-header:1]]
 """ Module adwin_driver -  Provides the interfaces for the Adwin
            This file provides  the Adwin interface,
            which defines high and low level functionalities.
@@ -16,7 +16,7 @@ import utilities as utl
 import parameters as param
 # Adwin driver-header:1 ends here
 
-# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::*Adwin%20driver-base%20class%20Interface][Adwin driver-base class Interface:1]]
+# [[file:~/Lab_Diana/Programa_python/MCBJ-Control-Program/Measure_samples.org::*Adwin%20driver-base%20class%20Interface][Adwin driver-base class Interface:1]]
 ############################################################
 ## @class   adwin_driver
 #  @details This class initializes the driver without
@@ -79,10 +79,10 @@ class adwin_driver(object):
             print("Process {0} is stopped".format(process_number))
 # Adwin driver-base class Interface:1 ends here
 
-# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::src-adwin-parameters][src-adwin-parameters]]
+# [[file:~/Lab_Diana/Programa_python/MCBJ-Control-Program/Measure_samples.org::src-adwin-parameters][src-adwin-parameters]]
 class ADW_IV_CONST(object):
     PROCESS_NUMBER = 1
-    # [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::src-adwin-iv-param][src-adwin-iv-param]]
+    # [[file:~/Lab_Diana/Programa_python/MCBJ-Control-Program/Measure_samples.org::src-adwin-iv-param][src-adwin-iv-param]]
     ###########################################################################
     ## @brief  Indices  for int vars in ADwin used for IV measurements
     ###########################################################################
@@ -96,7 +96,7 @@ class ADW_IV_CONST(object):
     # outputs for the ADWIN IV measurement
     END_STATUS  = 12
     # src-adwin-iv-param ends here
-    # [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::src-adwin-iv-fparam][src-adwin-iv-fparam]]
+    # [[file:~/Lab_Diana/Programa_python/MCBJ-Control-Program/Measure_samples.org::src-adwin-iv-fparam][src-adwin-iv-fparam]]
     ###########################################################################
     ## @brief  Indices  for float vars in ADwin used for IV measurements.
     ###########################################################################
@@ -106,7 +106,7 @@ class ADW_IV_CONST(object):
     I_CH2       = 3
     I_CH2_AMPL  = 4
     # src-adwin-iv-fparam ends here
-    # [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::src-adwin-iv-aparam][src-adwin-iv-aparam]]
+    # [[file:~/Lab_Diana/Programa_python/MCBJ-Control-Program/Measure_samples.org::src-adwin-iv-aparam][src-adwin-iv-aparam]]
     ###########################################################################
     ## @brief  Indices  for array vars in ADwin used for IV measurements
     ###########################################################################
@@ -115,7 +115,7 @@ class ADW_IV_CONST(object):
     # src-adwin-iv-aparam ends here
 # src-adwin-parameters ends here
 
-# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::src-adwin-driver-iv-interface][src-adwin-driver-iv-interface]]
+# [[file:~/Lab_Diana/Programa_python/MCBJ-Control-Program/Measure_samples.org::src-adwin-driver-iv-interface][src-adwin-driver-iv-interface]]
 ############################################################
 ## @class   adwin_iv_driver
 #  @details This class initializes the driver with the
@@ -152,7 +152,7 @@ class adwin_iv_driver(adwin_driver):
         self.adw.Set_Par(ADW_IV_CONST.MAX_DATA, c.get_max_data())
         self.adw.SetData_Float(log_array,
                               ADW_IV_CONST.LOG_AMPL, 1, length)
-    # [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::src-adwin-iv-driver-api][src-adwin-iv-driver-api]]
+    # [[file:~/Lab_Diana/Programa_python/MCBJ-Control-Program/Measure_samples.org::src-adwin-iv-driver-api][src-adwin-iv-driver-api]]
     #############################################################
     ## @brief   Return the current measured by the ADwin
     #############################################################
@@ -176,10 +176,10 @@ class adwin_iv_driver(adwin_driver):
     # src-adwin-iv-driver-api ends here
 # src-adwin-driver-iv-interface ends here
 
-# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::*Adwin%20driver-histogram%20parameters][Adwin driver-histogram parameters:1]]
+# [[file:~/Lab_Diana/Programa_python/MCBJ-Control-Program/Measure_samples.org::*Adwin%20driver-histogram%20parameters][Adwin driver-histogram parameters:1]]
 class ADW_HIST_CONST(object):
     PROCESS_NUMBER = 2
-    # [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::src-adwin-hist-param][src-adwin-hist-param]]
+    # [[file:~/Lab_Diana/Programa_python/MCBJ-Control-Program/Measure_samples.org::src-adwin-hist-param][src-adwin-hist-param]]
     ###########################################################################
     ## @brief  Indices  for int vars with ADwin for IV measurements
     ###########################################################################
@@ -199,7 +199,7 @@ class ADW_HIST_CONST(object):
     BREAK_IDX   = 20
     MAKE_IDX    = 21
     # src-adwin-hist-param ends here
-    # [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::src-adwin-hist-fparam][src-adwin-hist-fparam]]
+    # [[file:~/Lab_Diana/Programa_python/MCBJ-Control-Program/Measure_samples.org::src-adwin-hist-fparam][src-adwin-hist-fparam]]
     ###########################################################################
     ## @brief  Indices  for float vars with ADwin for IV measurements
     ###########################################################################
@@ -208,7 +208,7 @@ class ADW_HIST_CONST(object):
     I_MIN_BRK  = 10
     I_MAX_MK   = 11
     # src-adwin-hist-fparam ends here
-    # [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::src-adwin-hist-aparam][src-adwin-hist-aparam]]
+    # [[file:~/Lab_Diana/Programa_python/MCBJ-Control-Program/Measure_samples.org::src-adwin-hist-aparam][src-adwin-hist-aparam]]
     ###########################################################################
     ## @brief  Indices  for array vars with ADwin for IV measurements
     ###########################################################################
@@ -222,7 +222,7 @@ class ADW_HIST_CONST(object):
     # src-adwin-hist-aparam ends here
 # Adwin driver-histogram parameters:1 ends here
 
-# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::src-adwin-hist-driver-init][src-adwin-hist-driver-init]]
+# [[file:~/Lab_Diana/Programa_python/MCBJ-Control-Program/Measure_samples.org::src-adwin-hist-driver-init][src-adwin-hist-driver-init]]
 ############################################################
 ## @class   adwin_hist_driver
 #  @details This class initializes the driver with the
@@ -264,7 +264,7 @@ class adwin_hist_driver(adwin_driver):
         self.adw.Set_FPar(ADW_HIST_CONST.I_MAX_MK, c.get_I_make_end()) #
         self.adw.SetData_Float(log_array,
                               ADW_HIST_CONST.LOG_AMPL, 1, length)
-    # [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::src-adwin-hist-driver-api][src-adwin-hist-driver-api]]
+    # [[file:~/Lab_Diana/Programa_python/MCBJ-Control-Program/Measure_samples.org::src-adwin-hist-driver-api][src-adwin-hist-driver-api]]
     def measure_and_get_histogram(self, trace=1):
         self.start_process()
         while self.process_running():
@@ -336,7 +336,7 @@ class adwin_hist_driver(adwin_driver):
     # src-adwin-hist-driver-api ends here
 # src-adwin-hist-driver-init ends here
 
-# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::src-adwin-hist-driver-aux-histogram][src-adwin-hist-driver-aux-histogram]]
+# [[file:~/Lab_Diana/Programa_python/MCBJ-Control-Program/Measure_samples.org::src-adwin-hist-driver-aux-histogram][src-adwin-hist-driver-aux-histogram]]
 class adwin_histogram(object):
     def __init__(self, conductance, voltage):
         self.conductance = conductance
@@ -354,7 +354,7 @@ class adwin_histogram(object):
             print("Index = {0}, G = {1}, V = {2}".format(idx, G,V))
 # src-adwin-hist-driver-aux-histogram ends here
 
-# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::*Adwin%20converters][Adwin converters:1]]
+# [[file:~/Lab_Diana/Programa_python/MCBJ-Control-Program/Measure_samples.org::*Adwin%20converters][Adwin converters:1]]
 # This works with numpy array.
 def adwin_ADC(analog_value):
     # converts ADC/DAC voltage to bin number, given the voltage range and the param.ADW_GCONST.RESOLUTION as int (adwin digitia representation
@@ -399,7 +399,7 @@ def adwin_convert_ms_to_cycles(time_ms):
     return wait_cycles
 # Adwin converters:1 ends here
 
-# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::*Adwin%20reset][Adwin reset:1]]
+# [[file:~/Lab_Diana/Programa_python/MCBJ-Control-Program/Measure_samples.org::*Adwin%20reset][Adwin reset:1]]
 def ADwin_stop():
     """ create a new adwin drive, which will reboot the Adwin, and stop all executions"""
     adwin_driver(1, "")            # This reboots the Adwin, killing the process

@@ -14,30 +14,12 @@ __author__ = "Joaquin Figueroa"
 
 import os
 import sys
-import matplotlib.pyplot as plt
 import modules.adwin_driver as adw
 import modules.utilities as utl
 import modules.configuration as conf
 import modules.piezo_measure as pm
 import modules.motor_break as mb
 from modules.motor_break import stop # Important function to stop everything
-
-def default_config_file():
-    """ Function to determine the default configuration file to use
-
-    This function is used to deterine the configuration file to be used.
-    Note that in this function we can set a "new" default file by hand, which can
-    be used to pass the configuration file without running the program through the
-    Command line.
-    """
-
-    custom_config_file = "F:\joaquin_rewrite\data\New Folder\Configuration_file_20170131_114342.yaml"
-    if os.path.isfile(custom_config_file):
-        return custom_config_file
-    directory = utl.get_script_root_path()
-    filename = "Measurement_deafult_config.yaml"
-    filename = os.path.join(directory, filename)
-    return filename
 
 def parse_options(argv):
     """ Check if the user provided a configuration file, otherwise use default """
@@ -79,7 +61,7 @@ def main(filename):
     - If the system is in the operation point, will perform the measuerement
     - For each measurement (trace) will save and plot the Data
     """
-    plt.closefigs()
+    utl.closefigs()
     config = build_config_if_file_exists(filename) #
     dconfig = config.display_config
     hconfig = config.hist_config

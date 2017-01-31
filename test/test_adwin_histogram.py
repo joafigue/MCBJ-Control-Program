@@ -1,8 +1,10 @@
-# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::*ADwin%20Histogram%20testing][ADwin Histogram testing:1]]
+# [[file:~/Lab_Diana/Programa_python/MCBJ-Control-Program/Measure_samples.org::*ADwin%20Histogram%20testing][ADwin Histogram testing:1]]
 from time import strftime
 import numpy as np
 import pylab as pl
 import matplotlib.pyplot as plt
+import sys
+sys.path.append("../")
 from modules.adwin_driver import *
 from modules.configuration import *
 

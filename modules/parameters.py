@@ -581,7 +581,7 @@ class MB_CONST(object):
     BREAK_SPEED = -2            # In us
     MAKE_SPEED = 2              # in us
 
-# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::*Adwin%20driver-global%20constants][Adwin driver-global constants:1]]
+# [[file:~/Lab_Diana/Programa_python/MCBJ-Control-Program/Measure_samples.org::*Adwin%20driver-global%20constants][Adwin driver-global constants:1]]
 ###########################################################################
 ## @class  ADW_GCONST
 #  @brief  Parameters for Adwin instrument
@@ -612,7 +612,7 @@ class ADW_GCONST(object):
     PROCESS_DELAY    = 400
 # Adwin driver-global constants:1 ends here
 
-# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::src-faulhaber-constants][src-faulhaber-constants]]
+# [[file:~/Lab_Diana/Programa_python/MCBJ-Control-Program/Measure_samples.org::src-faulhaber-constants][src-faulhaber-constants]]
 #################################################################
 ## @author  Joaquin Figueroa
 #  @brief   Constants used for the faulhaber interface

@@ -95,7 +95,7 @@ INIT:
   broken = 0
   break_counter = 0
   makewait = 0
-  skip = 1
+  skip = PAR_30
   skipcounter = 1
   avgcounter = 0
   avgcurrent = 0
@@ -155,15 +155,15 @@ EVENT:
           avgcurrent = break_acc / PAR_19
           break_hist_flag = 4
           IF (avgcurrent <= FPAR_9) THEN
-            skip = 0
+            skip = PAR_30/2
           ENDIF
           IF (avgcurrent <= FPAR_10) THEN
-            skip = 1
+            skip = PAR_30
             broken = 1 ' We are in post-breaking regime
           ENDIF
           IF (skip >= 1) THEN
             skipcounter = skipcounter + 1
-            IF (skipcounter < PAR_30) THEN
+            IF (skipcounter < skip) THEN
               break_hist_flag = 0
             ENDIF
           ENDIF

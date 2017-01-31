@@ -1,6 +1,8 @@
-# [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::*Faulhaber%20testing][Faulhaber testing:1]]
+# [[file:~/Lab_Diana/Programa_python/MCBJ-Control-Program/Measure_samples.org::*Faulhaber%20testing][Faulhaber testing:1]]
 import modules.faulhaber_driver as fh_driver
 import pylab as pl
+import sys
+sys.path.append("../")
 from modules.adwin_driver import *
 from modules.configuration import *
 
