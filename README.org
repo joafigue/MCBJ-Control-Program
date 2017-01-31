@@ -1,0 +1,48 @@
+* INTRODUCTION
+This Project has the program which controls the equipment in the Laboratory located at Universidad de Chile used for measuring molecules properties through the Mechanically Controlled Break Junction technique or MCBJ for short.
+* USAGE
+This program provides 3 python executables which can be used for different purposes.
+** no_measure_plot.py
+This executable does not perform any "automated" measurement, instead is used for diagnose of the experimental setup to confirm if the sample to be measured is defective.
+
+This program will only perform a continuous measurement of the conductance and shows plots it in real time.
+** measure_cli.py
+This program has a control loop that allows for automated measurements provided that there is no problem in the experimental setup. In most cases, this program can be fired up and let the measurements be performed automatically.
+
+This program can be configured through a configuration file written in *YAML*. See *Measurement_deafult_config.yaml* for an example configuration file.
+- It's worth noting that there is a small function at the top of this file that /Can/ be used to change the configuration file by default, in case the user so requires it and is unable to use a proper command line.
+
+** measure_gui.py
+This program provides a configuration interface for the *measure_cli.py* and *no_measure_plot.py* programs.
+This program launches a window that can be used to modify the different parameters and launch the corresponding  program.
+As part of the process this program will also create a new configuration file at the target location which can be used for reference or for reproduction experiments.
+
+* Documentation.
+Full documentation can be located in the *Measure_samples.org* and  *Measure_samples.pdf* Note that this is still *WORK IN PROGRESS*
+
+Leaving out the executables already mentioned, this project uses several other Python files located in the *modules* directory.
+
+** Auxiliary programs
+*** adwin_driver.py
+This python program provides an interface for the ADwin measurement instrument.
+This interface main purpose is to provide meaningful utilities related to the measurement process in order to make the subsequent utilities easier to program.
+- Should the user want to create a new measurement process or technique this is the file to modify.
+*** faulhaber_driver.py 
+Same as the adwin driver, but for the motor, which is used for coarse movement in order to set the experiment and leave it ready for measurement using a piezoelectric controlled with the Adwin.
+*** parameters.py
+Since the measurements are configurable, the parameters.py file has definitions for most of the constants used by the program, and a structure for the parameters that are configurable.
+*** utilities.py
+This file has only 1 utility which is used to determine the directory of the program.
+*** configuration.py
+Since a configuration file is used, this file is an interface that can read the configuration file and generate configuration structures for  the different process in the adwin_driver.py
+*** ui_gui
+This program provides the interface to generate and write the configuration file.
+*** motor_break.py
+This program has the algorithm that controls the motor and with the help of the ADwin (for conductance measurement) moves the motor until  is in the position where the Adwin can perform the histogram measurement.
+*** piezo_measure.py
+This program uses the Adwin driver and the configuration to provide an interface which can plot and save the measurement data.
+
+
+
+ 
+

@@ -14,6 +14,7 @@ __author__ = "Joaquin Figueroa"
 
 import os
 import sys
+import matplotlib.pyplot as plt
 import modules.adwin_driver as adw
 import modules.utilities as utl
 import modules.configuration as conf
@@ -78,6 +79,7 @@ def main(filename):
     - If the system is in the operation point, will perform the measuerement
     - For each measurement (trace) will save and plot the Data
     """
+    plt.closefigs()
     config = build_config_if_file_exists(filename) #
     dconfig = config.display_config
     hconfig = config.hist_config
