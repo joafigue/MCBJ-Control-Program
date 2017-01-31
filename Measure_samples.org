@@ -128,6 +128,7 @@ In order to perform the measurements the standard python libraries and the modul
 #+BEGIN_SRC python
   import os
   import sys
+  import matplotlib.pyplot as plt
   import modules.adwin_driver as adw
   import modules.utilities as utl
   import modules.configuration as conf
@@ -220,6 +221,7 @@ Now that we covered the auxiliary utilities, we can describe the main loop, whic
       - If the system is in the operation point, will perform the measuerement
       - For each measurement (trace) will save and plot the Data
       """
+      plt.closefigs()
       config = build_config_if_file_exists(filename) #(ref:src-m-cli-config)
       dconfig = config.display_config
       hconfig = config.hist_config
@@ -853,29 +855,6 @@ The full configuration is the general interface for all configuratioins, as it e
        return program_config(data)
 #+END_SRC
 
-***** Testing program configuration                                :noexport:
-      :PROPERTIES:
-      :header-args+: :tangle   no
-      :header-args+: :noweb    tangle
-      :END:
-
-#+BEGIN_SRC python
-  from modules.configuration import *
-  import numpy as np
-  infile = "Measurement_deafult_config.yaml"
-  outfile = "Measurement_read_config.yaml"
-  config = yaml_build_config_from_file(infile)
-  config.dump_config_file(outfile)
-  Gmax = config.display_config.get_Gmax()
-  Gmin = config.display_config.get_Gmin()
-  #  return Gmin
-
-  return np.log10(Gmin)
-#+END_SRC
-
-#+RESULTS:
-: -7.0
-
 **** TODO Configuration File Specification
       :PROPERTIES:
       :header-args+: :tangle  Measurement_deafult_config.yaml
@@ -925,9 +904,11 @@ Also the introduction of configuration files does not mean that the program will
  #+END_SRC
 
 **** Configuration file testing
-#+BEGIN_SRC python :tangle test_configuration.py
-  import modules.configuration as conf
+#+BEGIN_SRC python :tangle test/test_configuration.py
   import json
+  import sys
+  sys.path.append("../")
+  import modules.configuration as conf
 
   # Configure Plot
   infile = "Measurement_deafult_config.yaml"
@@ -1859,11 +1840,13 @@ While not really a parameter, the ADwin uses an array to calibrate the measureme
 
 ****** Logamp testing                                              :noexport:
 
-#+BEGIN_SRC python :tangle test_logampl.py
-import modules.parameters as param
-log_ampl = param.adwin_log_amplifier()
-calibration = log_ampl.get_calibration()
-print calibration
+#+BEGIN_SRC python :tangle test/test_logampl.py
+  import sys
+  sys.path.append("../")
+  import modules.parameters as param
+  log_ampl = param.adwin_log_amplifier()
+  calibration = log_ampl.get_calibration()
+  print calibration
 #+END_SRC
 
 #+RESULTS:
@@ -2599,10 +2582,12 @@ This file has the algorithm that performs the juncture break and drives the moto
 
 #+END_SRC
 *** Testing motor_break control loop                               :noexport:
-#+BEGIN_SRC python :tangle test_motor_break_control_loop.py
+#+BEGIN_SRC python :tangle test/test_motor_break_control_loop.py
   import pylab as pl
   import time
   import os
+  import sys
+  sys.path.append("../")
   import modules.adwin_driver as adw
   import modules.faulhaber_driver as fh
   import modules.utilities as utl
@@ -2878,7 +2863,9 @@ This file has the algorithm that performs the juncture break and drives the moto
           axis.set_ylabel('Conductance (G0)')
 #+END_SRC
 *** testing  histogram_measurements plot
-#+BEGIN_SRC python :tangle test_piezo_measure.py
+#+BEGIN_SRC python :tangle test/test_piezo_measure.py
+  import sys
+  sys.path.append("../")
   import modules.piezo_measure as pm
   import modules.adwin_driver as adw
   import modules.configuration as conf
@@ -3283,11 +3270,13 @@ This section provides with the functions required to obtain the measurements fro
 #+END_SRC
 
 *** Adwin IV testing                                               :noexport:
-#+BEGIN_SRC python :tangle test_adwin_iv.py
+#+BEGIN_SRC python :tangle test/test_adwin_iv.py
   from time import strftime
   import numpy as np
   import pylab as pl
   import matplotlib.pyplot as plt
+  import sys
+  sys.path.append("../")
   from modules.adwin_driver import *
   from modules.configuration import *
 
@@ -3538,7 +3527,7 @@ This section provides with the functions required to obtain the histogram measur
 
 *** TODO ADwin Histogram testing                                   :noexport:
     :PROPERTIES:
-    :header-args+: :tangle test_adwin_histogram.py
+    :header-args+: :tangle test/test_adwin_histogram.py
     :END:
 Small test program for the ADwin hisotgram measurement.
 #+BEGIN_SRC python
@@ -3546,6 +3535,8 @@ Small test program for the ADwin hisotgram measurement.
   import numpy as np
   import pylab as pl
   import matplotlib.pyplot as plt
+  import sys
+  sys.path.append("../")
   from modules.adwin_driver import *
   from modules.configuration import *
 
@@ -4572,9 +4563,11 @@ As previously stated this section defines the basic functions of the Faulhaber m
 #+END_SRC
 
 **** Faulhaber testing                                             :noexport:
-#+BEGIN_SRC python :tangle test_faulhaber.py
+#+BEGIN_SRC python :tangle test/test_faulhaber.py
   import modules.faulhaber_driver as fh_driver
   import pylab as pl
+  import sys
+  sys.path.append("../")
   from modules.adwin_driver import *
   from modules.configuration import *
 
