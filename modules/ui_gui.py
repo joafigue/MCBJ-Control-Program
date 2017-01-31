@@ -86,7 +86,7 @@ def ui_create_buttons_layout(widget):
         lambda: widget.close_with_cmd(UI_CMD.EXIT)) 
     quit_button.setToolTip("Terminates the program")
     # Break Button
-    no_op_button = QtGui.QPushButton("Continuous Measurement - Diagnose")
+    no_op_button = QtGui.QPushButton("Diagnose Experimental Setup")
     no_op_button.clicked.connect(
         lambda: widget.close_with_cmd(UI_CMD.NO_OP_PLOT))
     no_op_button.setToolTip("Continuous G measure. Use for experiment Diagnosis")

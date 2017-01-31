@@ -309,7 +309,7 @@ class skip_points(integer_parameter):
     ## @brief   Initilaization code
     #############################################################
     def __init__(self):
-        _dflt = int(1)
+        _dflt = int(10)
         _min = int(1)
         _max = int(99)
         _name = "Points to skip/not save in Adwin"
@@ -574,6 +574,12 @@ class adwin_log_amplifier(object):
         for i in range(len(data)):
             retlist.append(data[i][Column])
         return retlist
+
+class MB_CONST(object):
+    BROKEN_CONDUCTANCE = 1e-6   # IN G0
+    RESTORE_CONDUCTANCE = 50    # in G0
+    BREAK_SPEED = -2            # In us
+    MAKE_SPEED = 2              # in us
 
 # [[file:~/Lab_Diana/Programa_python/joaquin_rewrite/Measure_samples.org::*Adwin%20driver-global%20constants][Adwin driver-global constants:1]]
 ###########################################################################

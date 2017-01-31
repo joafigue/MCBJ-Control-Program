@@ -1,0 +1,29 @@
+# Begin of configuration File
+---
+IV Configuration :              # Continuous measurement during motor break
+  JunctureVoltage : 0.1         # Range 0.1-0.3
+  AveragePoints : 32            # Number of points to average
+  UseLogAmplifier: true
+  MoveMotor : true
+
+Histogram Configuration:
+  JunctureVoltage : 0.1         # Range 0.1-0.3
+  AveragePoints : 32            # Number of points to average
+  BreakSpeed : 300              # Volts/s
+  PostBreakingVoltage : 250     # Volts
+  MakeSpeed : 500               # Volts/s
+  UseLogAmplifier: true
+
+Display Configuration:
+  xmin : -0.5                   # nm
+  xmax : 2                      # nm
+  Gmin : 1e-7                   # G0
+  Gmax : 10                     # G0
+  nGbins : 251                  # Slots for Conductance histogram
+  nDbins : 161                  # Slots for Distance histogram
+
+Save Options:
+  NumberTraces : 5           # Number of histograms
+  UseJson : false
+  SaveData: true
+  SaveDir : 'E:/Measurements/Fullerenos/C60 2/Molecule/'
