@@ -38,25 +38,32 @@
 #+CREATOR: <a href="http://www.gnu.org/software/emacs/">Emacs</a> 25.1.1 (<a href="http://orgmode.org">Org</a> mode 9.0.3)
 #+LATEX_HEADER:
 
-
 * Introduction
 This file is a try to document and enhance the program in python to measure the samples through the mechanism of of break-junction in gold samples for the study of molecular properties.
 The reason for this is that the current program, while functional is under-documented and the full how-to is preserved through *oral tradition* which is regrettable for an investigation lab, and since the author of this document has a bit of experience in software development and documentation, this file was born.
 
 ** Break Junction
-The experiment is to measure the break junction
+The experiment is to measure using the mechanical break-junction technique which consist on having a thin gold (or another conductor) /wire/ and exert mechanical effort at its ends in order to break it. During this process the wire is elongated until it breaks, and if the process is controlled enough, tunnel current can be measured.
 
-** Actuators and measuremnts
+This process is used for investigating the electrical properties of different molecules as when the wire is broken, the molecule can fit between the terminals, which increases the current over the tunnel level, but obviously below the levels of a /connected/ gold wire.
+
+The experimental setup uses different mechanical actuators and measurement instruments which are controlled using a Python program. See [[Program Description]]
+
+** Actuators and measurements
 The program uses 2 different mechanical actuators to perform the measurements, and there are 2 different kind of samples to be measured. Finally the measurement is performed by analyzing the conductance of the sample.
 
 *** Mechanical actuators
 Since the experiment is based on a single gold "nano-wire"  which is broken through mechanical means, there is need for mechanical acutators to beak the "wire" to measure the conductance change.
 
-**** Faulhaber Motor
-The Faulhaber motor is used to perform relatively large movements on the sample and is used to break the sample initially
-
 **** Piezo actuator
-Once the junction is broken, the motor is turned off and the piezo-device is used, since it provides a simple controllable way to perform even samller movements on the piece for the study
+Piezoelectric materials are unique because they have a mechanical response to an applied voltage, this means that they can be controlled in a very precise manner to perform measurements using the mechanical break-junction technique.
+Unfortunately the piezoelectric actuator used for measurements does not have a large enough dynamic range which means that it cannot perform the measurement by itself, therefore the experimental setup uses a different actuator to carry the device to a point where the measurements can be executed. See [[Faulhaber Motor]]
+
+**** Faulhaber Motor
+As previously stated, the piezoelectric cannot be used to perform the measurement unless the device is driven to the correct operating point, which is performed using the Faulhaber Motor.
+
+In order to check that the setup is in the range for performing the measurements, it's required that the motor breaks the juncture and restore it to a certain point, later is necessary to confirm that the piezoelectric can perform the measurement.
+If both conditions are full-filled then the program is ready to measure
 
 *** Samples types
 Even though the experiment is always performed over gold "wires", there are 2 distinct clasification of the samples.
@@ -67,53 +74,251 @@ Since the gold is the sustrate, is measured to ensure that is clean and there ar
 **** Gold + Molecule
 The focus of the experiment is to measure the transport (conductance) properties of a given molecule, thus once a gold sustrate has been measured and confirmed to be usable, a molecule solution is placed on the sustrate with the expectation that a molecule gets inserted in the gap between the gold terminals.
 
-*** ADWin measurement
-The measurement of the conductance is performed using the ADWin board which has an interface and binding to python. The documentation for the ADWin measurement instrument can be found on the [[http://www.adwin.de/us/download/linux.html][Download page]]
+*** ADWin Instrument
+The ADwin-Gold  is a precision instrument which can perform measurement and control algorithms using it's multiple input and output ports. It also has the advantage of being very fast and capable of performing one instruction every \(25 [ns]\), contrary to a control loop executed using the computer.
 
-Since the objective is to measure the transport properties, the most important parameters to measure are the conductance and the separation between the gold contacts (break junction)
+While the ADwin is programmable, complex control loops may not be advisable as they would require too many cycles loosing the advantage of 1 instruction every \(25[ns]\).
+
+In this program, the ADwin is controlled using a python program using the information on the documentation available through the  [[http://www.adwin.de/us/download/download.html][ADwin Download page]]
+
+** Program
+The purpose of the program is to allow the user to perform the measurement with a single command and some minimal configuration without having to operate with several programs or performing the fine tuning by himself.
+This is achieved through the program described in [[Program Description]].
+
+Unfortunately, this does not covers for all the needs of the users, because the physical setup requires the user to have continuous measurements in order to confirm that the experiment is ready for measurement. To do so, an additional program is provided. See [[Continuous Measurement Program]]
+
+Finally In order to provide a more friendly interface a third program is provided as a wrapper for the other 2, with the focus of providing a Graphical interface. This way a user can use only the graphical program to setup an perform the measurements, but the other program will still be available for use. See [[Graphical Program Description]]
 
 * Program Description
   :PROPERTIES:
   :header-args+: :comments no
   :END:
 
+As it was already stated the measurement is splitted in 2 steps, the motor initialization and the piezo measurement, however a full program cannot be limited to these 2 steps, as there are additional requirements such as a user interface for the program, therefore the program is logically split in the following mayor parts
 
-As it was already stated the measurement is splitted in 2 steps, the motor initialization and the piezo measurement, however a full program cannot be limited to these 2 steps, as there are additional requirements uch as a user interface for the program. Thus the program is organized as:
 - Main loop :: As in many programs the main loop is the one that orchestrates the execution of the program. For details see [[Main Loop]]
-- UI Interface :: Considering the requiremens for different configurations for the measurement such as the voltage applied to the juncture, there is a requierement for a reasonable to use UI, and this UI should allow the user to run a measurement. For details see [[User Interface]]
-- motor break :: Using the motor actuator, a break juncture is created and then the displacement is set so that a movement generated with the piezo-electric actuator the juncture can be easily reconstructed. For details see [[Motor break junction]]
-- Measurement with the piezo :: With the sample in the optimal setting for the piezo is the measured by modifying the voltage applied to the piezo-electric device which in turn creates a displacement of the sample recreating the juncture an allowing for easily repetable measurements through the dynamic range of the piezo-electric device. For details see [[Histogram Measurement with Piezo]]
+- UI Interface :: Considering the requiremens for different configurations for the measurement such as the voltage applied to the juncture, there is a requierement for a reasonable to use UI, and this UI should allow the user to configure the  measurement. For details see [[User Interface]]
+- Motor break :: Using the motor actuator, a break juncture is created and then the displacement is set so that a movement generated with the piezo-electric actuator the juncture can be easily reconstructed. For details see [[Motor break junction]]
+- Measurement with the piezo :: With the sample in the optimal setting for the piezo is the measured by modifying the voltage applied to the piezo-electric device which in turn creates a displacement of the sample recreating the juncture an allowing for easily repetable measurements through the dynamic range of the piezo-electric device. For details see [[Histogram Measurement with Piezo]].
 
-Obviously there is a series of additional modules which provide the interface to the different actuators, and additional helpeer functions to improve the presentation of the results, all of which will be presented in turn.
-
-** DONE Main Loop
+** DONE Measure using CLI
    :PROPERTIES:
-   :header-args+:  :tangle   main.py
+   :header-args+:  :tangle   measure_cli.py
    :END:
-#+BEGIN_SRC python :exports none
-  """ Module Main - Main file for measuring break-junction experiments
 
-      This is the main file for the program used to
-      measure samples using the break-junction technique.
-      This program provides a GUI to control the execution
-      based on providing the tools to configure a run.
-      The program automates the whole procedure by:
-      1- Automating the creation of the break junction
-         using the motor
-      2- Automating the measurement process using a piezo
-         actuator.
+#+BEGIN_SRC python :exports none
+  """ Module measure_cli - Performs full break-juncture measurement
+
+  This File has the control loop necessary to perform the measuremnet using
+  the break-junction technique.
+
+  This program needs the path to a single configuration file to setup the run.
+  If the file is not provided, a default file will be used.
+
+  This program will (subject to the configuration file):
+  1- Operate the motor to break the juncture and find the operating point
+  2- Perform the measurment using the piezoelectric actuator.
   """
   __author__ = "Joaquin Figueroa"
 
 #+END_SRC
-As with many considerable programs this one stars importing the necesary files. In this case, all the modules imported for the main file come from the modules created for the program.
+The program defined in [[file:measure_cli.py]], will perform the measurements provided the configuration file. If no configuration file is provided, then the measurement will use the default configuration.
+In order to perform the measurements the standard python libraries and the modules available in [[file:modules]][fn:: Properly described elsewhere] are used.
+
+#+BEGIN_SRC python
+  import os
+  import sys
+  import modules.adwin_driver as adw
+  import modules.utilities as utl
+  import modules.configuration as conf
+  import modules.piezo_measure as pm
+  import modules.motor_break as mb
+  from modules.motor_break import stop # Important function to stop everything
+#+END_SRC
+This program will be executed directly and if the user provided the configuration file it will use it to perform the measurement. In order to do so, we need to ensure that we have a filename to read. The code fragment [[src-measure-cli-parse-opts]] will read the options and determine if the user provided an appropriate filename. If the user didn't do so, then it will chose the default configuration in the program root directory.
+#+CAPTION: Parse the arguments and define a filename to use
+#+NAME: src-measure-cli-parse-opts
+#+BEGIN_SRC python
+  def parse_options(argv):
+      """ Check if the user provided a configuration file, otherwise use default """
+      try:
+          filename = argv[1]      # argv[0] is the scriptname
+      except:
+          directory = utl.get_script_root_path()
+          filename = "Measurement_deafult_config.yaml"
+          filename = os.path.join(directory, filename)
+      return filename
+#+END_SRC
+
+Now that we have a filename, we have to build the configuration from it. If there is no configuration file in the location specified by the user, then the program will fallback to using harcoded values in the program source code. The code fragment [[src-measure-cli-parse-file]] shows the corresponding functionality
+#+CAPTION: Parse the configuration file to build the configuration
+#+NAME: src-measure-cli-parse-file
+#+BEGIN_SRC python
+  def build_config_if_file_exists(filename):
+      """ If the file exists build configuration, otherwise use hardcoded values"""
+      if os.path.isfile(filename):
+          return conf.yaml_build_config_from_file(filename)
+      return conf.program_config()
+#+END_SRC
+Now that we covered the auxiliary utilities, we can describe the main loop, which can be considered in blocks from the code fragment [[src-measure-cli-main]]:
+- Build configuration :: Starting on line [[(ref:src-m-cli-config)]], we use the configuration file provided by the user (if any) and build the configuration for the measurements.
+- Move the motor :: Starting on line [[(ref:src-m-cli-motor)]], will use the configurations from the user an move the motor to the measurement position.
+- Measure with the Piezo :: Starting on line [[(ref:src-m-cli-piezo)]], will perform the number of measurements (traces) set by the user, save the data and plot it for reference. The plotted data is used to determine if there is a problem with the measurement.
+
+#+CAPTION: Main loop. This will perform the measurement and plot the intermediate results
+#+NAME: src-measure-cli-main
+#+BEGIN_SRC python -n -r
+  def main(filename):
+      """ Closed loop for measurement using the MCBJ technique
+
+      The main loop, This function will perform the measurement and save the data.
+      This Program will build the configuration from the provided file. Then:
+      - If the user specified it it will move the motor to the operation point
+      - If the system is in the operation point, will perform the measuerement
+      - For each measurement (trace) will save and plot the Data
+      """
+      config = build_config_if_file_exists(filename) #(ref:src-m-cli-config)
+      dconfig = config.display_config
+      hconfig = config.hist_config
+      iv_config = config.iv_config
+      failure_count = 0
+
+      state = mb.MB_STATE.READY_ON_POINT
+      if iv_config.get_move_motor(): #(ref:src-m-cli-motor)
+          state = mb.motor_break_print_plot(iv_config)
+
+      if state == mb.MB_STATE.READY_ON_POINT: #(ref:src-m-cli-piezo)
+          trace = 1
+          traces = config.save_config.get_traces()
+          adw_hist = adw.adwin_hist_driver(hconfig)
+          hist_plotter = pm.histogram_plot_data_class(dconfig)
+
+          while trace <= traces:
+              break_hist, make_hist = adw_hist.measure_and_get_histogram(trace)
+              hist_save = pm.histogram_save_data_class(break_hist, make_hist, config)
+              hist_plotter.update_histogram_plt_data(hist_save)
+              hist_plotter.plot_break_make_trace()
+              hist_plotter.plot_histogram_1D()
+              hist_plotter.plot_histogram_2D()
+              if adw_hist.successful_measurement():
+                  hist_save.save_data(trace)
+                  trace += 1
+              else:
+                  failure_count += 1
+                  if failure_count > 100:
+                      break
+          print("PROGRAM FINISHED Successfully")
+          print("Program ended at {0} traces".format(trace-1))
+          print("Found {0} traces with errors".format(failure_count))
+
+
+
+  if __name__ == "__main__":
+      CONFIGFILE = parse_options(sys.argv)
+      main(CONFIGFILE)
+      stop()
+#+END_SRC
+** DONE No Measure Continuous plot
+   :PROPERTIES:
+   :header-args+:  :tangle   no_measure_plot.py
+   :END:
+#+BEGIN_SRC python :exports none
+  """ Module no_measure_plot - Continuous plotting of the conductance data
+
+  This program will perform continuous measurements of the conductance data
+  and will plot it. This program should be used for analysis of the data and
+  the experimental setup.
+  """
+  __author__ = "Joaquin Figueroa"
+
+#+END_SRC
+The program defined in [[file:no_measure_plot.py]], will perform continuous measurements and plot the results allowing diagnosis of the experimental setup. This program uses the functionality provided by the python standar library and the modules available in [[file:modules]][fn:: Properly described elsewhere]
+
+#+BEGIN_SRC python
+  import os
+  import sys
+  import modules.utilities as utl
+  import modules.configuration as conf
+  import modules.motor_break as mb
+  from modules.motor_break import stop # Important function to stop everything
+#+END_SRC
+As in the measurement though command line interface on [[Measure using CLI]], we define a parser to check for the file on line [[(ref:src-no-measure-parse-args)]] from the code fragment [[src-no-measure-plot]].
+
+Similarly in the same code fragment, we build the configuration from the provided file in line [[(ref:src-no-measure-config)]].
+Finally the main loop is located in line [[(ref:src-no-measure-main)]]
+
+#+CAPTION: Program to perform continuous conductance  measurement and plotting
+#+name src-no-measure-plot
+#+BEGIN_SRC python
+  def parse_options(argv):        #(ref:src-no-measure-parse-args)
+      """ Check if the user provided a configuration file, otherwise use default """
+      try:
+          filename = argv[1]      # argv[0] is the scriptname
+      except:
+          directory = utl.get_script_root_path()
+          filename = "Measurement_deafult_config.yaml"
+          filename = os.path.join(directory, filename)
+      return filename
+
+  def build_config_if_file_exists(filename): #(ref:src-no-measure-config)
+      """ If the file exists build configuration, otherwise use hardcoded values"""
+      if os.path.isfile(filename):
+          return conf.yaml_build_config_from_file(filename)
+      return conf.program_config()
+
+  def main(filename):             #(ref:src-no-measure-main)
+      """ Continuous conductance measurement main program
+
+      This is the main loop. It will just call the continuous measurement
+      and will show the conductance measurement continuously
+      """
+      config = build_config_if_file_exists(filename) #
+      iv_config = config.iv_config
+
+      state = mb.no_motor_continuous_plot(iv_config)
+      if state >= mb.MB_STATE.ERROR_STATUS:
+          print("Detected an error during continuous measurement")
+          print("Please Investigate")
+      print("PROGRAM FINISHED")
+
+  if __name__ == "__main__":
+      CONFIGFILE = parse_options(sys.argv)
+      main(CONFIGFILE)
+      stop()
+
+
+#+END_SRC
+
+** TODO Measure using GUI for configuration
+   :PROPERTIES:
+   :header-args+:  :tangle   measure_gui.py
+   :END:
+#+BEGIN_SRC python :exports none
+  """ Module graphical_measure - Runs a GUI to configure and the measures.
+
+  This program runs a Graphical User Interface to generate a configuration file.
+  Using the configuration file this program will either:
+  1- Avoid measurements to allow the user to diagnose the experimental setup
+  2- Perform the full measurement using the corresponding program.
+  """
+
+  __author__ = "Joaquin Figueroa"
+#+END_SRC
+This program runs a Graphical User Interface (GUI) in order to configure the measurements using the *MCBJ* technique.
+This program will build a configuration file which, depending on the user input, will be used to perform the measurement using the program described in [[Measure using CLI]], or if the user requires so, it will not perform any measurement, and will launch the program to perform continuous measurements described in [[No Measure Continuous plot]]
+
+This program uses the standard python libraries and the modules defined in [[file:modules]]
+
 #+BEGIN_SRC python
   import sys
   from modules.ui_gui import run_gui, UI_CMD
-  from modules.motor_break import *
-  from modules.piezo_measure import *
-
+  import measure_cli
+  import no_measure_plot
+  from modules.motor_break import stop
 #+END_SRC
+
+
+
 
 The main loop is indeed a loop. It is intended to work in the following way.
 - First the UI is presented to the user, so the user can modify the configuration of the experiment. As a result from the UI execution there are 3 possible outcomes:
@@ -125,7 +330,7 @@ The main loop is indeed a loop. It is intended to work in the following way.
        ############################################################
        def main_exit(config):
            print("Program Finished successfully")
-           sys.exit()
+           return False
      #+END_SRC
   2. Excecute only the junction creation. This is to prepare a clean sample, since there is no benefit to measure using the piezo a clean sample
      #+BEGIN_SRC python
@@ -135,8 +340,9 @@ The main loop is indeed a loop. It is intended to work in the following way.
        #             creating a break-junction and then joins it
        #             again leaving it ready for measurement
        ############################################################
-       def main_motor_break(config):
-           motor_break_juncture()
+       def main_no_op_measure(config_file):
+           no_measure_plot.main(config_file)
+           return True
      #+END_SRC
   3. Execute a full measurement, creating the juncture and then measure the molecule
      #+BEGIN_SRC python
@@ -146,9 +352,9 @@ The main loop is indeed a loop. It is intended to work in the following way.
        #             sample by creating the break-junction with the
        #             motor, and using the piezo to measure
        ############################################################
-       def main_measure(config):
-           motor_break_juncture()
-           measure_sample()
+       def main_measure(config_file):
+           measure_cli.main(config_file)
+           return True
      #+END_SRC
 
 The outcome picked by the user must be translated into a command in the program, this is performed in a similar way as a switch-case, but in python is implemented as a dictionary test, which may seem odd for someone not used to the technique. For reference please see [[http://www.pydanny.com/why-doesnt-python-have-switch-case.html][switch-case in python.]]
@@ -161,14 +367,14 @@ The outcome picked by the user must be translated into a command in the program,
   #             2- only perform break-junction
   #             3- perform full measurement of the sample
   ############################################################
-  def execute_ui_cmd(ui_cmd, config):
+  def execute_ui_cmd(ui_cmd, config_file):
       switch = {
           UI_CMD.EXIT    : main_exit,
-          UI_CMD.M_BREAK : main_motor_break,
+          UI_CMD.NO_OP_PLOT : main_no_op_measure,
           UI_CMD.MEASURE : main_measure,
       }
       cmd = switch.get(ui_cmd, sys.exit)
-      cmd(config)
+      return cmd(config_file)
 #+END_SRC
 
 Finally the main loop is executed indefinitely until the user terminates the program
@@ -179,15 +385,19 @@ Finally the main loop is executed indefinitely until the user terminates the pro
   ##            the program
   ############################################################
   def main():
-      while True:
+      run = True
+      while run:
           ui_config, config = run_gui()
           ui_cmd    = ui_config.cmd
           print(config.get_config())
-          execute_ui_cmd(ui_cmd, config)
+          config_filename = config.dump_config_file()
+          run = execute_ui_cmd(ui_cmd, config_filename)
 
   if __name__ == "__main__":
       main()
+      stop()
 #+END_SRC
+
 
 ** TODO User Interface
    :PROPERTIES:
@@ -248,7 +458,7 @@ The program configuration, is the interface that allows the user to modify the p
              performed by the program
   """
   __author___ = "Joaquin Figueroa"
-
+  import os
   import yaml
   import time
   import modules.adwin_driver as adwin
@@ -284,9 +494,7 @@ The full configuration is the general interface for all configuratioins, as it e
           self.hist_config = histogram_config(hist_data)
           self.display_config = display_config(display_data)
           self.save_config = save_options(save_data)
-      def dump_config_file(self, filename=None):
-          config = self.get_config()
-          yaml_dump(filename, config)
+
       def get_config(self):
           config = {}
           config['IV Configuration'] = self.iv_config.get_config()
@@ -294,6 +502,17 @@ The full configuration is the general interface for all configuratioins, as it e
           config['Display Configuration'] = self.display_config.get_config()
           config['Save Options'] = self.save_config.get_config()
           return config
+
+      def dump_config_file(self, filename=None):
+          data_dir = self.save_config.get_save_dir()
+          if filename:
+              new_filename = filename
+          else:
+              date = time.strftime("%Y%m%d_%H%M%S")
+              new_filename = "Configuration_file_{0}.yaml".format(date)
+          config_filename = os.path.join(data_dir, new_filename)
+          yaml_dump(config_filename, self.get_config())
+          return config_filename
 
 
 #+END_SRC
@@ -346,6 +565,9 @@ The full configuration is the general interface for all configuratioins, as it e
           return adwin.adwin_ADC(self.end_jv)
       def get_avg_points(self):
           return self.avg_points.get_value()
+      def get_move_motor(self):
+          return self.move_motor.get_value()
+
 
       def get_wait_cycles(self):
           return adwin.adwin_convert_ms_to_cycles(self.wait)
@@ -398,7 +620,7 @@ The full configuration is the general interface for all configuratioins, as it e
           self.break_speed.update_or_dflt(data.get('BreakSpeed'))
           self.break_speed.update_or_dflt(data.get('PostBreakingVoltage'))
           self.make_speed.update_or_dflt(data.get('MakeSpeed'))
-          self.make_speed.update_or_dflt(data.get('SkipPoints'))
+          self.skip.update_or_dflt(data.get('SkipPoints'))
           self.use_log_amp.update_or_dflt(data.get('UseLogAmplifier'))
           self.update_config()
 
@@ -477,7 +699,6 @@ The full configuration is the general interface for all configuratioins, as it e
           self.Gmax = param.display_Gmax()
           self.nGbins = param.display_nGbins()
           self.nXbins = param.display_nXbins()
-          self.traces = param.traces()
           self.config = {}
           self.update_config()
 
@@ -489,7 +710,6 @@ The full configuration is the general interface for all configuratioins, as it e
           self.config['Gmax'] = self.Gmax.get_value()
           self.config['nGbins'] = self.nGbins.get_value()
           self.config['nDbins'] = self.nXbins.get_value()
-          self.config['NumberTraces'] = self.traces.get_value()
 
       def update_config_with_data(self, data):
           self.xmin.update_or_dflt(data.get('xmin'))
@@ -498,7 +718,6 @@ The full configuration is the general interface for all configuratioins, as it e
           self.Gmax.update_or_dflt(data.get('Gmax'))
           self.nGbins.update_or_dflt(data.get('nGbins'))
           self.nXbins.update_or_dflt(data.get('nDbins'))
-          self.traces.update_or_dflt(data.get('NumberTraces'))
 
           self.update_config()
 
@@ -518,8 +737,6 @@ The full configuration is the general interface for all configuratioins, as it e
           return self.nGbins.get_value()
       def get_nXbins(self):
           return self.nXbins.get_value()
-      def get_traces(self):
-          return self.traces.get_value()
 #+END_SRC
 
 ***** Save options
@@ -535,6 +752,7 @@ The full configuration is the general interface for all configuratioins, as it e
           self.save_dir = param.save_dir()
           self.save_data = param.save_data()
           self.use_json = param.use_json()
+          self.traces = param.traces()
           self.dflt_filename = "scan_{0}".format(date)
           self.config = {}
           self.update_config()
@@ -544,11 +762,13 @@ The full configuration is the general interface for all configuratioins, as it e
           self.config['SaveData'] = self.save_data.get_value()
           self.config['SaveDir'] = self.save_dir.get_value()
           self.config['UseJson'] = self.use_json.get_value()
+          self.config['NumberTraces'] = self.traces.get_value()
 
       def update_config_with_data(self, data):
           self.save_dir.update(data.get('SaveDir'))
           self.save_data.update(data.get('SaveData'))
           self.use_json.update(data.get('UseJson'))
+          self.traces.update_or_dflt(data.get('NumberTraces'))
 
           self.update_config()
 
@@ -565,6 +785,9 @@ The full configuration is the general interface for all configuratioins, as it e
           return self.use_json.get_value()
       def get_filename(self):
           return self.dflt_filename
+      def get_traces(self):
+          return self.traces.get_value()
+
 #+END_SRC
 ***** File Interface
 
@@ -626,10 +849,11 @@ Also the introduction of configuration files does not mean that the program will
  #+BEGIN_SRC yaml
    # Begin of configuration File
    ---
-   IV Configuration :              # Continous measurement during motor break
+   IV Configuration :              # Continuous measurement during motor break
      JunctureVoltage : 0.1         # Range 0.1-0.3
      AveragePoints : 32            # Number of points to average
      UseLogAmplifier: true
+     MoveMotor : true
 
    Histogram Configuration:
      JunctureVoltage : 0.1         # Range 0.1-0.3
@@ -646,11 +870,13 @@ Also the introduction of configuration files does not mean that the program will
      Gmax : 10                     # G0
      nGbins : 251                  # Slots for Conductance histogram
      nDbins : 161                  # Slots for Distance histogram
-     NumberTraces : 5000            # Number of histograms
 
    Save Options:
-     SaveData: Yes
+     NumberTraces : 5           # Number of histograms
+     UseJson : false
+     SaveData: true
      SaveDir : 'E:/Measurements/Fullerenos/C60 2/Molecule/'
+
  #+END_SRC
 
 **** Configuration file testing
@@ -825,6 +1051,8 @@ The parameters are located in the file [[file:modules/parameters.py]], which has
         #           range
         #############################################################
         def validate(self, val):#(ref:src-np-validation)
+            if val == None:
+                return False
             val = float(val)
             return (self._min <= val) & (val <= self._max)
         #############################################################
@@ -1590,6 +1818,7 @@ While not really a parameter, the ADwin uses an array to calibrate the measureme
 import modules.parameters as param
 log_ampl = param.adwin_log_amplifier()
 calibration = log_ampl.get_calibration()
+print calibration
 #+END_SRC
 
 #+RESULTS:
@@ -1608,7 +1837,6 @@ calibration = log_ampl.get_calibration()
   """
   __author__ = "Joaquin Figueroa"
 
-  import sys
   from PyQt4 import QtGui
   from PyQt4 import QtCore
   import modules.configuration as conf
@@ -1623,7 +1851,7 @@ This program uses [[https://wiki.python.org/moin/PyQt][PyQt4]] as a GUI framewor
   ## @brief   Runs the GUI for the program
   ############################################################
   def run_gui():
-      app = QtGui.QApplication(sys.argv) # Create "aplication"
+      app = QtGui.QApplication([]) # Create "aplication"
       config_window = ui_config_window() # Instantiate widget
       app.exec_()                        # Execute appliaction
       return config_window.ui_config, config_window.config
@@ -1683,7 +1911,7 @@ The widget provides a callback defined in line [[(ui-close-cb)]] to be used by t
           vbox.addLayout(buttons_layout)
 
           self.setLayout(vbox)
-          self.setGeometry(300, 300, 300, 150)
+          self.setGeometry(150, 150, 550, 550)
           self.setWindowTitle('Buttons')
           self.show()
 
@@ -1693,7 +1921,7 @@ The widget provides a callback defined in line [[(ui-close-cb)]] to be used by t
       ############################################################
       def close_with_cmd(self, cmd): #(ref:ui-close-cb)
           self.ui_config.update_cmd(cmd)
-          QtCore.QCoreApplication.instance().quit()
+          self.close()
 #+END_SRC
 **** TODO Buttons Layout
 The buttons provide the functionality to launch the different process of the tool. Therefore clicking a button will close the UI and excecute the action stated on it. Also a small tooltip is provided in case the user requires additional information.
@@ -1722,12 +1950,12 @@ Finally the buttons created are added to the layout of the button section of the
           lambda: widget.close_with_cmd(UI_CMD.EXIT)) (ref:lambda-btn)
       quit_button.setToolTip("Terminates the program")
       # Break Button
-      break_button = QtGui.QPushButton("Only break")
-      break_button.clicked.connect(
-          lambda: widget.close_with_cmd(UI_CMD.M_BREAK))
-      break_button.setToolTip("Use the motor to create a break junction.")
+      no_op_button = QtGui.QPushButton("Continuous Measurement - Diagnose")
+      no_op_button.clicked.connect(
+          lambda: widget.close_with_cmd(UI_CMD.NO_OP_PLOT))
+      no_op_button.setToolTip("Continuous G measure. Use for experiment Diagnosis")
       # Measure Button
-      measure_button = QtGui.QPushButton("Full Measure")
+      measure_button = QtGui.QPushButton("Perform Measurement")
       measure_button.clicked.connect(
           lambda: widget.close_with_cmd(UI_CMD.MEASURE))
       measure_button.setToolTip(
@@ -1737,7 +1965,7 @@ Finally the buttons created are added to the layout of the button section of the
       hbox = QtGui.QHBoxLayout()
       hbox.addStretch(1)
       hbox.addWidget(quit_button)
-      hbox.addWidget(break_button)
+      hbox.addWidget(no_op_button)
       hbox.addWidget(measure_button)
 
       vbox = QtGui.QVBoxLayout()
@@ -1874,7 +2102,6 @@ Since the configuration parameters are split in different groups so it is the la
 
       nGbins_label, nGbins_text = num_param_label_textbox(display_params.nGbins)
       nXbins_label, nXbins_text = num_param_label_textbox(display_params.nXbins)
-      traces_label, traces_text = num_param_label_textbox(display_params.traces)
 
       # Add fields to the layout
       grid = QtGui.QGridLayout()
@@ -1900,9 +2127,6 @@ Since the configuration parameters are split in different groups so it is the la
       grid.addWidget(nXbins_text, 6, 1)
 
 
-      grid.addWidget(traces_label, 7, 0)
-      grid.addWidget(traces_text, 7, 1)
-
       return grid
 
 #+END_SRC
@@ -1916,6 +2140,7 @@ Since the configuration parameters are split in different groups so it is the la
       dir_label = QtGui.QLabel(save_opts.save_dir.get_value())
       dir_btn = QtGui.QPushButton('Change Directory')
       dir_btn.clicked.connect(lambda: showDialog(window, save_opts, dir_label))
+      traces_label, traces_text = num_param_label_textbox(save_opts.traces)
 
       save_cb = boolean_parameter_checkbox(save_opts.save_data)
 
@@ -1926,11 +2151,14 @@ Since the configuration parameters are split in different groups so it is the la
       grid.setSpacing(10)
 
 
-      grid.addWidget(dir_label, 1, 0)
-      grid.addWidget(dir_btn, 1, 1)
+      grid.addWidget(traces_label, 1, 0)
+      grid.addWidget(traces_text, 1, 1)
 
-      grid.addWidget(save_cb, 2, 0)
-      grid.addWidget(json_cb, 2, 1)
+      grid.addWidget(dir_label, 2, 0)
+      grid.addWidget(dir_btn, 2, 1)
+
+      grid.addWidget(save_cb, 3, 0)
+      grid.addWidget(json_cb, 3, 1)
 
       return grid
 
@@ -2033,7 +2261,7 @@ To provide the GUI for a parameter, a label and a text-box are needed, however f
    ############################################################
    class UI_CMD(object):
        EXIT    = 0
-       M_BREAK = 1
+       NO_OP_PLOT = 1
        MEASURE = 2
 
    class gui_cmd(object):
@@ -2084,8 +2312,11 @@ This file has the algorithm that performs the juncture break and drives the moto
 
 
   class MB_CONST(object):
-      BROKEN_CONDUCTANCE = 1e-6    # IN G0
+      BROKEN_CONDUCTANCE = 1e-6   # IN G0
       RESTORE_CONDUCTANCE = 50    # in G0
+      BREAK_SPEED = -2            # In us
+      MAKE_SPEED = 2              # in us
+
 
   def build_hist_config_for_motor_break(iv_config):
       hist_dict = {}
@@ -2107,7 +2338,7 @@ This file has the algorithm that performs the juncture break and drives the moto
 
   def motor_break_juncture_iterator(motor, iv_driver):
       motor.enable_motor()
-      motor.set_target_speed(-2)
+      motor.set_target_speed(MB_CONST.BREAK_SPEED)
       state = MB_STATE.BREAKING
       while state == MB_STATE.BREAKING :
           pl.pause(0.05)
@@ -2122,7 +2353,7 @@ This file has the algorithm that performs the juncture break and drives the moto
 
   def motor_restore_juncture_iterator(motor, iv_driver):
       motor.enable_motor()
-      motor.set_target_speed(2)
+      motor.set_target_speed(MB_CONST.MAKE_SPEED)
       state = MB_STATE.RESTORING
       while state == MB_STATE.RESTORING :
           pl.pause(0.05)
@@ -2272,6 +2503,45 @@ This file has the algorithm that performs the juncture break and drives the moto
           ax.set_xlim([Time[0], Time[-1]*1.2])
           pl.pause(0.001)
       return state
+
+  def no_motor_continuous_measurement(motor, iv_config):
+      adw_iv = adw.adwin_iv_driver(iv_config)
+      adw_iv.start_process()
+      state = MB_STATE.BREAKING
+      start_time = time.time()
+      while state == MB_STATE.BREAKING :
+          pl.pause(0.02)
+          conductance = adw_iv.get_conductance()
+          new_time = time.time() - start_time
+          pos = motor.get_position()
+          yield conductance, pos, state, new_time
+
+  def no_motor_continuous_plot(iv_config):
+      motor = fh.faulhaber_motor()
+      line, ax = motor_break_plot_config()
+      Gt_1 = []
+      Time = []
+      state = MB_STATE.ERROR_STATUS
+      continuous_data  = no_motor_continuous_measurement(motor, iv_config)
+      for conductance, pos, state, new_time  in continuous_data:
+          print_motor_break_data(conductance, pos, state, new_time)
+          if state >= MB_STATE.ERROR_STATUS:
+              print_motor_break_error_message(state)
+              break
+          Gt_1.append(conductance)
+          Time.append(new_time)
+          line.set_data(Time, Gt_1)
+          ax.set_xlim([Time[0], Time[-1]*1.2])
+          pl.pause(0.001)
+      return state
+
+  def stop():
+      motor = fh.faulhaber_motor()
+      motor.enable_motor()
+      motor.stop_motor()
+      motor.disable_motor()
+      adw.adwin_driver(1, "")
+
 #+END_SRC
 
 *** Testing motor_break control loop                               :noexport:
@@ -2401,8 +2671,8 @@ This file has the algorithm that performs the juncture break and drives the moto
 
       def save_data(self, trace=1):
           save_config = self.full_config.save_config
-          if save_config.save_data.get_value():
-              if save_config.use_json.get_value():
+          if save_config.get_save_data():
+              if save_config.get_use_json():
                   self._real_save_data_with_json(trace)
               else:
                   self._real_save_data(trace)
@@ -2417,11 +2687,11 @@ This file has the algorithm that performs the juncture break and drives the moto
           self.make_piezo_header(filedesc)
           filedesc.write('@ \n')
           for T, G, V in zip(self.T_breaking, self.G_breaking, self.V_breaking):
-              ln = "{0:1.8f}\t{1:1.8f}\t{2:1.8f}\t\n".format(T, G, V)
+              ln = "{0:5.8f}\t{1:5.8f}\t{2:5.8f}\t\n".format(T, G, V)
               filedesc.write(ln)
           filedesc.write('@ \n')
           for T, G, V in zip(self.T_making, self.G_making, self.V_making):
-              ln = "{0:1.8f}\t{1:1.8f}\t{2:1.8f}\t\n".format(T, G, V)
+              ln = "{0:5.8f}\t{1:5.8f}\t{2:5.8f}\t\n".format(T, G, V)
               filedesc.write(ln)
 
       def _real_save_data_with_json(self, trace=1):
@@ -2631,7 +2901,7 @@ Although Python already provides with a good interface to interface with the fil
 #+END_SRC
 
 *** TODO manipulation taken from original program
-#+BEGIN_SRC python
+#+BEGIN_SRC python :tangle no
   def convert_to_list(data):
       # convert to list
       data2=[]
@@ -2708,7 +2978,7 @@ As previously stated the base-class  parameters hold information necessary for t
   #           PROGRAM_DIR -> The directory where all adwin files are stored
   #           HIGH_PERIOD -> high priority process clock period (25 ns)
   #           OUTPUT_RANGE -> Output voltage in volts (+- 10 v)
-  #           RESOLUTION -> 16 bits of representation for continous values
+  #           RESOLUTION -> 16 bits of representation for continuous values
   #           IV_PROCESS -> IV measurements program stored in slot 1
   #           HIST_PROCESS -> Histogram program stored in slot 2
   #           PROCESS_DELAY -> number of ADwin clock between each operation
@@ -2827,7 +3097,6 @@ The Int parameters are used to define the indices to the corresponding integer v
 - END_JV :: Used for setting the juncture voltage at end of measurements, like the starting voltage should be set to \(0[V]\)
 - WAIT   :: Used for setting  the number of cycles to wait before measuring the current, after reaching the desired juncture voltage
 - MAX_DATA :: Used for setting the maximum number of data points to measure. After reaching the target value, the measurements should stop
-- ABORT ::  Used ad the parameter used to  abort measurements early
 - END_STATUS :: Parameter used to communicate that measurements have ended.
 
 #+CAPTION: <<src-adwin-iv-param>> Adwin parameter indices used for communicating the int variables with the instrument for IV parameter measurements
@@ -2843,7 +3112,6 @@ The Int parameters are used to define the indices to the corresponding integer v
   WAIT        = 7
   AVG         = 8
   MAX_DATA    = 10
-  ABORT       = 11
   # outputs for the ADWIN IV measurement
   END_STATUS  = 12
 #+END_SRC
@@ -2981,6 +3249,7 @@ This section provides with the functions required to obtain the measurements fro
 
   adw = adwin_iv_driver(iv_config)
   adw.start_process()
+  adw.analyze()
   for i in range(100):
       print(adw.get_conductance())
 #+END_SRC
@@ -3009,7 +3278,7 @@ The Int parameters are used to define the indices to the corresponding integer v
 - POST_BREAK_WAIT :: After the Adwin detects the breaking, we try to optimize the runtime by decreasing the number of points to measure. We do this by setting a maximum number of data points to take after the breaking, after which we start measuring the Make histogram.
 - MAKE_WAIT   :: Used for setting  the number of cycles to wait before measuring the current, after modifying the piezoelectric voltage during the make histogram analysis. As with the *BREAK_WAIT* this is considered a stabilization time.
 - AVG :: Used as the index to set the number of measurements to be performed before taking an average in each piezoelectric point.
-- SKIP :: We may not want to save all data points in the adwin histogram measurement, therefore, we will instruct the adwin to skip saving some parameters 
+- SKIP :: We may not want to save all data points in the adwin histogram measurement, therefore, we will instruct the adwin to skip saving some parameters
 - PROCESS_STATUS :: Used as output, to check the current status of the histogram measurement process
 - END_STATUS :: Flag used to communicate the python program that the measurement process is ended
 - ERROR_STATUS :: Used as flag to let the python program know that there was an error in the measurement and the data should not be stored
@@ -3230,7 +3499,6 @@ Small test program for the ADwin hisotgram measurement.
   config = yaml_build_config_from_file(infile)
   dconfig = config.display_config
   hconfig = config.hist_config
-  sconfig = config.save_config
 
 
   adw = adwin_hist_driver(hconfig)
@@ -3275,7 +3543,7 @@ In summary, to set a value in the Adwin we need to take the target value, and co
       zero_v = o_range/step
       restricted = np.maximum(np.minimum(analog_value, o_range), -o_range)
       digital_value = np.asarray(restricted/step + zero_v, dtype=int)
-      if len(digital_value) < 2 :
+      if digital_value.ndim == 0 or len(digital_value) < 2:
           digital_value = int(digital_value)
       return digital_value
 
@@ -3285,32 +3553,10 @@ In summary, to set a value in the Adwin we need to take the target value, and co
       step = 2 * param.ADW_GCONST.OUTPUT_RANGE / (2**param.ADW_GCONST.RESOLUTION-1)
       # voltage is array of analog/idx conversion
       zero_v = param.ADW_GCONST.OUTPUT_RANGE/step
-      analog_value = (digital_value - zero_v)*step
-      if len(analog_value) < 2 :
+      analog_value = np.asarray((digital_value - zero_v)*step)
+      if analog_value.ndim == 0 or len(analog_value) < 2:
           analog_value = float(analog_value)
       return analog_value
-
-  def adwin_ADC2(analog_value):
-      # converts ADC/DAC voltage to bin number, given the voltage range and the param.ADW_GCONST.RESOLUTION as int (adwin digitia representation)
-      step = 2*param.ADW_GCONST.OUTPUT_RANGE/(2**param.ADW_GCONST.RESOLUTION-1)
-      voltage = np.arange(-param.ADW_GCONST.OUTPUT_RANGE, param.ADW_GCONST.OUTPUT_RANGE+step, step)
-      diff = abs(voltage - analog_value)
-      digital_value = diff.argmin() # Is an index
-
-      return digital_value
-
-  def adwin_DAC2(digital_value):
-      # converts ADC/DAC bins to voltage, given the voltage range and the resolution (in bits)
-      step = 2 * param.ADW_GCONST.OUTPUT_RANGE / (2**param.ADW_GCONST.RESOLUTION-1)
-      # voltage is array of analog/idx conversion
-      voltage = np.arange(-param.ADW_GCONST.OUTPUT_RANGE, param.ADW_GCONST.OUTPUT_RANGE+step, step)
-      data = voltage[int(digital_value)]
-
-      return data
-
-  def adwin_ADC_DAC_roundtrip(analog_value):
-      return adwin_DAC(adwin_ADC(analog_value))
-
 
   def aux_convert_vps_to_cycles(vps):
       # VPS -> VOltage Per Second
@@ -3388,7 +3634,7 @@ As in many programs, a header is required. In the Adwin case, this is necessary 
    ' Info_Last_Save                 = USUARIO-PC  Usuario-pc\Usuario
    '<Header End>
 
-   ' This program provides a continous measurement of the current at the sample
+   ' This program provides a continuous measurement of the current at the sample
    ' driven by the set voltage. In order to interface with the computer several
    ' ADwin static variables are used
 
@@ -4564,3 +4810,4 @@ This section is for the interface with each measurement instrument.
 
   (add-to-list 'auto-mode-alist '("\\.bas\\'" . basic-mode))
 #+END_SRC
+<
